@@ -1,5 +1,5 @@
 # LoopGPT: MIDI Loop Generator
-This Jupyter Notebook generates a 4-bar MIDI loop consisting of a chord progression and melody. The loop is created using OpenAI's GPT-4o model, which generates the music structure, and the resulting MIDI files are manipulated using Python libraries like mido and pretty_midi.
+This Jupyter Notebook generates a n-bar MIDI loop consisting of a chord progression and melody. With the **num_bars** variable, users can choose the n-value for the generation. I suggest at maximum 8 due to the quality of responses. The loop is created using OpenAI's GPT-4o model, which generates the music structure, and the resulting MIDI files are manipulated using Python libraries like mido and pretty_midi.
 
 ## Features
 * Prompts OpenAI's GPT-4o model to generate musical notes for a MIDI loop.
@@ -19,7 +19,7 @@ The following Python packages are required to run the notebook:
 * **pygame**: To handle MIDI playback.
 
 ## API
-OpenAI's API key is required to access GPT-4 for music generation. The key is loaded using a **.env** file.
+OpenAI's API key is required to access GPT-4o for music generation. The key is loaded using a **.env** file.
 
 ## Setup Instructions
 1. **Install Dependencies:** Install the required Python packages by running:
@@ -33,7 +33,7 @@ OpenAI's API key is required to access GPT-4 for music generation. The key is lo
   ```
   SANDBOX_API_KEY=your_openai_api_key
   ```
-3. Run the Notebook: Open the notebook in Jupyter and execute the cells to generate a 4-bar MIDI loop.
+3. Run the Notebook: Open the notebook in Jupyter and execute the cells to generate a n-bar MIDI loop.
 
 ## Usage
 1. Music Data Structure:
@@ -48,9 +48,9 @@ OpenAI's API key is required to access GPT-4 for music generation. The key is lo
 * Optionally, you can use **pygame** to playback the generated MIDI file within the notebook environment.
 
 ## Output
-The notebook generates a 4-bar MIDI file consisting of:
+The notebook generates a n-bar MIDI file consisting of:
 * **Chord Progression:** A series of chords that form the harmonic structure.
-* **Melody:** A sequence of notes that play over the chord progression.
+* **Melody:** A sequence of notes that play over the chord progression. (OPTIONAL)
 
 ## Customization
 * You can modify the note generation logic and parameters to create different types of MIDI loops.
