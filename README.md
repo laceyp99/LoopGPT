@@ -1,57 +1,97 @@
-# LoopGPT: MIDI Loop Generator
-This Jupyter Notebook generates a n-bar MIDI loop consisting of a chord progression and melody. With the **num_bars** variable, users can choose the n-value for the generation. I suggest at maximum 8 due to the quality of responses. The loop is created using OpenAI's GPT-4o model, which generates the music structure, and the resulting MIDI files are manipulated using Python libraries like mido and pretty_midi.
+# LoopGPT: AI-Powered Music Generation
+
+LoopGPT is a Python application that generates MIDI music using OpenAI's GPT models. It can create chord progressions, melodies, and accompaniments for existing melodies.
 
 ## Features
-* Prompts OpenAI's GPT-4o model to generate musical notes for a MIDI loop.
-* Produces a combination of chord progressions and melodies.
-* Exports the generated loop as a MIDI file for further playback and analysis.
 
-## Requirements
-### Python Packages
-The following Python packages are required to run the notebook:
-* **dotenv**: To manage environment variables for API keys.
-* **pydantic**: For object creation and data validation.
-* **openai**: To interact with the OpenAI API.
-* **mido**: For creating and handling MIDI files.
-* **pretty_midi**: To parse and process MIDI data.
-* **matplotlib**: For visualization (optional).
-* **numpy**: For numerical operations.
-* **pygame**: To handle MIDI playback.
+- Generate 4-bar chord progressions with customizable parameters
+- Create melodic lines that complement the chord progressions 
+- Generate accompaniment for existing MIDI melodies
+- Visualize MIDI output using piano roll display
+- Play generated music through MIDI playback
+- Support for sixteenth note resolution
+- Cost tracking for API usage
 
-## API
-OpenAI's API key is required to access GPT-4o for music generation. The key is loaded using a **.env** file.
+## Installation
 
-## Setup Instructions
-1. **Install Dependencies:** Install the required Python packages by running:
-  ```
-  pip install python-dotenv pydantic openai mido pretty_midi matplotlib numpy pygame
-  ```
-
-2. **Set Up OpenAI API Key:**
-* Create a **.env** file in the root directory of your project.
-* Add your OpenAI API key to the **.env** file as follows:
-  ```
-  SANDBOX_API_KEY=your_openai_api_key
-  ```
-3. Run the Notebook: Open the notebook in Jupyter and execute the cells to generate a n-bar MIDI loop.
+1. Clone this repository
+2. Install required packages:
+```sh
+pip install mido pygame matplotlib pretty_midi python-dotenv openai pydantic
+```
+3. Insert your OpenAI API key to the `.env` file in the project structure:
+```
+OPENAI_API_KEY=your_api_key_here
+```
 
 ## Usage
-1. Music Data Structure:
-* The notebook defines **Note**, **Chord**, and **TimeInformation** classes to represent musical notes and their timing.
-* The GPT-4o model generates the music data based on this structure.
 
-2. MIDI Generation:
-* The generated notes are converted into MIDI format using **mido** and **pretty_midi**.
-* The notebook provides functionality to export the MIDI file and visualize the melody.
+### Generate a Chord Progression with Melody
+Edit `ProgressionPlus.py`:
+```python
+if __name__ == "__main__":
+    # Prompt for the MIDI generation
+    prompt_dict = {
+        "key": "C",
+        "mode": "major",
+        "keywords": "a rhythmic sad pop song",
+        "t": 0.3,
+        # "note density (%)": 60,
+        # "syncopation (%)": 50,
+        # "velocity dynamics (%)": 25
+    }
+    # Run the main function with the user inputs
+    main(
+        prompt_dict=prompt_dict,
+        melody=True,
+        visualize=False,
+        play=True,
+        filename="N/A"
+    )
+```
+Run:
+```
+python ProgressionPlus.py
+```
 
-3. Playback:
-* Optionally, you can use **pygame** to playback the generated MIDI file within the notebook environment.
+### Generate Accompaniment for a Melody
+Edit `Accompaniment.py`:
+```python
+if __name__ == "__main__":
+    midi = MidiFile("path/to/your/melody.mid")  # Replace with your MIDI file path
+    # Run the main function with the user inputs
+    main(
+        melody=midi,
+        visualize=False,
+        play=True,
+        filename="N/A",
+        temp=0.2
+    )
+```
+Run:
+```
+python Accompaniment.py
+```
 
-## Output
-The notebook generates a n-bar MIDI file consisting of:
-* **Chord Progression:** A series of chords that form the harmonic structure.
-* **Melody:** A sequence of notes that play over the chord progression. (OPTIONAL)
+## Project Structure
 
-## Customization
-* You can modify the note generation logic and parameters to create different types of MIDI loops.
-* The notebook is designed to be extensible and flexible for various musical experiments.
+- `ProgressionPlus.py`: Main entry point for generating chord progressions and melodies
+- `Accompaniment.py`: Main entry point for generating accompaniments
+- `code/`
+  - `__init__.py`: ***Needs to be in the directory.*** Can be empty, just needs to exist
+  - `.env`: Configuration file for OpenAI API key
+  - `apicalls.py`: OpenAI API interaction and music generation logic
+  - `midi_processing.py`: MIDI file manipulation utilities
+  - `objects.py`: Data models for musical elements
+  - `utils.py`: Helper functions for MIDI processing
+
+## Limitations
+
+- The `ProgressionPlus.py` script generates MIDI files at a fixed tempo of ***120 BPM***.
+- The application currently supports only ***4-bar*** segments in ***4/4*** time signature.
+- Generated music may require post-processing for professional use.
+- The quality of generated music depends on the prompt and model parameters.
+- Requires an active internet connection for API calls to OpenAI.
+- High API usage may incur significant costs.
+- Error handling and user feedback mechanisms are minimal.
+- The application does not include a graphical user interface (GUI).
