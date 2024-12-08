@@ -48,6 +48,7 @@ def main(prompt_dict, melody=True, visualize=False, play=False, filename="N/A"):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     midi.save(filename)
     # Save the messages to a JSON file
+    os.makedirs(os.path.dirname(json_filename), exist_ok=True)
     utils.save_messages_to_json(all_messages, json_filename)
     # Play and visualize the MIDI file if user wants
     if visualize:

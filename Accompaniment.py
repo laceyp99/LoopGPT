@@ -23,17 +23,22 @@ def main(melody, visualize=False, play=False, filename="N/A", temp=0.0):
     # Define the filename if not provided
     if filename == "N/A":
         filename = f"Accompaniment/Output.mid"
+    json_filename = f"Training Example/{filename}.json"
     
     # Decode the melody
     melody_objectified = midi_processing.objectify_midi(melody)
     # Generate the accompaniment and add it to the melody
-    chords, cost = apicalls.generate_accompaniment(melody_objectified, temp=temp)
+    chords, messages, cost = apicalls.generate_accompaniment(melody_objectified, temp=temp)
     midi_processing.add_bars_to_midi(midi=melody, bars=chords, melody=False)
     melody.type = 1 # type 1 (synchronous): all tracks start at the same time
     
     # Save the MIDI file with the accompaniment
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     midi.save(filename)
+    
+    # Save the messages to a JSON file
+    os.makedirs(os.path.dirname(json_filename), exist_ok=True)
+    utils.save_messages_to_json(messages=messages, filename=json_filename) 
     
     # Play and visualize the MIDI file if user wants
     if visualize:
