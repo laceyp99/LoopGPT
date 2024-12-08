@@ -7,6 +7,7 @@ This includes the following functions:
 * midi_to_note_name: Converts a list of MIDI numbers to a list of note names.
 * visualize_midi: Visualizes a MIDI file using prettyMIDI and matplotlib.
 * play_midi: Plays a MIDI file using pygame.
+* save_messages_to_json: Saves messages to a JSON file with the same name as the MIDI file.
 '''
 
 # IMPORTS
@@ -182,6 +183,12 @@ def play_midi(midi_file):
     pygame.mixer.music.play()
     
 def save_messages_to_json(messages, midi_filename):
+    """Saves messages to a JSON file with the same name as the MIDI file.
+
+    Args:
+        messages (list of dictionaries): A list of messages to save to the JSON file.
+        midi_filename (str): The filename of the MIDI file to save the messages for.
+    """
     # Create the directory if it doesn't exist
     json_dir = os.path.join("Training Examples")
     os.makedirs(json_dir, exist_ok=True)

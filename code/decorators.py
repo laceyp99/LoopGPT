@@ -1,5 +1,7 @@
-# decorators.py
-
+'''
+This file contains the decorator function that handles errors that may occur during the API call.
+'''
+# IMPORTS
 import functools
 import logging
 from typing import Callable

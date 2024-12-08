@@ -2,6 +2,7 @@
 This file holds all the functions and variables that are involved in making API calls to OpenAI.
 
 This includes the following functions:
+* check_api_key(): Checks if the OpenAI API key is set in the environment variables.
 * calc_price(completion): Calculates the total price for an API call based on the token usage.
 * prompt_translation(prompt, melody=True): Translates a user prompt into a fully detailed musical description for MIDI generation.
 * generate_chords(prompt, temp=0.0): Generates a 4 bar MIDI chord progression based on the key, mode, and keywords provided.
@@ -36,12 +37,10 @@ def check_api_key():
 check_api_key()
 
 # OPENAI API PRICING (as of 2024-11-17)
-
 # GPT-4o API PRICING (per token)
 input_token_price = 0.00250 / 1000
 cached_token_price = 0.00125 / 1000
 output_token_price = 0.01000 / 1000
-
 # GPT-4o-mini API PRICING (per token)
 mini_input_token_price = 0.000150 / 1000
 mini_cached_token_price = 0.075 / 1000000
@@ -79,6 +78,7 @@ def prompt_translation(prompt, melody=True):
    
     Returns:
         str: A detailed musical description based on the given prompt.
+        List of Dictionaries: The message list that is used to further the conversation.
         float: The total cost associated with the API call.
     """
     # Initialize the message list for the API call
@@ -115,11 +115,13 @@ def prompt_translation(prompt, melody=True):
         messages=messages,
         temperature=0.0
     )
+    # Check if the API call returned None
     if completion == None:
         raise APICallError("API call returned None.")
     # Extract the translation from the API completion
     translation = completion.choices[0].message.content
     messages.append({"role": "assistant", "content": translation})
+    # Calculate the cost of the API call
     cost = calc_price(completion, mini=True)
     # print(translation)
     return translation, messages, cost
@@ -156,6 +158,7 @@ def generate_chords(prompt, temp=0.0):
             response_format=objects.Bar,
             temperature=temp
         )
+        # Check if the API call returned None
         if completion == None:
             raise APICallError("API call returned None.")
         # Extract the MIDI data from the API completion and append it to the list of bars
@@ -189,6 +192,7 @@ def generate_melody(messages, temp=0.0):
     
     Returns:
         List of MelodyBar Objects: A list of 4 MelodyBar objects, each containing a list of Note objects.
+        List of Dictionaries: The message list that is used to log the conversation.
         float: The total cost associated with the API call.
     """
     # Add a user message to prompt the model to create a melody using the chords generated
@@ -212,6 +216,7 @@ def generate_melody(messages, temp=0.0):
             response_format=objects.MelodyBar,
             temperature=temp
         )
+        # Check if the API call returned None
         if completion == None:
             raise APICallError("API call returned None.")
         # Extract the MIDI data from the API completion and append it to the list of melody bars
@@ -245,6 +250,7 @@ def generate_accompaniment(melody, temp=0.0):
     
     Returns:
         List of Bar Objects: A list of 4 Bar objects, each containing a list of Chord objects
+        List of Dictionaries: The message list that is used to log the conversation.
         float: The total cost associated with the API calls.
     """
     # Initialize the message list with the system message and the formatted user message
@@ -287,4 +293,4 @@ def generate_accompaniment(melody, temp=0.0):
             )
         # print(midi_loop)
         cost += calc_price(completion, mini=False) 
-    return bars, cost
+    return bars, messages, cost

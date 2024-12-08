@@ -1,5 +1,6 @@
-# exceptions.py
-
+'''
+This file contains the custom exceptions that are raised by the music generation API.
+'''
 class MusicGenerationError(Exception):
     pass
 
