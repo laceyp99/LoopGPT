@@ -7,7 +7,7 @@ This includes the following functions:
 '''
 
 # IMPORTS
-from mido import MidiFile, MidiTrack, Message
+from mido import MidiTrack, Message
 import code.utils as utils
 import code.objects as objects
 

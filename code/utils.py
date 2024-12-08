@@ -13,6 +13,8 @@ This includes the following functions:
 import matplotlib.pyplot as plt
 import numpy as np
 import pygame, pretty_midi
+import os
+import json
 
 # A dictionary that maps note names to their corresponding MIDI numbers
 base_midi_numbers = {"C": 0, "B♯♯": 1, "B##": 1, "C♯": 1, "C#": 1,"D♭": 1,"Db": 1, "C♯♯": 2, "C##": 2, "D": 2, "D♯": 3, "D#": 3, "E♭": 3, "Eb": 3,"D♯♯": 4, "D##": 4, "E": 4, "Fb": 4, "F♭": 4, "E♯": 5, "E#": 5, "F": 5, "E♯♯": 6, "E##": 6, "F♯": 6, "F#": 6, "Gb": 6, "G♭": 6, "F♯♯": 7, "F##": 7, "G": 7, "G♯": 8, "G#": 8, "A♭": 8, "Ab": 8, "G♯♯": 9, "G##": 9, "A": 9, "A♯": 10, "A#": 10, "B♭": 10, "Bb": 10, "A♯♯": 11, "A##": 11, "B": 11, "Cb": 11, "C♭": 11, "B♯": 12, "B#": 12}
@@ -178,3 +180,16 @@ def play_midi(midi_file):
     pygame.mixer.music.load(midi_file)
     # Play the MIDI file
     pygame.mixer.music.play()
+    
+def save_messages_to_json(messages, midi_filename):
+    # Create the directory if it doesn't exist
+    json_dir = os.path.join("Training Examples")
+    os.makedirs(json_dir, exist_ok=True)
+
+    # Construct the JSON filename similar to the MIDI filename
+    base_filename = os.path.splitext(os.path.basename(midi_filename))[0]
+    json_filename = os.path.join(json_dir, f"{base_filename}.json")
+
+    # Save the messages to the JSON file with indent=4
+    with open(json_filename, 'w') as json_file:
+        json.dump(messages, json_file, indent=4)

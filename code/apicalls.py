@@ -14,11 +14,26 @@ from dotenv import load_dotenv # import the api key from the .env file
 from openai import OpenAI # calling the OpenAI chat completions API
 from pydantic import ValidationError # error handling for the API call
 import os # access the environment variables
-import code.objects as objects# import the objects module for the Bar and MelodyBar classes
-# import objects
+import code.objects as objects # import the objects module for the Bar and MelodyBar classes
+from code.decorators import handle_errors
+from code.exceptions import APICallError
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,  # Use INFO or DEBUG level as needed
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 # LOAD API KEY AND CREATE CLIENT
 load_dotenv() # load the .env file
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+def check_api_key():
+    if not os.getenv('OPENAI_API_KEY'):
+        sys.exit("Error: OPENAI_API_KEY environment variable not set. Please set your OpenAI API key.")
+
+check_api_key()
 
 # OPENAI API PRICING (as of 2024-11-17)
 
@@ -54,6 +69,7 @@ def calc_price(completion, mini=False):
             total_price = (completion.usage.prompt_tokens * input_token_price) + (completion.usage.completion_tokens * output_token_price)
     return total_price
 
+@handle_errors
 def prompt_translation(prompt, melody=True):
     """ Translates a user prompt into a fully detailed musical description for MIDI generation.
     
@@ -99,12 +115,16 @@ def prompt_translation(prompt, melody=True):
         messages=messages,
         temperature=0.0
     )
+    if completion == None:
+        raise APICallError("API call returned None.")
     # Extract the translation from the API completion
     translation = completion.choices[0].message.content
+    messages.append({"role": "assistant", "content": translation})
     cost = calc_price(completion, mini=True)
-    print(translation)
-    return translation, cost
+    # print(translation)
+    return translation, messages, cost
 
+@handle_errors
 def generate_chords(prompt, temp=0.0):
     """ Generates a 4 bar MIDI chord progression based on the prompt provided.
 
@@ -127,38 +147,39 @@ def generate_chords(prompt, temp=0.0):
     cost = 0
     # Loop through for 4 bars of generation
     for i in range(4):
-        # Try/Except block to catch any validation errors
-        try:
-            # Make the API call to generate a bar of MIDI data based on the message list
-            completion = client.beta.chat.completions.parse(
-                model= "gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
-                messages=messages,
-                response_format=objects.Bar,
-                temperature=temp
-            )
-            # Extract the MIDI data from the API completion and append it to the list of bars
-            midi_loop = completion.choices[0].message.parsed
-            bars.append(midi_loop)
-            # Append the bar of MIDI data to the message list to be used as context for the next bar's generation
-            messages.append(
-                {
-                    "role": "assistant", 
-                    "content": f"{midi_loop}"
-                }
-            )
-            # Append a user message to prompt the user to continue the chord progression generation
+        logging.info(f"Generating bar {i+1} of 4")
+
+        # Make the API call to generate a bar of MIDI data based on the message list
+        completion = client.beta.chat.completions.parse(
+            model= "gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
+            messages=messages,
+            response_format=objects.Bar,
+            temperature=temp
+        )
+        if completion == None:
+            raise APICallError("API call returned None.")
+        # Extract the MIDI data from the API completion and append it to the list of bars
+        midi_loop = completion.choices[0].message.parsed
+        bars.append(midi_loop)
+        # Append the bar of MIDI data to the message list to be used as context for the next bar's generation
+        messages.append(
+            {
+                "role": "assistant", 
+                "content": f"{midi_loop}"
+            }
+        )
+        if i < 3:
             messages.append(
                 {
                     "role": "user",
                     "content": "Continue the chord progression with generating the next bar. Remember that the progression is only 4 bars long."
                 }
             )
-            print(midi_loop)
-            cost += calc_price(completion, mini=False) 
-        except ValidationError as e:
-            print(f"Validation error: {e}")
+        # print(midi_loop)
+        cost += calc_price(completion, mini=False) 
     return bars, messages, cost
 
+@handle_errors
 def generate_melody(messages, temp=0.0):
     """ Generates a 4 bar MIDI melody based on the chord progression provided.
     
@@ -183,38 +204,38 @@ def generate_melody(messages, temp=0.0):
     cost = 0
     # Loop through for 4 bars of generation
     for i in range(4):
-        # Try/Except block to catch any validation errors
-        try:
-            # Make the API call to generate a bar of MIDI data based on the message list
-            completion = client.beta.chat.completions.parse(
-                model="gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
-                messages=messages,
-                response_format=objects.MelodyBar,
-                temperature=temp
-            )
-            # Extract the MIDI data from the API completion and append it to the list of melody bars
-            midi_loop = completion.choices[0].message.parsed
-            melody_bars.append(midi_loop)
-            # Append the bar of MIDI data to the message list to be used as context for the next bar's generation
-            messages.append(
-                {
-                    "role": "assistant", 
-                    "content": f"{midi_loop}"
-                }
-            )
-            # Append a user message to prompt the user to continue the melody generation
+        logging.info(f"Generating bar {i+1} of 4")
+        # Make the API call to generate a bar of MIDI data based on the message list
+        completion = client.beta.chat.completions.parse(
+            model="gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
+            messages=messages,
+            response_format=objects.MelodyBar,
+            temperature=temp
+        )
+        if completion == None:
+            raise APICallError("API call returned None.")
+        # Extract the MIDI data from the API completion and append it to the list of melody bars
+        midi_loop = completion.choices[0].message.parsed
+        melody_bars.append(midi_loop)
+        # Append the bar of MIDI data to the message list to be used as context for the next bar's generation
+        messages.append(
+            {
+                "role": "assistant", 
+                "content": f"{midi_loop}"
+            }
+        )
+        if i < 3:
             messages.append(
                 {
                     "role": "user",
                     "content": "Continue the melody generation with the next bar. Remember that the progression is only 4 bars long."
                 }
             )
-            print(midi_loop)
-            cost += calc_price(completion, mini=False) 
-        except ValidationError as e:
-            print(f"Validation error: {e}")
-    return melody_bars, cost
+        # print(midi_loop)
+        cost += calc_price(completion, mini=False) 
+    return melody_bars, messages, cost
 
+@handle_errors
 def generate_accompaniment(melody, temp=0.0):
     """ Generates a 4 bar MIDI chord progression based on the melody provided.
 
@@ -236,34 +257,34 @@ def generate_accompaniment(melody, temp=0.0):
     cost = 0
     # Loop through for 4 bars of generation
     for i in range(4):
-        # Try/Except block to catch any validation errors - Work on the error handling later
-        try:
-            # Make the API call to generate a bar of MIDI data based on the message list
-            completion = client.beta.chat.completions.parse(
-                model= "gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
-                messages=messages,
-                response_format=objects.Bar,
-                temperature=temp
-            )
-            # Extract the MIDI data from the API completion and append it to the list of bars
-            midi_loop = completion.choices[0].message.parsed
-            bars.append(midi_loop)
-            # Append the bar of MIDI data to the message list to be used as context for the next bar's generation
-            messages.append(
-                {
-                    "role": "assistant", 
-                    "content": f"{midi_loop}"
-                }
-            )
-            # Append a user message to prompt the user to continue the chord progression
+        logging.info(f"Generating bar {i+1} of 4")
+
+        # Make the API call to generate a bar of MIDI data based on the message list
+        completion = client.beta.chat.completions.parse(
+            model= "gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
+            messages=messages,
+            response_format=objects.Bar,
+            temperature=temp
+        )
+        if completion == None:
+            raise APICallError("API call returned None.")
+        # Extract the MIDI data from the API completion and append it to the list of bars
+        midi_loop = completion.choices[0].message.parsed
+        bars.append(midi_loop)
+        # Append the bar of MIDI data to the message list to be used as context for the next bar's generation
+        messages.append(
+            {
+                "role": "assistant", 
+                "content": f"{midi_loop}"
+            }
+        )
+        if i < 3:
             messages.append(
                 {
                     "role": "user",
                     "content": "Continue the chord progression with generating the next bar. Remember that the progression is only 4 bars long. Try to keep the progression in line with the melody provided."
                 }
             )
-            print(midi_loop)
-            cost += calc_price(completion, mini=False) 
-        except ValidationError as e:
-            print(f"Validation error: {e}")
+        # print(midi_loop)
+        cost += calc_price(completion, mini=False) 
     return bars, cost

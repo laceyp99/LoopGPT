@@ -10,6 +10,7 @@ LoopGPT is a Python application that generates MIDI music using OpenAI's GPT mod
 - Visualize MIDI output using piano roll display
 - Play generated music through MIDI playback
 - Support for sixteenth note resolution
+- Save full API message history to JSON files for training examples
 - Cost tracking for API usage
 
 ## Installation
@@ -84,6 +85,17 @@ python Accompaniment.py
   - `midi_processing.py`: MIDI file manipulation utilities
   - `objects.py`: Data models for musical elements
   - `utils.py`: Helper functions for MIDI processing
+  - `decorators.py`: Decorators for error handling and logging
+  - `exceptions.py`: Custom exception classes
+- `Training Examples/`: Directory where the JSON files containing the API message history are saved
+- `ProgressionPlus/`: Default directory where generated MIDI files are saved for the ProgressionPlus.py generation.
+- `Accompaniment/`: Default directory where generated MIDI files are saved for the Accompaniment.py generation.
+
+## New Feature: Save API Message History
+- The application now saves the full message list used during the API calls into a JSON file.
+- The JSON files are saved in the Training Examples directory with indentation of 4 spaces for readability.
+- The filename of the JSON file corresponds to the MIDI filename, allowing easy tracking of the generated content.
+- This feature is useful for debugging, understanding the model's behavior, and for fine-tune training purposes.
 
 ## Limitations
 
@@ -93,5 +105,4 @@ python Accompaniment.py
 - The quality of generated music depends on the prompt and model parameters.
 - Requires an active internet connection for API calls to OpenAI.
 - High API usage may incur significant costs.
-- Error handling and user feedback mechanisms are minimal.
 - The application does not include a graphical user interface (GUI).

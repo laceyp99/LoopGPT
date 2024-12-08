@@ -23,24 +23,32 @@ def main(prompt_dict, melody=True, visualize=False, play=False, filename="N/A"):
     if filename == "N/A":
         filename = f"ProgressionPlus/{prompt_dict["t"]}/{prompt_dict['key']} {prompt_dict['mode']} {prompt_dict['keywords']}.mid"
     
+    json_filename = f"Training Examples/{prompt_dict["t"]}/{prompt_dict['key']} {prompt_dict['mode']} {prompt_dict['keywords']}.json"
     # Initialize the MIDI file
     midi = MidiFile()
     # Construct the full prompt
     full_prompt_json = json.dumps(prompt_dict)
     # Generate the fully fleshed out prompt
-    prompt, prompt_cost = apicalls.prompt_translation(full_prompt_json, melody=melody)    
+    prompt, prompt_messages, prompt_cost = apicalls.prompt_translation(full_prompt_json, melody=melody)    
     # Generate the chords and add them to the MIDI file
-    cp_gen, msgs, cp_cost = apicalls.generate_chords(prompt, prompt_dict["t"])
+    cp_gen, cp_messages, cp_cost = apicalls.generate_chords(prompt, prompt_dict["t"])
     midi_processing.add_bars_to_midi(midi, cp_gen)
+    
+    # Combine all messages
+    all_messages = prompt_messages + cp_messages
+
     # If melody is enabled, generate the melody and add it to the MIDI file
     if melody:
-        mel_gen, mel_cost = apicalls.generate_melody(msgs)
+        mel_gen, mel_messages, mel_cost = apicalls.generate_melody(cp_messages)
         midi_processing.add_bars_to_midi(midi, mel_gen, melody=True)
+        # Update the combined messages
+        all_messages = all_messages[:3] + mel_messages
     
     # Save the MIDI file
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     midi.save(filename)
-    
+    # Save the messages to a JSON file
+    utils.save_messages_to_json(all_messages, json_filename)
     # Play and visualize the MIDI file if user wants
     if visualize:
         utils.visualize_midi(filename)
