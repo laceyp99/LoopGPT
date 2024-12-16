@@ -23,7 +23,8 @@ def main(melody, visualize=False, play=False, filename="N/A", temp=0.0):
     # Define the filename if not provided
     if filename == "N/A":
         filename = f"Accompaniment/Output.mid"
-    json_filename = f"Training Example/{filename}.json"
+    
+    json_filename = f"{filename}.json"
     
     # Decode the melody
     melody_objectified = midi_processing.objectify_midi(melody)
@@ -38,7 +39,7 @@ def main(melody, visualize=False, play=False, filename="N/A", temp=0.0):
     
     # Save the messages to a JSON file
     os.makedirs(os.path.dirname(json_filename), exist_ok=True)
-    utils.save_messages_to_json(messages=messages, filename=json_filename) 
+    utils.save_messages_to_json(messages=messages, midi_filename=json_filename[:-5]) 
     
     # Play and visualize the MIDI file if user wants
     if visualize:
@@ -50,7 +51,7 @@ def main(melody, visualize=False, play=False, filename="N/A", temp=0.0):
     print(f"Total Cost: ${cost}")
 
 if __name__ == "__main__":
-    midi = MidiFile("path/to/your/melody.mid")  # Replace with your MIDI file path
+    midi = MidiFile("path/to/your/melody")  # Replace with your MIDI file path
     # Run the main function with the user inputs
     main(
         melody=midi,

@@ -181,7 +181,8 @@ def play_midi(midi_file):
     pygame.mixer.music.load(midi_file)
     # Play the MIDI file
     pygame.mixer.music.play()
-    
+
+
 def save_messages_to_json(messages, midi_filename):
     """Saves messages to a JSON file with the same name as the MIDI file.
 
@@ -189,14 +190,9 @@ def save_messages_to_json(messages, midi_filename):
         messages (list of dictionaries): A list of messages to save to the JSON file.
         midi_filename (str): The filename of the MIDI file to save the messages for.
     """
-    # Create the directory if it doesn't exist
-    json_dir = os.path.join("Training Examples")
-    os.makedirs(json_dir, exist_ok=True)
-
     # Construct the JSON filename similar to the MIDI filename
     base_filename = os.path.splitext(os.path.basename(midi_filename))[0]
-    json_filename = os.path.join(json_dir, f"{base_filename}.json")
-
+    json_filename = os.path.join("Training Examples", f"{base_filename}.json")
     # Save the messages to the JSON file with indent=4
     with open(json_filename, 'w') as json_file:
         json.dump(messages, json_file, indent=4)

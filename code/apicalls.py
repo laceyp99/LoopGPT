@@ -26,6 +26,22 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+# LOAD THE PROMPTS FROM THE PROMPTS DIRECTORY
+with open('Prompts/prompt translation.txt', 'r') as prompt_translation_file:
+    prompt_translation_prompt = prompt_translation_file.read()
+
+with open('Prompts/prompt translation with melody.txt', 'r') as prompt_translation_with_melody_file:
+    prompt_translation_with_melody_prompt = prompt_translation_with_melody_file.read()
+
+with open('Prompts/chord generation.txt', 'r') as chord_generation_file:
+    chord_generation_prompt = chord_generation_file.read()
+
+with open('Prompts/melody generation.txt', 'r') as melody_generation_file:
+    melody_generation_prompt = melody_generation_file.read()
+
+with open('Prompts/accompaniment chord generation.txt', 'r') as accompaniment_file:
+    accompaniment_prompt = accompaniment_file.read()
+
 # LOAD API KEY AND CREATE CLIENT
 load_dotenv() # load the .env file
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -81,32 +97,19 @@ def prompt_translation(prompt, melody=True):
         List of Dictionaries: The message list that is used to further the conversation.
         float: The total cost associated with the API call.
     """
-    # Initialize the message list for the API call
+    # Check if the prompt is melody-focused
+    if melody:
+        system_prompt = prompt_translation_with_melody_prompt
+    else:
+        system_prompt = prompt_translation_prompt
+    
+    # Initialize the message list with the system message
     messages = [
         {
             "role": "system",
-            "content": """
-            You are a music theory expert and MIDI generator assistant. When a user provides a weak, vague, or incomplete prompt, your role is to creatively interpret their input and fill in the gaps by providing detailed and musically coherent suggestions. Your response must offer a rich musical description that gives clear direction for MIDI generation. If the user’s prompt lacks specific details, you must suggest chord progressions, voicing styles, and other relevant musical elements to ensure the resulting composition has clear structure and purpose.
-
-            Additionally, keep in mind that the MIDI generation will only be 4 bars long and will be created with up to sixteenth note zoom quality. All suggestions must fit within these parameters, ensuring the composition remains concise yet musically rich within these constraints.
-
-            Your response should address the following aspects:
-            Genre or Style: Determine the genre or style and musical elements that align with that genre.
-            Chord Progression: If not specified, propose a chord progression based on the implied mood or genre, mentioning the key, any modulation points, and harmonic movements. Also determine the rhythymic component to the progression and ensure the progression fits within the 4-bar format.
-            Voicing Style: Suggest how the chords should be voiced (e.g., open or close-voiced, spread across octaves, etc.), and mention any voicing style that fits the implied genre or mood (e.g., jazz, classical, pop).
-            Mood and Atmosphere: Provide an overall description of the mood, dynamics, and texture. Should the piece be serene, energetic, dramatic, or minimalistic? Suggest ways to convey the implied emotion musically, keeping in mind the limitations of the short 4-bar form.
-            
-            Always ensure that your musical suggestions are coherent, detailed, and creative, while respecting the 4-bar length and sixteenth note zoom quality. Fill in any missing information to provide clear musical direction.
-            """
+            "content": system_prompt
         }
     ]
-    # if the melody bool is True, then the prompt needs a melody focused description that aligns with the chord progression as well
-    if melody:
-        messages[0]["content"] += """
-        You are to also generate a description of a melody with the same level of detail as the chord progression. The melody should complement the chord progression and be structured to fit within the 4-bar format. Provide a detailed description of the melody's phrasing, range, intervals, and style, ensuring it aligns with the underlying harmony and enhances the overall musical flow. Mention any rhythmic elements, melodic motifs, or stylistic features that would enhance the melody's connection to the chords and the implied genre or mood. Keep the melody engaging and expressive, with a clear sense of direction and resolution by the end of the 4th bar.
-        
-        Melody Characteristics: Describe the melody, focusing on its phrasing, range, intervals, and style. Should it be lyrical or rhythmic, simple or complex? Cover both the rhythymic and melodic structure for this generation. Ensure the melody works within the 4-bar structure and up to sixteenth note detail.
-        """
     # Add the user prompt to the message list
     messages.append({"role": "user", "content": prompt})
     # Make the API call to generate the translation
@@ -141,7 +144,7 @@ def generate_chords(prompt, temp=0.0):
     """
     # Initialize the message list with the system message and the formatted user message
     messages = [
-        {"role": "system", "content": "You are an advanced MIDI music generator. I will provide a prompt, and you will create a 4-bar chord progression in a structured and musically creative way. The progression should evolve from bar to bar, rather than repeating the same pattern, to keep it interesting and dynamic. Ensure that each bar develops harmonically while maintaining cohesion across the 4 bars. Use rich, varied rhythms that avoid predictability, and ensure that the progression naturally leads from one bar to the next. The chords should be voiced beautifully, with smooth transitions, and always include the root note as the lowest note in each chord. Pay attention to voice leading for a balanced, professional sound. The progression should be in a consistent key, with a satisfying harmonic resolution by the 4th bar, allowing the progression to loop seamlessly."},
+        {"role": "system", "content": chord_generation_prompt},
         {"role": "user", "content": prompt},
     ]
     # Initialize the list of bars and total cost for the API calls
@@ -171,14 +174,6 @@ def generate_chords(prompt, temp=0.0):
                 "content": f"{midi_loop}"
             }
         )
-        if i < 3:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": "Continue the chord progression with generating the next bar. Remember that the progression is only 4 bars long."
-                }
-            )
-        # print(midi_loop)
         cost += calc_price(completion, mini=False) 
     return bars, messages, cost
 
@@ -196,13 +191,7 @@ def generate_melody(messages, temp=0.0):
         float: The total cost associated with the API call.
     """
     # Add a user message to prompt the model to create a melody using the chords generated
-    messages.append({"role": "user", "content": """
-        Now, create a melody that complements the 4-bar chord progression you just generated. Build the melody bar by bar, maintaining a strong connection with the underlying harmony while adding rhythmic and melodic variation. The melody should explore the scale creatively, staying in key and providing contrast and interest through syncopation, note lengths, and dynamics. Incorporate a rhythmic theme that avoids static repetition or simple straight 4ths, ideally including at least one note with a duration longer than one beat.
-
-        Timing Consideration: When determining the placement of each note, remember that the timing system ranges from 1 to 16 for each bar, with base 1 indexing. This means if you want a note to start on the second beat, the start_beat value should be 5 (not 4). Ensure that the melody’s rhythmic elements respect this timing structure, and use this system to create rhythmic interest.
-
-        Ensure that the melody develops naturally from bar to bar, with a clear sense of direction. It should resolve gracefully at the end of the 4th bar while being able to loop back into the beginning smoothly. Keep the melody’s length and structure tightly aligned with the chord progression, enhancing the overall musical flow.
-    """})
+    messages.append({"role": "user", "content": melody_generation_prompt})
     # Initialize the list of melody bars
     melody_bars = []
     cost = 0
@@ -229,14 +218,6 @@ def generate_melody(messages, temp=0.0):
                 "content": f"{midi_loop}"
             }
         )
-        if i < 3:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": "Continue the melody generation with the next bar. Remember that the progression is only 4 bars long."
-                }
-            )
-        # print(midi_loop)
         cost += calc_price(completion, mini=False) 
     return melody_bars, messages, cost
 
@@ -255,7 +236,7 @@ def generate_accompaniment(melody, temp=0.0):
     """
     # Initialize the message list with the system message and the formatted user message
     messages = [
-        {"role": "system", "content": "You are an advanced MIDI music generator. I will provide a melody, and you will create a 4-bar chord progression in a structured and musically creative way to accompany the melody. The progression should evolve from bar to bar, rather than repeating the same pattern, to keep it interesting and dynamic. Ensure that each bar develops harmonically while maintaining cohesion with relation to the melody across the 4 bars. Use rich, varied rhythms that avoid predictability, and ensure that the progression naturally leads from one bar to the next. The chords should be voiced beautifully, with smooth transitions, and always include the root note as the lowest note in each chord. Pay attention to voice leading for a balanced, professional sound. The progression should be in a consistent key, with a satisfying harmonic resolution by the 4th bar, allowing the progression to loop seamlessly."},
+        {"role": "system", "content": accompaniment_prompt},
         {"role": "user", "content": f"{melody}"},
     ]
     # Initialize the list of bars
@@ -284,13 +265,5 @@ def generate_accompaniment(melody, temp=0.0):
                 "content": f"{midi_loop}"
             }
         )
-        if i < 3:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": "Continue the chord progression with generating the next bar. Remember that the progression is only 4 bars long. Try to keep the progression in line with the melody provided."
-                }
-            )
-        # print(midi_loop)
         cost += calc_price(completion, mini=False) 
     return bars, messages, cost

@@ -87,15 +87,15 @@ python Accompaniment.py
   - `utils.py`: Helper functions for MIDI processing
   - `decorators.py`: Decorators for error handling and logging
   - `exceptions.py`: Custom exception classes
+- `Prompts/`
+  - `accompanimnet chord generation.txt`: The system prompt for the accompaniment chord generation API calls.
+  - `chord generation.txt`: The system prompt for the chord generation API calls.
+  - `melody generation.txt`: The system prompt for the melody generation API calls.
+  - `prompt translation with melody.txt`: The system prompt for the prompt translation with melody API calls.
+  - `prompt translation.txt`: The system prompt for the prompt translation API calls.
 - `Training Examples/`: Directory where the JSON files containing the API message history are saved
 - `ProgressionPlus/`: Default directory where generated MIDI files are saved for the ProgressionPlus.py generation.
 - `Accompaniment/`: Default directory where generated MIDI files are saved for the Accompaniment.py generation.
-
-## New Feature: Save API Message History
-- The application now saves the full message list used during the API calls into a JSON file.
-- The JSON files are saved in the Training Examples directory with indentation of 4 spaces for readability.
-- The filename of the JSON file corresponds to the MIDI filename, allowing easy tracking of the generated content.
-- This feature is useful for debugging, understanding the model's behavior, and for fine-tune training purposes.
 
 ## Limitations
 
