@@ -88,7 +88,7 @@ python Accompaniment.py
   - `decorators.py`: Decorators for error handling and logging
   - `exceptions.py`: Custom exception classes
 - `Prompts/`
-  - `accompanimnet chord generation.txt`: The system prompt for the accompaniment chord generation API calls.
+  - `accompaniment chord generation.txt`: The system prompt for the accompaniment chord generation API calls.
   - `chord generation.txt`: The system prompt for the chord generation API calls.
   - `melody generation.txt`: The system prompt for the melody generation API calls.
   - `prompt translation with melody.txt`: The system prompt for the prompt translation with melody API calls.
