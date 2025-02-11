@@ -9,8 +9,7 @@ import code.midi_processing as midi_processing
 import code.utils as utils
 import os
 
-
-def main(melody, visualize=False, play=False, filename="N/A", temp=0.0):
+def main(melody, play=False, filename="N/A", temp=0.0):
     """ Generate an accompaniment based on the user's melody.
     
     Args: 
@@ -35,15 +34,13 @@ def main(melody, visualize=False, play=False, filename="N/A", temp=0.0):
     
     # Save the MIDI file with the accompaniment
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    midi.save(filename)
+    melody.save(filename)
     
     # Save the messages to a JSON file
     os.makedirs(os.path.dirname(json_filename), exist_ok=True)
     utils.save_messages_to_json(messages=messages, midi_filename=json_filename[:-5]) 
     
-    # Play and visualize the MIDI file if user wants
-    if visualize:
-        utils.visualize_midi(filename)
+    # Play the MIDI file if user wants
     if play:
         utils.play_midi(filename)
     

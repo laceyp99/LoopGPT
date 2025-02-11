@@ -1,31 +1,41 @@
-# LoopGPT: AI-Powered Music Generation
+# 🎵 LoopGPT: AI-Powered Music Generation 🎵
 
-LoopGPT is a Python application that generates MIDI music using OpenAI's GPT models. It can create chord progressions, melodies, and accompaniments for existing melodies.
+This project is a music generation tool that enables users to create chord progressions, melodies, and accompaniments using an intuitive Gradio web interface. By leveraging OpenAI’s API, the application generates MIDI compositions based on user-defined parameters, making it a great resource for musicians, producers, and AI music enthusiasts.
 
-## Features
+## ✨ Features
 
+- Interact with a sleek interface for an inviting user experience
 - Generate 4-bar chord progressions with customizable parameters
 - Create melodic lines that complement the chord progressions 
 - Generate accompaniment for existing MIDI melodies
 - Visualize MIDI output using piano roll display
-- Play generated music through MIDI playback
 - Support for sixteenth note resolution
 - Save full API message history to JSON files for training examples
 - Cost tracking for API usage
 
-## Installation
-
-1. Clone this repository
-2. Install required packages:
+## 🚀 Quick Start
+### Installation
+Clone this repository:
 ```sh
-pip install mido pygame matplotlib pretty_midi python-dotenv openai pydantic
+git clone https://github.com/laceyp99/LoopGPT.git
+cd LoopGPT
 ```
-3. Insert your OpenAI API key to the `.env` file in the project structure:
+Install required dependencies:
+```sh
+pip install mido pygame matplotlib pretty_midi python-dotenv openai pydantic gradio
 ```
-OPENAI_API_KEY=your_api_key_here
+Set up your OpenAI API key in a .env file:
+```sh
+OPENAI_API_KEY="your_api_key_here"
 ```
+### Run the Gradio UI
+To start the web interface locally, run:
+```sh
+python app.py
+```
+Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 
-## Usage
+## 🎼 Usage
 
 ### Generate a Chord Progression with Melody
 Edit `ProgressionPlus.py`:
@@ -51,7 +61,7 @@ if __name__ == "__main__":
     )
 ```
 Run:
-```
+```sh
 python ProgressionPlus.py
 ```
 
@@ -70,12 +80,13 @@ if __name__ == "__main__":
     )
 ```
 Run:
-```
+```sh
 python Accompaniment.py
 ```
 
-## Project Structure
+## 📂 Project Structure
 
+- `app.py`: The Gradio UI layout with connections to the *ProgressionPlus* and *Accompaniment* scripts
 - `ProgressionPlus.py`: Main entry point for generating chord progressions and melodies
 - `Accompaniment.py`: Main entry point for generating accompaniments
 - `code/`
@@ -97,7 +108,7 @@ python Accompaniment.py
 - `ProgressionPlus/`: Default directory where generated MIDI files are saved for the ProgressionPlus.py generation.
 - `Accompaniment/`: Default directory where generated MIDI files are saved for the Accompaniment.py generation.
 
-## Limitations
+## ⚠️ Limitations
 
 - The `ProgressionPlus.py` script generates MIDI files at a fixed tempo of ***120 BPM***.
 - The application currently supports only ***4-bar*** segments in ***4/4*** time signature.
@@ -105,4 +116,3 @@ python Accompaniment.py
 - The quality of generated music depends on the prompt and model parameters.
 - Requires an active internet connection for API calls to OpenAI.
 - High API usage may incur significant costs.
-- The application does not include a graphical user interface (GUI).

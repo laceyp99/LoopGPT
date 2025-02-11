@@ -67,21 +67,19 @@ def calc_price(completion, mini=False):
     
     Args:
         completion (dict): The completion object returned by the API call.
-        mini (bool): Determines wether to calculate the cost for gpt-4o or gpt-4o-mini
+        mini (bool): Determines whether to calculate the cost for gpt-4o or gpt-4o-mini
     
     Returns:
         float: The total price for the API call.
     """
-    if mini: # if using gpt-4o-mini
-        if completion.usage.prompt_tokens_details.keys() == "cached_tokens": # if there are cached tokens, calculate the price accordingly
-            total_price = ((completion.usage.prompt_tokens - completion.usage.prompt_tokens_details["cached_tokens"]) * mini_input_token_price) + (completion.usage.prompt_tokens_details["cached_tokens"] * mini_cached_token_price) + (completion.usage.completion_tokens * mini_output_token_price)
-        else:
-            total_price = (completion.usage.prompt_tokens * mini_input_token_price) + (completion.usage.completion_tokens * mini_output_token_price)
-    else: # if using gpt-4o
-        if completion.usage.prompt_tokens_details.keys() == "cached_tokens": # if there are cached tokens, calculate the price accordingly
-            total_price = ((completion.usage.prompt_tokens - completion.usage.prompt_tokens_details["cached_tokens"]) * input_token_price) + (completion.usage.prompt_tokens_details["cached_tokens"] * cached_token_price) + (completion.usage.completion_tokens * output_token_price)
-        else:
-            total_price = (completion.usage.prompt_tokens * input_token_price) + (completion.usage.completion_tokens * output_token_price)
+    cached_tokens = 0
+    if "cached_tokens" in completion.usage.prompt_tokens_details:
+        cached_tokens = completion.usage.prompt_tokens_details["cached_tokens"]
+
+    if mini:  # if using gpt-4o-mini
+        total_price = ((completion.usage.prompt_tokens - cached_tokens) * mini_input_token_price) + (cached_tokens * mini_cached_token_price) + (completion.usage.completion_tokens * mini_output_token_price)
+    else:  # if using gpt-4o
+        total_price = ((completion.usage.prompt_tokens - cached_tokens) * input_token_price) + (cached_tokens * cached_token_price) + (completion.usage.completion_tokens * output_token_price)
     return total_price
 
 @handle_errors

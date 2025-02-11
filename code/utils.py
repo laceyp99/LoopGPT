@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pygame, pretty_midi
 import os
+import io
 import json
 
 # A dictionary that maps note names to their corresponding MIDI numbers
@@ -114,6 +115,9 @@ def visualize_midi(midi_file):
 
     Args:
         midi_file (str): The filename of the MIDI file to play and visualize.
+        
+    Returns:
+        bytes: A BytesIO buffer containing the visualization image data.
     """
     # Load the MIDI file
     midi_data = pretty_midi.PrettyMIDI(midi_file)
@@ -144,8 +148,10 @@ def visualize_midi(midi_file):
     beat_positions = np.arange(0, total_frames, seconds_per_beat / time_per_frame)
 
     # Create the plot
-    plt.figure(figsize=(12, 8))
-    plt.imshow(cropped_piano_roll, aspect='auto', cmap='gray_r', origin='lower', interpolation='nearest')
+    # plt.figure(figsize=(12, 8))
+    # plt.imshow(cropped_piano_roll, aspect='auto', cmap='gray_r', origin='lower', interpolation='nearest')
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.imshow(cropped_piano_roll, aspect='auto', cmap='gray_r', origin='lower', interpolation='nearest')
 
     # Add grid lines at the top and bottom of each note block
     note_range = np.arange(min_note, max_note + 1)
@@ -154,21 +160,25 @@ def visualize_midi(midi_file):
         plt.hlines(i - 0.5, xmin=0, xmax=cropped_piano_roll.shape[1], color='gray', linestyle='--', linewidth=0.5)
 
     # Set y-axis ticks to note names
-    plt.yticks(ticks=np.arange(len(note_range)), labels=midi_to_note_name(note_range))
+    ax.set_yticks(ticks=np.arange(len(note_range)), labels=midi_to_note_name(note_range))
 
     # Set x-axis ticks to bars and beats
-    plt.xticks(ticks=bar_positions, labels=[f'Bar {i+1}' for i in range(len(bar_positions))])
+    ax.set_xticks(ticks=bar_positions, labels=[f'Bar {i+1}' for i in range(len(bar_positions))])
     for beat_position in beat_positions:
-        plt.axvline(x=beat_position, color='gray', linestyle='--', linewidth=0.5)
+        ax.axvline(x=beat_position, color='gray', linestyle='--', linewidth=0.5)
 
     # Set labels and title
-    plt.xlabel('Bars and Beats')
-    plt.ylabel('MIDI Note')
-    plt.title(midi_file)
-    plt.colorbar(label='Velocity')
+    ax.set_xlabel('Bars and Beats')
+    ax.set_ylabel('MIDI Note')
+    ax.set_title("Generated MIDI")
+    # ax._colorbars(label='Velocity')
 
-    # Display the plot
-    plt.show()
+    # Save to a BytesIO buffer
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
 
 def play_midi(midi_file):
     """ Play a MIDI file using pygame.
@@ -181,7 +191,6 @@ def play_midi(midi_file):
     pygame.mixer.music.load(midi_file)
     # Play the MIDI file
     pygame.mixer.music.play()
-
 
 def save_messages_to_json(messages, midi_filename):
     """Saves messages to a JSON file with the same name as the MIDI file.

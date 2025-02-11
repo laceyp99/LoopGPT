@@ -9,7 +9,7 @@ import code.midi_processing as midi_processing
 import code.utils as utils 
 import json , os
 
-def main(prompt_dict, melody=True, visualize=False, play=False, filename="N/A"):
+def main(prompt_dict, melody=True, play=False, filename="N/A"):
     """ Generate a chord progression and possibly a melody based on the user prompt.
 
     Args:
@@ -36,6 +36,8 @@ def main(prompt_dict, melody=True, visualize=False, play=False, filename="N/A"):
     
     # Combine all messages
     all_messages = prompt_messages + cp_messages
+    # Sum up the costs and print the total cost
+    sum = prompt_cost + cp_cost
 
     # If melody is enabled, generate the melody and add it to the MIDI file
     if melody:
@@ -43,6 +45,8 @@ def main(prompt_dict, melody=True, visualize=False, play=False, filename="N/A"):
         midi_processing.add_bars_to_midi(midi, mel_gen, melody=True)
         # Update the combined messages
         all_messages = all_messages[:3] + mel_messages
+        # Update the total cost
+        sum += mel_cost
     
     # Save the MIDI file
     os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -50,14 +54,11 @@ def main(prompt_dict, melody=True, visualize=False, play=False, filename="N/A"):
     # Save the messages to a JSON file
     os.makedirs(os.path.dirname(json_filename), exist_ok=True)
     utils.save_messages_to_json(all_messages, json_filename)
-    # Play and visualize the MIDI file if user wants
-    if visualize:
-        utils.visualize_midi(filename)
+    # Play the MIDI file if user wants
     if play:
         utils.play_midi(filename)
-        
-    # Sum up the costs and print the total cost
-    sum = prompt_cost + cp_cost + mel_cost
+    
+    # Print the total cost
     print(f"Total Cost: ${sum}")
 
 if __name__ == "__main__":
