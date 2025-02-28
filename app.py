@@ -12,17 +12,19 @@ from mido import MidiFile
 import ProgressionPlus
 import Accompaniment
 import code.utils as utils
+import code.apicalls as apicalls
 
 def get_temp_midi_filename():
     """Create and return a temporary filename with a .mid suffix."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mid") as tmp:
         return tmp.name
 
-def run_progression(key, mode, description, temp, include_melody, visualize=True):
+def run_progression(key, mode, description, temp, include_melody, model_choice, visualize=True):
     """
     Call ProgressionPlus.main to generate a chord progression MIDI file.
-    A temporary filename is used to store the generated MIDI.
     """
+    apicalls.model = model_choice
+
     # Initialize the generation MIDI file
     output_path = get_temp_midi_filename()
     prompt_dict = {
@@ -40,11 +42,13 @@ def run_progression(key, mode, description, temp, include_melody, visualize=True
         image_data = Image.open(io.BytesIO(img_bytes))
     return output_path, image_data
 
-def run_accompaniment(midi_file, temp, visualize=True):
+def run_accompaniment(midi_file, temp, model_choice, visualize=True):
     """
     Save the uploaded MIDI file to a temporary file, load it as a MidiFile, then invoke Accompaniment.main to generate an accompaniment. 
     A temporary filename is used to store the generated MIDI.
     """
+    apicalls.model = model_choice
+    
     # If midi_file is received as a file path (string) use it, otherwise write the uploaded file.
     if isinstance(midi_file, dict):
         input_path = midi_file.get("name", "")
@@ -67,31 +71,45 @@ def run_accompaniment(midi_file, temp, visualize=True):
     return output_path, image_data
 
 # Create a Gradio interface
-with gr.Blocks() as demo:
-    gr.Markdown("# LoopGPT")
+with gr.Blocks(css="""
+    .center-title { text-align: center; font-size: 3em; }
+""") as demo:
+    gr.Markdown("<h1 class='center-title'>🎶LoopGPT🎶</h1>")
     # ProgressionPlus tab
-    with gr.Tab("ProgressionPlus"):
+    with gr.Tab(label="ProgressionPlus"):
         gr.Markdown("Generate a chord progression (with an optional melody) based on your description.")
-        key_input = gr.Dropdown(choices=["C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"], label="Key", value="C")
-        mode_input = gr.Dropdown(choices=["Major", "minor"], label="Mode", value="Major")
-        description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
-        temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.3, label="Temperature (t)")
-        include_melody_input = gr.Checkbox(label="Include Melody", value=False)
-        visualize = gr.Checkbox(label="Visualize Generated MIDI", value=True)
+        with gr.Row():
+            # Left column: key, mode, description
+            with gr.Column():
+                gr.Markdown("## Progression Parameters")
+                key_input = gr.Dropdown(choices=["C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"], label="Key", value="C")
+                mode_input = gr.Dropdown(choices=["Major", "minor"], label="Mode", value="Major")
+                description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
+            with gr.Column():
+                gr.Markdown("## Generation Parameters")
+                model_choice_input = gr.Dropdown(choices=["gpt-4o", "gpt-4o-mini"], label="Model", value="gpt-4o")        
+                temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
+                include_melody_input = gr.Checkbox(label="Include Melody", value=False)
+                visualize = gr.Checkbox(label="Visualize Generated MIDI", value=True)
         prog_button = gr.Button("Generate Progression")
         prog_output = gr.File(label="Download Generated MIDI")
         prog_image_output = gr.Image(label="Visualization", type="pil")
         # When the button is clicked, the progressionplus main function is called with the user inputs
         prog_button.click(
             run_progression,
-            inputs=[key_input, mode_input, description_input, temp_input, include_melody_input, visualize],
+            inputs=[key_input, mode_input, description_input, temp_input, include_melody_input, model_choice_input, visualize],
             outputs=[prog_output, prog_image_output]
         )
     # Accompaniment tab
-    with gr.Tab("Accompaniment"):
+    with gr.Tab(label="Accompaniment"):
         gr.Markdown("Generate an accompaniment based on an uploaded MIDI melody.")
+        model_choice_acc_input = gr.Dropdown(
+            choices=["gpt-4o", "gpt-4o-mini"],
+            label="Model",
+            value="gpt-4o"
+        )
         midi_file_input = gr.File(label="Upload MIDI File", type="filepath")
-        temp_acc_input = gr.Slider(0.0, 1.0, step=0.1, value=0.3, label="Temperature")
+        temp_acc_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature")
         visualize = gr.Checkbox(label="Visualize Generated MIDI", value=True)
         acc_button = gr.Button("Generate Accompaniment")
         acc_output = gr.File(label="Download Generated MIDI")
@@ -99,7 +117,7 @@ with gr.Blocks() as demo:
         # When the button is clicked, the accompaniment main function is called with the user inputs
         acc_button.click(
             run_accompaniment,
-            inputs=[midi_file_input, temp_acc_input, visualize],
+            inputs=[midi_file_input, temp_acc_input, model_choice_acc_input, visualize],
             outputs=[acc_output, acc_image_output]
         )
 # Launch the demo

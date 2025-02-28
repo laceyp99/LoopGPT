@@ -52,7 +52,7 @@ def check_api_key():
 
 check_api_key()
 
-# OPENAI API PRICING (as of 2024-11-17)
+# OPENAI API PRICING (as of 2025-2-27)
 # GPT-4o API PRICING (per token)
 input_token_price = 0.00250 / 1000
 cached_token_price = 0.00125 / 1000
@@ -61,6 +61,8 @@ output_token_price = 0.01000 / 1000
 mini_input_token_price = 0.000150 / 1000
 mini_cached_token_price = 0.075 / 1000000
 mini_output_token_price = 0.000600 / 1000
+
+model = "gpt-4o"
 
 def calc_price(completion, mini=False):
     """ Calculates the total price for an API call based on the token usage.
@@ -110,6 +112,8 @@ def prompt_translation(prompt, melody=True):
     ]
     # Add the user prompt to the message list
     messages.append({"role": "user", "content": prompt})
+    # Log the API call
+    logging.info(f"Generating Prompt Translation with gpt-4o-mini")
     # Make the API call to generate the translation
     completion = client.chat.completions.create(
         model="gpt-4o-mini", # gpt-4o-mini because this is an easier natural language task and the model is cheaper to use
@@ -150,11 +154,11 @@ def generate_chords(prompt, temp=0.0):
     cost = 0
     # Loop through for 4 bars of generation
     for i in range(4):
-        logging.info(f"Generating bar {i+1} of 4")
+        logging.info(f"Generating Chord Progression: Bar {i+1}/4 with {model}")
 
         # Make the API call to generate a bar of MIDI data based on the message list
         completion = client.beta.chat.completions.parse(
-            model= "gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
+            model= model,
             messages=messages,
             response_format=objects.Bar,
             temperature=temp
@@ -172,7 +176,7 @@ def generate_chords(prompt, temp=0.0):
                 "content": f"{midi_loop}"
             }
         )
-        cost += calc_price(completion, mini=False) 
+        cost += calc_price(completion, mini=(model == "gpt-4o-mini"))
     return bars, messages, cost
 
 @handle_errors
@@ -195,10 +199,10 @@ def generate_melody(messages, temp=0.0):
     cost = 0
     # Loop through for 4 bars of generation
     for i in range(4):
-        logging.info(f"Generating bar {i+1} of 4")
+        logging.info(f"Generating Melody: Bar {i+1}/4 with {model}")
         # Make the API call to generate a bar of MIDI data based on the message list
         completion = client.beta.chat.completions.parse(
-            model="gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
+            model= model,
             messages=messages,
             response_format=objects.MelodyBar,
             temperature=temp
@@ -216,7 +220,7 @@ def generate_melody(messages, temp=0.0):
                 "content": f"{midi_loop}"
             }
         )
-        cost += calc_price(completion, mini=False) 
+        cost += calc_price(completion, mini=(model == "gpt-4o-mini"))
     return melody_bars, messages, cost
 
 @handle_errors
@@ -242,11 +246,11 @@ def generate_accompaniment(melody, temp=0.0):
     cost = 0
     # Loop through for 4 bars of generation
     for i in range(4):
-        logging.info(f"Generating bar {i+1} of 4")
+        logging.info(f"Generating Accompanimnet Chords: Bar {i+1}/4 with {model}")
 
         # Make the API call to generate a bar of MIDI data based on the message list
         completion = client.beta.chat.completions.parse(
-            model= "gpt-4o-2024-08-06", # gpt-4o-mini doesn't perform well for this task
+            model= model,
             messages=messages,
             response_format=objects.Bar,
             temperature=temp
@@ -263,5 +267,5 @@ def generate_accompaniment(melody, temp=0.0):
                 "content": f"{midi_loop}"
             }
         )
-        cost += calc_price(completion, mini=False) 
+        cost += calc_price(completion, mini=(model == "gpt-4o-mini"))
     return bars, messages, cost
