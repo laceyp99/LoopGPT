@@ -112,6 +112,7 @@ python Accompaniment.py
 
 - The `ProgressionPlus.py` script generates MIDI files at a fixed tempo of ***120 BPM***.
 - The application currently supports only ***4-bar*** segments in ***4/4*** time signature.
+- Choosing `gpt-4o-mini` to generate MIDI may impact the musical form and quality.
 - Generated music may require post-processing for professional use.
 - The quality of generated music depends on the prompt and model parameters.
 - Requires an active internet connection for API calls to OpenAI.
