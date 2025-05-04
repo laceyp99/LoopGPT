@@ -1,0 +1,10 @@
+gradio
+python-dotenv
+google-genai
+openai
+anthropic-sdk
+mido
+numpy
+matplotlib
+pillow
+pydantic
