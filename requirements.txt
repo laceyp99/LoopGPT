@@ -2,7 +2,7 @@ gradio
 python-dotenv
 google-genai
 openai
-anthropic-sdk
+anthropic
 mido
 numpy
 matplotlib
