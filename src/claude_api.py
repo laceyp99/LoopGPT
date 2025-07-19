@@ -35,12 +35,22 @@ def initialize_anthropic_client():
 # List of available models from Anthropic 
 model_list = [
     # "claude-3-7-sonnet-latest", Needs to use streaming https://github.com/anthropics/anthropic-sdk-python#long-requests
+    "claude-opus-4-20250514",
+    "claude-sonnet-4-20250514",
+    "claude-3-7-sonnet-latest",
     "claude-3-5-sonnet-latest",
+    "claude-3-5-sonnet-20240620",
     "claude-3-5-haiku-latest",
-    "claude-3-opus-latest",
     "claude-3-haiku-20240307"
 ]
+# Model pricing per million tokens (MTok)
 
+# Claude Opus 4 Pricing
+claude_opus_4_input_cost        = 15.00 / 1000000
+claude_opus_4_output_cost       = 75.00 / 1000000
+# Claude Sonnet 4 Pricing
+claude_sonnet_4_input_cost      = 3.00 / 1000000
+claude_sonnet_4_output_cost     = 15.00 / 1000000
 # Claude 3.7 Sonnet Pricing
 claude_37_sonnet_input_cost     = 3.00 / 1000000
 claude_37_sonnet_output_cost    = 15.00 / 1000000
@@ -50,9 +60,6 @@ claude_35_sonnet_output_cost    = 15.00 / 1000000
 # Claude 3.5 Haiku Pricing
 claude_35_haiku_input_cost      = 0.80 / 1000000
 claude_35_haiku_output_cost     = 4.00 / 1000000
-# Claude 3 Opus Pricing
-claude_3_opus_input_cost        = 15.00 / 1000000
-claude_3_opus_output_cost       = 75.00 / 1000000
 # Claude 3 Haiku Pricing
 claude_3_haiku_input_cost       = 0.25 / 1000000
 claude_3_haiku_output_cost      = 1.25 / 1000000
@@ -62,7 +69,7 @@ def calc_price(response):
     Calculate the cost for a given completion based on token usage.
 
     Args:
-        completion: The response object from the API containing token usage.
+        response: The response object from the API containing token usage.
 
     Returns:
         float: Calculated price for the API call.
@@ -71,17 +78,20 @@ def calc_price(response):
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
 
-    if model == "claude-3-7-sonnet-latest":
+    if model == "claude-opus-4-20250514":
+        return (input_tokens * claude_opus_4_input_cost) + (output_tokens * claude_opus_4_output_cost)
+    elif model == "claude-sonnet-4-20250514":
+        return (input_tokens * claude_sonnet_4_input_cost) + (output_tokens * claude_sonnet_4_output_cost)
+    elif model == "claude-3-7-sonnet-latest":
         return (input_tokens * claude_37_sonnet_input_cost) + (output_tokens * claude_37_sonnet_output_cost)
-    elif model == "claude-3-5-sonnet-latest" or model == "claude-3-5-sonnet-20241022":
+    elif model in ["claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620"]:
         return (input_tokens * claude_35_sonnet_input_cost) + (output_tokens * claude_35_sonnet_output_cost)
-    elif model == "claude-3-5-haiku-latest" or model == "claude-3-5-haiku-20241022":
+    elif model == "claude-3-5-haiku-latest":
         return (input_tokens * claude_35_haiku_input_cost) + (output_tokens * claude_35_haiku_output_cost)
-    elif model == "claude-3-opus-latest" or model == "claude-3-opus-20240229":
-        return (input_tokens * claude_3_opus_input_cost) + (output_tokens * claude_3_opus_output_cost)
     elif model == "claude-3-haiku-20240307":
         return (input_tokens * claude_3_haiku_input_cost) + (output_tokens * claude_3_haiku_output_cost)
     else:
+        logger.warning(f"Cost calculation not implemented for model: {model}. Returning 0.")
         return 0
 
 def calculate_output_tokens(model):
@@ -96,9 +106,11 @@ def calculate_output_tokens(model):
     Returns:
         int: The maximum number of output tokens for the specified model.
     """
-    if model == "claude-3-7-sonnet-latest":
+    if model == "claude-opus-4-20250514":
+        return 32000
+    elif model == "claude-sonnet-4-20250514" or model == "claude-3-7-sonnet-20250219":
         return 64000
-    elif model == "claude-3-5-sonnet-latest" or model == "claude-3-5-haiku-latest":
+    elif model == "claude-3-5-sonnet-latest" or model == "claude-3-5-sonnet-20240620" or model == "claude-3-5-haiku-latest":
         return 8192
     elif model == "claude-3-opus-latest" or model == "claude-3-haiku-20240307":
         return 4096

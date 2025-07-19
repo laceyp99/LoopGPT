@@ -1,0 +1,179 @@
+[
+    {
+        "role": "system",
+        "content": "You are an AI MIDI loop generator that creates structured chord progressions and melodies following the user's directive as closely as possible. Your output must be formatted using the provided data structures, ensuring a well-organized and musically coherent result.\n\nGuidelines for Output:\n* Follow User Input Precisely: If the user specifies a key, tempo, mood, or genre, generate notes and chords accordingly.\n* Use the Defined Data Structures:\n    * Represent timing with TimeInformation, ensuring sixteenth-note precision (1-16, not 0-based).\n    * Notes must be instances of Note, specifying pitch, octave, velocity, and timing.\n    * Bars should be structured as Bar, containing a list of notes that form chords and/or melodies.\n    * A full loop consists of four bars (Loop), ensuring musical coherence across them.\n* Chord and Melody Generation:\n    * Chords should be harmonically valid based on the key and progression rules.\n    * Melodies should complement the chords, following natural stepwise motion or leaps where musically appropriate.\n    * Velocity values should vary to create a dynamic and expressive performance.\n* Adaptability & Variability:\n    * If the user requests a specific style, apply typical rhythmic and harmonic patterns for that genre.\n    * Introduce slight variations across bars to keep loops engaging.\n    * Ensure melodic phrasing aligns with the chord structure and rhythmic flow.\n* Example Output Structure :\n\nExample 1: \nuser: B minor a rhythmic sad song\nassistant: Bar_1=Bar(num=1, notes=[Note(pitch='C#', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.TWO: 2>)), Note(pitch='B', octave=1, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='B', octave=2, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='C#', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='D', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='B', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='D', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ELEVEN: 11>, duration=<SixteenthNote.TWO: 2>)), Note(pitch='F#', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='G', octave=1, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='G', octave=2, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='D', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='E', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='B', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='A', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.SIXTEEN: 16>))]) Bar_2=Bar(num=2, notes=[Note(pitch='G', octave=1, velocity=41, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='G', octave=2, velocity=41, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='D', octave=4, velocity=41, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='E', octave=4, velocity=41, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='B', octave=4, velocity=41, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='A', octave=5, velocity=41, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>))]) Bar_3=Bar(num=3, notes=[Note(pitch='G', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.TWO: 2>)), Note(pitch='A', octave=1, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='A', octave=2, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='F#', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='B', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='C#', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='F#', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.ELEVEN: 11>, duration=<SixteenthNote.TWO: 2>)), Note(pitch='E', octave=1, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='E', octave=2, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='F#', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='G', octave=4, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='D', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.TWELVE: 12>))]) Bar_4=Bar(num=4, notes=[Note(pitch='E', octave=1, velocity=47, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='E', octave=2, velocity=47, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='F#', octave=4, velocity=47, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='G', octave=4, velocity=47, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='E', octave=5, velocity=72, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>))])  \n\nExample 2:\nuser: D# minor a walk down pop progression with some transitional melodies\nassistant: Bar_1=Bar(num=1, notes=[Note(pitch='F#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='G#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.TWO: 2>)), Note(pitch='D#', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='A#', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='D#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='F#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.FIFTEEN: 15>, duration=<SixteenthNote.TWO: 2>))]) Bar_2=Bar(num=2, notes=[Note(pitch='F', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.TWELVE: 12>)), Note(pitch='C#', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='A#', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='C#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='F#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>))]) Bar_3=Bar(num=3, notes=[Note(pitch='G#', octave=2, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='G#', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='B', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>)), Note(pitch='D#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.SIXTEEN: 16>))]) Bar_4=Bar(num=4, notes=[Note(pitch='D#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='G#', octave=2, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='G#', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='B', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.ONE: 1>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='F#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.FIVE: 5>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='C#', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='A#', octave=2, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='F', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='A#', octave=3, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>)), Note(pitch='C#', octave=4, velocity=46, time=TimeInformation(start_beat=<SixteenthNote.THIRTEEN: 13>, duration=<SixteenthNote.FOUR: 4>)), Note(pitch='F', octave=4, velocity=90, time=TimeInformation(start_beat=<SixteenthNote.NINE: 9>, duration=<SixteenthNote.EIGHT: 8>))])"
+    },
+    {
+        "role": "user",
+        "content": "C Major A rhythmic sad pop song."
+    },
+    {
+        "role": "assistant",
+        "content": {
+            "Bar_1": {
+                "num": 1,
+                "notes": [
+                    {
+                        "pitch": "C",
+                        "octave": 4,
+                        "velocity": 80,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 12
+                        }
+                    },
+                    {
+                        "pitch": "E",
+                        "octave": 4,
+                        "velocity": 80,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 12
+                        }
+                    },
+                    {
+                        "pitch": "G",
+                        "octave": 4,
+                        "velocity": 80,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 12
+                        }
+                    },
+                    {
+                        "pitch": "C",
+                        "octave": 5,
+                        "velocity": 80,
+                        "time": {
+                            "start_beat": 13,
+                            "duration": 4
+                        }
+                    }
+                ]
+            },
+            "Bar_2": {
+                "num": 2,
+                "notes": [
+                    {
+                        "pitch": "G",
+                        "octave": 3,
+                        "velocity": 70,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 8
+                        }
+                    },
+                    {
+                        "pitch": "B",
+                        "octave": 3,
+                        "velocity": 70,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 8
+                        }
+                    },
+                    {
+                        "pitch": "D",
+                        "octave": 4,
+                        "velocity": 70,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 8
+                        }
+                    },
+                    {
+                        "pitch": "G",
+                        "octave": 4,
+                        "velocity": 70,
+                        "time": {
+                            "start_beat": 9,
+                            "duration": 8
+                        }
+                    }
+                ]
+            },
+            "Bar_3": {
+                "num": 3,
+                "notes": [
+                    {
+                        "pitch": "A",
+                        "octave": 3,
+                        "velocity": 75,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 12
+                        }
+                    },
+                    {
+                        "pitch": "C",
+                        "octave": 4,
+                        "velocity": 75,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 12
+                        }
+                    },
+                    {
+                        "pitch": "E",
+                        "octave": 4,
+                        "velocity": 75,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 12
+                        }
+                    },
+                    {
+                        "pitch": "A",
+                        "octave": 4,
+                        "velocity": 75,
+                        "time": {
+                            "start_beat": 13,
+                            "duration": 4
+                        }
+                    }
+                ]
+            },
+            "Bar_4": {
+                "num": 4,
+                "notes": [
+                    {
+                        "pitch": "F",
+                        "octave": 3,
+                        "velocity": 65,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 8
+                        }
+                    },
+                    {
+                        "pitch": "A",
+                        "octave": 3,
+                        "velocity": 65,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 8
+                        }
+                    },
+                    {
+                        "pitch": "C",
+                        "octave": 4,
+                        "velocity": 65,
+                        "time": {
+                            "start_beat": 1,
+                            "duration": 8
+                        }
+                    },
+                    {
+                        "pitch": "F",
+                        "octave": 4,
+                        "velocity": 65,
+                        "time": {
+                            "start_beat": 9,
+                            "duration": 8
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]
