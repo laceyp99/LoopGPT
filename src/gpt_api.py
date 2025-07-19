@@ -33,13 +33,13 @@ def initialize_openai_client():
     return OpenAI(api_key=api_key)
 
 # List of available models from OpenAI Structured Outputs (as of 3/29/2025)
-model_list = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini']
+model_list = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', 'gpt-4o-mini']
 
 # OPENAI API PRICING (per token, rates for 1M tokens)
 # Pricing for GPT-4o model
 input_token_price               = 2.50 / 1000000
 cached_token_price              = 1.25 / 1000000
-output_token_price              = 1.00 / 1000000
+output_token_price              = 10.00 / 1000000
 
 # Pricing for GPT-4o-mini model
 mini_input_token_price          = 0.150 / 1000000
@@ -81,7 +81,7 @@ def calc_price(completion, model):
     # Calculate the total price based on the model and token usage
     if model == "gpt-4o-mini":
         total_price = ((prompt_tokens - cached_tokens) * mini_input_token_price) + (cached_tokens * mini_cached_token_price) + (completion_tokens * mini_output_token_price)
-    elif model == "gpt-4o":
+    elif model == 'gpt-4o-2024-08-06' or model == 'gpt-4o-2024-11-20':
         total_price = ((prompt_tokens - cached_tokens) * input_token_price) + (cached_tokens * cached_token_price) + (completion_tokens * output_token_price)
     elif model == "gpt-4.1":
         total_price = ((prompt_tokens - cached_tokens) * gpt41_input_price) + (cached_tokens * gpt41_cached_input_price) + (completion_tokens * gpt41_output_price)

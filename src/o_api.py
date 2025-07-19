@@ -41,9 +41,9 @@ o1_cached_input_token_price         = 7.500 / 1000000
 o1_output_token_price               = 60.00 / 1000000
 
 # Pricing for the o3 model
-o3_input_token_price                = 10.00 / 1000000
-o3_cached_input_token_price         = 2.50 / 1000000
-o3_output_token_price               = 40.00 / 1000000
+o3_input_token_price                = 2.00 / 1000000
+o3_cached_input_token_price         = 0.50 / 1000000
+o3_output_token_price               = 8.00 / 1000000
 
 # Pricing for the o3 mini model
 o3_mini_input_token_price           = 1.10 / 1000000
@@ -71,17 +71,17 @@ def calc_price(completion):
     cached_tokens = usage.prompt_tokens_details.cached_tokens
     
     # Calculate the total price based on the model and token usage
-    if model == "o1-2024-12-17" or model == "o1" or model == "o1-preview-2024-09-12":
+    if "o1" in model:
         total_price = (o1_input_token_price * usage.prompt_tokens + o1_output_token_price * usage.completion_tokens + o1_cached_input_token_price * cached_tokens)
-    elif model == "o3-mini" or model == "o3-mini-2025-01-31":
+    elif "o3-mini" in model:
         total_price = (o3_mini_input_token_price * usage.prompt_tokens + o3_mini_output_token_price * usage.completion_tokens + o3_mini_cached_input_token_price * cached_tokens)
-    elif model == "o3" or model == "o3-2025-04-16":
+    elif "o3" in model:
         total_price = (o3_input_token_price * usage.prompt_tokens + o3_output_token_price * usage.completion_tokens + o3_cached_input_token_price * cached_tokens)
-    elif model == "o4-mini" or model == "o4-mini-2025-04-16":
+    elif "o4-mini" in model:
         total_price = (o4_mini_input_token_price * usage.prompt_tokens + o4_mini_output_token_price * usage.completion_tokens + o4_mini_cached_input_token_price * cached_tokens)
     else:
         logger.warning("Pricing not defined for model '%s'.", model)
-        total_price = None
+        total_price = 0
     
     # Return the total price based on the model and the completion
     return total_price
