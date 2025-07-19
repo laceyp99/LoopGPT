@@ -34,7 +34,6 @@ def initialize_anthropic_client():
 
 # List of available models from Anthropic 
 model_list = [
-    # "claude-3-7-sonnet-latest", Needs to use streaming https://github.com/anthropics/anthropic-sdk-python#long-requests
     "claude-opus-4-20250514",
     "claude-sonnet-4-20250514",
     "claude-3-7-sonnet-latest",
@@ -64,20 +63,18 @@ claude_35_haiku_output_cost     = 4.00 / 1000000
 claude_3_haiku_input_cost       = 0.25 / 1000000
 claude_3_haiku_output_cost      = 1.25 / 1000000
 
-def calc_price(response):
+def calc_price(model, input_tokens, output_tokens):
     """
     Calculate the cost for a given completion based on token usage.
 
     Args:
-        response: The response object from the API containing token usage.
+        model (str): The model used.
+        input_tokens (int): The input token count from the start event.
+        output_tokens (int): The total output token count.
 
     Returns:
         float: Calculated price for the API call.
     """
-    model = response.model
-    input_tokens = response.usage.input_tokens
-    output_tokens = response.usage.output_tokens
-
     if model == "claude-opus-4-20250514":
         return (input_tokens * claude_opus_4_input_cost) + (output_tokens * claude_opus_4_output_cost)
     elif model == "claude-sonnet-4-20250514":
@@ -136,16 +133,33 @@ def prompt_gen(prompt, model, temp=0.0):
         max_tokens=calculate_output_tokens(model),
         system=pt_prompt,
         temperature=temp,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        stream=True
     )
+    
+    input_tokens = 0
+    output_tokens = 0
+    content = "Prompt: "
+    
+    for chunk in completion:
+        if chunk.type == 'message_start':
+            if hasattr(chunk, "message") and hasattr(chunk.message, "usage"):
+                input_tokens = chunk.message.usage.input_tokens
+                output_tokens += chunk.message.usage.output_tokens
+        elif chunk.type == 'content_block_delta':
+            if hasattr(chunk.delta, "text"):
+                content += chunk.delta.text
+        elif chunk.type == 'message_delta':
+            if hasattr(chunk, "usage"):
+                output_tokens += chunk.usage.output_tokens
+    
     # Extract the generated content and format it into a message history
-    content = completion.content[0].text
     messages = [
         {"role": "system", "content": pt_prompt},
         {"role": "user", "content": prompt},
         {"role": "assistant", "content": content}
     ]
-    cost = calc_price(completion)
+    cost = calc_price(model, input_tokens, output_tokens)
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
@@ -172,7 +186,7 @@ def loop_gen(prompt, model, temp=0.0):
             "description": "builds a music loop in MIDI format",
             "input_schema": loop_schema
         }
-    ]
+    ]    
     # Make the API call for structured output generation
     completion = client.messages.create(
         model=model,
@@ -182,17 +196,33 @@ def loop_gen(prompt, model, temp=0.0):
         messages=[{"role": "user", "content": prompt}],
         tools=tools,
         tool_choice={"type": "tool", "name": "build_MIDI_loop"},
+        stream=True
     )
     # Extract the generated MIDI loop and convert it to a Loop object
-    midi_loop = completion.content[0].input
-    loop = objects.Loop.model_validate_json(json.dumps(midi_loop))
+    input_tokens = 0
+    output_tokens = 0
+    midi_loop_chunks = []
+    
+    for chunk in completion:
+        if chunk.type == 'message_start':
+            if hasattr(chunk, "message") and hasattr(chunk.message, "usage"):
+                input_tokens = chunk.message.usage.input_tokens
+                output_tokens += chunk.message.usage.output_tokens
+        elif chunk.type == 'content_block_delta':
+            midi_loop_chunks.append(chunk.delta.partial_json)
+        elif chunk.type == 'message_delta':
+            if hasattr(chunk, "usage"):
+                output_tokens += chunk.usage.output_tokens
+    midi_loop = ''.join(midi_loop_chunks)
+    loop = objects.Loop.model_validate_json(midi_loop)
+    
     # Create the messages history 
     messages = [
         {"role": "system", "content": loop_prompt},
         {"role": "user", "content": prompt},
         {"role": "assistant", "content": midi_loop}
     ]
-    cost = calc_price(completion)
+    cost = calc_price(model, input_tokens, output_tokens)
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")
     return loop, messages, cost
