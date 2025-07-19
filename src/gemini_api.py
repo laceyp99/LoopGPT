@@ -21,12 +21,11 @@ with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
 
 # List of available models from Google Gemini (as of 3/29/2025)
 model_list = [
-    'gemini-2.5-flash-preview-04-17',
-    'gemini-2.5-pro-exp-03-25', 
+    'gemini-2.5-pro',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite-preview-06-17', 
     'gemini-2.0-flash', 
-    'gemini-2.0-flash-lite', 
-    'gemini-1.5-flash', 
-    'gemini-1.5-pro'
+    'gemini-2.0-flash-lite'
 ]
 
 # COST OF MODELS
@@ -34,19 +33,6 @@ model_list = [
 # Google AI Studio usage is completely free in all available countries.
 # The Gemini API "paid tier" comes with higher rate limits, additional features,
 # and different data handling.
-g_2_flash_input_cost        = 0.10 / 1000000
-g_2_flash_output_cost       = 0.40 / 1000000
-
-g_2_flash_lite_input_cost   = 0.075 / 1000000
-g_2_flash_lite_output_cost  = 0.30 / 1000000
-
-g_1_5_flash_input_cost      = 0.15 / 1000000
-g_1_5_flash_output_cost     = 0.60 / 1000000
-g_1_5_flash_cached_cost     = 0.0375 / 1000000
-
-gemini_1_5_pro_input_cost   = 2.50 / 1000000
-gemini_1_5_pro_output_cost  = 10.00 / 1000000
-gemini_1_5_pro_cached_cost  = 0.625 / 1000000
 
 def initialize_gemini_client():
     """Initializes and returns a Gemini client using API key from the .env file or the default key.
@@ -69,8 +55,10 @@ def calc_cost(model, input_tokens, output_tokens, cached_tokens=0):
     Calculate the cost for a given completion based on token usage.
 
     Args:
-        completion: The response object from the API containing token usage.
         model (str): The model identifier used for the request.
+        input_tokens (int): The number of input tokens.
+        output_tokens (int): The number of output tokens.
+        cached_tokens (int, optional): The number of cached tokens. Defaults to 0.
 
     Returns:
         float: Calculated price for the API call.
@@ -78,19 +66,47 @@ def calc_cost(model, input_tokens, output_tokens, cached_tokens=0):
     if cached_tokens is None:
         cached_tokens = 0
 
-    if model == 'gemini-2.0-flash':
-        return (input_tokens * g_2_flash_input_cost) + (output_tokens * g_2_flash_output_cost)
+    # Gemini 2.5 Pro
+    if model == 'gemini-2.5-pro':
+        if input_tokens <= 200000:
+            input_cost = 1.25 / 1000000
+            output_cost = 10.00 / 1000000
+            cache_cost = 0.31 / 1000000
+        else:
+            input_cost = 2.50 / 1000000
+            output_cost = 15.00 / 1000000
+            cache_cost = 0.625 / 1000000
+        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
+
+    # Gemini 2.5 Flash
+    elif model == 'gemini-2.5-flash':
+        input_cost = 0.30 / 1000000
+        output_cost = 2.50 / 1000000
+        cache_cost = 0.075 / 1000000
+        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
+
+    # Gemini 2.5 Flash-Lite Preview
+    elif model == 'gemini-2.5-flash-lite-preview-06-17':
+        input_cost = 0.10 / 1000000
+        output_cost = 0.40 / 1000000
+        cache_cost = 0.025 / 1000000
+        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
+
+    # Gemini 2.0 Flash
+    elif model == 'gemini-2.0-flash':
+        input_cost = 0.10 / 1000000
+        output_cost = 0.40 / 1000000
+        cache_cost = 0.025 / 1000000
+        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
+
+    # Gemini 2.0 Flash-Lite
     elif model == 'gemini-2.0-flash-lite':
-        return (input_tokens * g_2_flash_lite_input_cost) + (output_tokens * g_2_flash_lite_output_cost)
-    elif model == 'gemini-1.5-flash':
-        return ((input_tokens * g_1_5_flash_input_cost) + (output_tokens * g_1_5_flash_output_cost) + (cached_tokens * g_1_5_flash_cached_cost))
-    elif model == 'gemini-1.5-pro':
-        return ((input_tokens * gemini_1_5_pro_input_cost) + (output_tokens * gemini_1_5_pro_output_cost) + (cached_tokens * gemini_1_5_pro_cached_cost))
-    elif model == 'gemini-2.5-pro-exp-03-25' or model == 'gemini-2.5-flash-preview-04-17':
-        # No API cost attached yet for this model due to it being experimental
-        return 0
+        input_cost = 0.075 / 1000000
+        output_cost = 0.30 / 1000000
+        return (input_tokens * input_cost) + (output_tokens * output_cost)
     else:
-        return None
+        logger.warning(f"Cost calculation not implemented for model: {model}")
+        return 0
 
 def prompt_gen(prompt, model, temp=0.0):
     """

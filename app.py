@@ -79,7 +79,7 @@ def run_loop(key, scale, description, temp, model_choice, translate_prompt_choic
     loop_cost = 0
     
     # Route the generation process based on model choice
-    if model_choice in ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-05-13', 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini"]:
+    if model_choice in ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini"]:
         if translate_prompt_choice:
             prompt, messages, pt_cost = gpt_api.prompt_gen(prompt, model_choice, temp)    
         loop, messages, loop_cost = gpt_api.loop_gen(prompt, model_choice, temp)
@@ -87,7 +87,7 @@ def run_loop(key, scale, description, temp, model_choice, translate_prompt_choic
         if translate_prompt_choice:
             prompt, messages, pt_cost = o_api.prompt_gen(prompt, model_choice)
         loop, messages, loop_cost = o_api.loop_gen(prompt, model_choice)
-    elif model_choice in ["gemini-2.5-flash-preview-04-17", "gemini-2.5-pro-exp-03-25", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro"]:
+    elif model_choice in ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']:
         gemini_model = True
         if translate_prompt_choice:
             prompt, messages, pt_cost = gemini_api.prompt_gen(prompt, model_choice, temp)
@@ -97,7 +97,7 @@ def run_loop(key, scale, description, temp, model_choice, translate_prompt_choic
             prompt, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp)    
         loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp)
     else:
-        return "Invalid Model Selected", None
+        return "Invalid Model Selected", 0
     
     # Calculate total cost
     total_cost = pt_cost + loop_cost
@@ -135,7 +135,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
             with gr.Column():
                 gr.Markdown("## Generation Parameters")
-                model_choice_input = gr.Dropdown(choices=["gemini-2.5-flash-preview-04-17", "gemini-2.5-pro-exp-03-25" ,"gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro", "o4-mini", "o3", "o3-mini", "o1", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-05-13', 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"], label="Model", value="gemini-2.5-flash-preview-04-17")   # "claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest",      
+                model_choice_input = gr.Dropdown(choices=['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', "o4-mini", "o3", "o3-mini", "o1", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"], label="Model", value='gemini-2.5-flash')   # "claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest",      
                 temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)") # Limiting the temperature to reduce the chance of generating a bad loop
                 prompt_translate_checkbox = gr.Checkbox(label="Prompt Translation", value=False)
                 visualize_checkbox = gr.Checkbox(label="Show MIDI Visualization", value=True)
