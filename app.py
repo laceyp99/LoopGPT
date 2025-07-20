@@ -14,19 +14,42 @@ import gradio as gr
 import io
 import os
 
-def update_temp_visibility(model_choice):
-    """This function updates the visibility of the temperature slider based on the selected model.
+def update_temp_visibility(model_choice, use_thinking):
+    """This function updates the visibility of the temperature slider based on the selected model and thinking option.
+
+    Args:
+        model_choice (str): The selected model choice.
+        use_thinking (bool): Whether extended thinking is enabled.
+
+    Returns:
+        gr.update(): A Gradio update object to set the visibility of the temperature slider.
+    """
+    # Hide temperature for o1 models (they don't support temperature)
+    if model_choice in ["o1", "o3", "o3-mini", "o4-mini"]:
+        return gr.update(visible=False)
+    
+    # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
+    if use_thinking and claude_api.supports_thinking(model_choice):
+        return gr.update(visible=False)
+    
+    # Show temperature for all other cases
+    return gr.update(visible=True)
+
+def update_thinking_visibility(model_choice):
+    """This function updates the visibility of the thinking checkbox based on the selected model.
+    Only Claude models that support thinking will show the checkbox.
 
     Args:
         model_choice (str): The selected model choice.
 
     Returns:
-        gr.update(): A Gradio update object to set the visibility of the temperature slider.
-    """
-    if model_choice in ["o1", "o3", "o3-mini", "o4-mini"]:
-        return gr.update(visible=False)
-    else:
+        gr.update(): A Gradio update object to set the visibility of the thinking checkbox.
+    """    
+    # Show thinking toggle only for Claude models that support it
+    if claude_api.supports_thinking(model_choice):
         return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
 
 def save_prompts(loop_gen_text, pt_text):
     """This function saves any changes to the loop generation and prompt translation prompts to the text files.
@@ -44,7 +67,7 @@ def save_prompts(loop_gen_text, pt_text):
         f.write(pt_text)
     return "Prompts saved successfully at " + datetime.now().strftime("%I:%M:%S %p on %B %d, %Y") + "."
 
-def run_loop(key, scale, description, temp, model_choice, translate_prompt_choice, show_visual, openai_key, gemini_key, claude_key):
+def run_loop(key, scale, description, temp, model_choice, use_thinking, translate_prompt_choice, show_visual, openai_key, gemini_key, claude_key):
     """Run the loop generation process based on user inputs and selected model.
 
     Args:
@@ -53,6 +76,7 @@ def run_loop(key, scale, description, temp, model_choice, translate_prompt_choic
         description (str): A description of the loop that the user input in the text box.
         temp (float): The sampling temperature for the model that the user selects from the slider.
         model_choice (str): The model that the user selects from the dropdown.
+        use_thinking (bool): Whether to enable extended thinking for supported Claude models.
         translate_prompt_choice (bool): Whether to translate the prompt or not during the generation process.
         show_visual (bool): Whether to show the MIDI visualization or not in the UI as a result.
         openai_key (str): The OpenAI API key that the user inputs in the text box.
@@ -92,10 +116,10 @@ def run_loop(key, scale, description, temp, model_choice, translate_prompt_choic
         if translate_prompt_choice:
             prompt, messages, pt_cost = gemini_api.prompt_gen(prompt, model_choice, temp)
         loop, messages, loop_cost = gemini_api.loop_gen(prompt, model_choice, temp)
-    elif model_choice in ["claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"]: # "claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", 
+    elif model_choice in ["claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"]: 
         if translate_prompt_choice:
-            prompt, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp)    
-        loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp)
+            prompt, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp, use_thinking)    
+        loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp, use_thinking)
     else:
         return "Invalid Model Selected", 0
     
@@ -135,21 +159,35 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
             with gr.Column():
                 gr.Markdown("## Generation Parameters")
-                model_choice_input = gr.Dropdown(choices=['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', "o4-mini", "o3", "o3-mini", "o1", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini", "claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"], label="Model", value='gemini-2.5-flash')      
-                temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)") # Limiting the temperature to reduce the chance of generating a bad loop
+                model_choice_input = gr.Dropdown(choices=['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', "o4-mini", "o3", "o3-mini", "o1", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini", "claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"], label="Model", value='gemini-2.5-flash')      
+                temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
+                thinking_checkbox = gr.Checkbox(label="Extended Thinking (Claude)", value=False, visible=False)
                 prompt_translate_checkbox = gr.Checkbox(label="Prompt Translation", value=False)
                 visualize_checkbox = gr.Checkbox(label="Show MIDI Visualization", value=True)
         prog_button = gr.Button("Generate Loop")
-        prog_output = gr.File(label="Download Generated MIDI")
+        prog_output = gr.File(label="Download Generated MIDI")  
         vis_output = gr.Image(label="MIDI Visualization")
-        # Set default visibility of the temperature slider based on the selected model
+        # Set visibility of temperature slider and thinking checkbox based on model selection
         model_choice_input.change(
-            update_temp_visibility, inputs=model_choice_input, outputs=temp_input
+            update_temp_visibility, 
+            inputs=[model_choice_input, thinking_checkbox], 
+            outputs=temp_input
+        )
+        model_choice_input.change(
+            update_thinking_visibility, 
+            inputs=model_choice_input, 
+            outputs=thinking_checkbox
+        )
+        # Also update temperature visibility when thinking checkbox changes
+        thinking_checkbox.change(
+            update_temp_visibility,
+            inputs=[model_choice_input, thinking_checkbox],
+            outputs=temp_input
         )
         # When the user clicks the button, run the loop generation function based on the current inputs
         prog_button.click(
             run_loop,
-            inputs=[key_input, mode_input, description_input, temp_input, model_choice_input, prompt_translate_checkbox, visualize_checkbox, openai_key_input, gemini_key_input, claude_key_input],
+            inputs=[key_input, mode_input, description_input, temp_input, model_choice_input, thinking_checkbox, prompt_translate_checkbox, visualize_checkbox, openai_key_input, gemini_key_input, claude_key_input],
             outputs=[prog_output, vis_output]
         )
     # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
