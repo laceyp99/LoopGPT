@@ -32,9 +32,24 @@ def initialize_openai_client():
     return OpenAI(api_key=api_key)
 
 # List of available models from OpenAI Structured Outputs (as of 3/9/2025)
-model_list = ['o1', 'o3', 'o3-mini', 'o4-mini']
+model_list = ['o1', 'o3', 'o3-mini', 'o4-mini', "gpt-5", "gpt-5-mini", "gpt-5-nano"]
 
 # OPENAI API PRICING (per token, rates for 1M tokens)
+
+# Pricing for the gpt-5 models
+# gpt-5
+gpt5_input_token_price              = 1.25	/ 1000000
+gpt5_cached_input_token_price       = 0.125 / 1000000
+gpt5_output_token_price             = 10.00 / 1000000
+# gpt-5-mini
+gpt5_mini_input_token_price         = 0.25	/ 1000000
+gpt5_mini_cached_input_token_price  = 0.025 / 1000000
+gpt5_mini_output_token_price        = 2.00  / 1000000
+# gpt-5-nano
+gpt5_nano_input_token_price         = 0.05	/ 1000000
+gpt5_nano_cached_input_token_price  = 0.005 / 1000000
+gpt5_nano_output_token_price        = 0.40  / 1000000
+
 # Pricing for the o1 model
 o1_input_token_price                = 15.00 / 1000000
 o1_cached_input_token_price         = 7.500 / 1000000
@@ -79,6 +94,12 @@ def calc_price(completion):
         total_price = (o3_input_token_price * usage.prompt_tokens + o3_output_token_price * usage.completion_tokens + o3_cached_input_token_price * cached_tokens)
     elif "o4-mini" in model:
         total_price = (o4_mini_input_token_price * usage.prompt_tokens + o4_mini_output_token_price * usage.completion_tokens + o4_mini_cached_input_token_price * cached_tokens)
+    elif "gpt-5" in model:
+        total_price = (gpt5_input_token_price * usage.prompt_tokens + gpt5_output_token_price * usage.completion_tokens + gpt5_cached_input_token_price * cached_tokens)
+    elif "gpt-5-mini" in model:
+        total_price = (gpt5_mini_input_token_price * usage.prompt_tokens + gpt5_mini_output_token_price * usage.completion_tokens + gpt5_mini_cached_input_token_price * cached_tokens)
+    elif "gpt-5-nano" in model:
+        total_price = (gpt5_nano_input_token_price * usage.prompt_tokens + gpt5_nano_output_token_price * usage.completion_tokens + gpt5_nano_cached_input_token_price * cached_tokens)
     else:
         logger.warning("Pricing not defined for model '%s'.", model)
         total_price = 0

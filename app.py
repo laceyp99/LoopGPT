@@ -25,7 +25,7 @@ def update_temp_visibility(model_choice, use_thinking):
         gr.update(): A Gradio update object to set the visibility of the temperature slider.
     """
     # Hide temperature for o1 models (they don't support temperature)
-    if model_choice in ["o1", "o3", "o3-mini", "o4-mini"]:
+    if model_choice in o_api.model_list:
         return gr.update(visible=False)
     
     # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
@@ -103,20 +103,20 @@ def run_loop(key, scale, description, temp, model_choice, use_thinking, translat
     loop_cost = 0
     
     # Route the generation process based on model choice
-    if model_choice in ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini"]:
+    if model_choice in gpt_api.model_list:
         if translate_prompt_choice:
             prompt, messages, pt_cost = gpt_api.prompt_gen(prompt, model_choice, temp)    
         loop, messages, loop_cost = gpt_api.loop_gen(prompt, model_choice, temp)
-    elif model_choice in ["o1", "o3", "o3-mini", "o4-mini"]:
+    elif model_choice in o_api.model_list:
         if translate_prompt_choice:
             prompt, messages, pt_cost = o_api.prompt_gen(prompt, model_choice)
         loop, messages, loop_cost = o_api.loop_gen(prompt, model_choice)
-    elif model_choice in ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']:
+    elif model_choice in gemini_api.model_list:
         gemini_model = True
         if translate_prompt_choice:
             prompt, messages, pt_cost = gemini_api.prompt_gen(prompt, model_choice, temp)
         loop, messages, loop_cost = gemini_api.loop_gen(prompt, model_choice, temp)
-    elif model_choice in ["claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"]: 
+    elif model_choice in claude_api.model_list: 
         if translate_prompt_choice:
             prompt, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp, use_thinking)    
         loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp, use_thinking)
@@ -159,7 +159,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
             with gr.Column():
                 gr.Markdown("## Generation Parameters")
-                model_choice_input = gr.Dropdown(choices=['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', "o4-mini", "o3", "o3-mini", "o1", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini", "claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"], label="Model", value='gemini-2.5-flash')      
+                model_choice_input = gr.Dropdown(choices=['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', "gpt-5", "gpt-5-mini", "gpt-5-nano", "o4-mini", "o3", "o3-mini", "o1", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini", "claude-opus-4-20250514","claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"], label="Model", value='gemini-2.5-flash')      
                 temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
                 thinking_checkbox = gr.Checkbox(label="Extended Thinking (Claude)", value=False, visible=False)
                 prompt_translate_checkbox = gr.Checkbox(label="Prompt Translation", value=False)
