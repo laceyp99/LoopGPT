@@ -34,17 +34,20 @@ def initialize_anthropic_client():
 
 # List of available models from Anthropic 
 model_list = [
+    "claude-opus-4-1-20250805",
     "claude-opus-4-20250514",
     "claude-sonnet-4-20250514",
-    "claude-3-7-sonnet-latest",
     "claude-3-7-sonnet-20250219",
-    "claude-3-5-sonnet-latest",
+    "claude-3-5-sonnet-20241022",
     "claude-3-5-sonnet-20240620",
-    "claude-3-5-haiku-latest",
+    "claude-3-5-haiku-20241022",
     "claude-3-haiku-20240307"
 ]
 # Model pricing per million tokens (MTok)
 
+# Claude Opus 4.1 Pricing
+claude_opus_4_1_input_cost     = 15.00 / 1000000
+claude_opus_4_1_output_cost    = 75.00 / 1000000
 # Claude Opus 4 Pricing
 claude_opus_4_input_cost        = 15.00 / 1000000
 claude_opus_4_output_cost       = 75.00 / 1000000
@@ -75,10 +78,10 @@ def supports_thinking(model):
         bool: True if the model supports extended thinking, False otherwise.
     """
     thinking_models = [
+        "claude-opus-4-1-20250805",
         "claude-opus-4-20250514",
         "claude-sonnet-4-20250514", 
-        "claude-3-7-sonnet-20250219",
-        "claude-3-7-sonnet-latest"
+        "claude-3-7-sonnet-20250219"    
     ]
     return model in thinking_models
 
@@ -94,15 +97,17 @@ def calc_price(model, input_tokens, output_tokens):
     Returns:
         float: Calculated price for the API call.
     """
-    if model == "claude-opus-4-20250514":
+    if model == "claude-opus-4-1-20250805":
+        return (input_tokens * claude_opus_4_1_input_cost) + (output_tokens * claude_opus_4_1_output_cost)
+    elif model == "claude-opus-4-20250514":
         return (input_tokens * claude_opus_4_input_cost) + (output_tokens * claude_opus_4_output_cost)
     elif model == "claude-sonnet-4-20250514":
         return (input_tokens * claude_sonnet_4_input_cost) + (output_tokens * claude_sonnet_4_output_cost)
     elif model in ["claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219"]:
         return (input_tokens * claude_37_sonnet_input_cost) + (output_tokens * claude_37_sonnet_output_cost)
-    elif model in ["claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620"]:
+    elif model in ["claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022"]:
         return (input_tokens * claude_35_sonnet_input_cost) + (output_tokens * claude_35_sonnet_output_cost)
-    elif model == "claude-3-5-haiku-latest":
+    elif model == ["claude-3-5-haiku-latest", "claude-3-5-haiku-20241022"]:
         return (input_tokens * claude_35_haiku_input_cost) + (output_tokens * claude_35_haiku_output_cost)
     elif model == "claude-3-haiku-20240307":
         return (input_tokens * claude_3_haiku_input_cost) + (output_tokens * claude_3_haiku_output_cost)
@@ -122,13 +127,13 @@ def calculate_output_tokens(model):
     Returns:
         int: The maximum number of output tokens for the specified model.
     """
-    if model == "claude-opus-4-20250514":
+    if model in ["claude-opus-4-20250514", "claude-opus-4-1-20250805"]:
         return 32000
     elif model in ["claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-7-sonnet-latest"]:
         return 64000
-    elif model == "claude-3-5-sonnet-latest" or model == "claude-3-5-sonnet-20240620" or model == "claude-3-5-haiku-latest":
+    elif model in ["claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-latest"]:
         return 8192
-    elif model == "claude-3-opus-latest" or model == "claude-3-haiku-20240307":
+    elif model in ["claude-3-haiku-20240307"]:
         return 4096
     else:
         raise ValueError("Invalid model selected.")
@@ -191,10 +196,6 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
         elif chunk.type == 'message_delta':
             if hasattr(chunk, "usage"):
                 output_tokens += chunk.usage.output_tokens
-    
-    # Include thinking content in the response if present
-    # if thinking_content:
-    #     content = f"Thinking: {thinking_content}\n\n{content}"
     
     # Extract the generated content and format it into a message history
     messages = [
