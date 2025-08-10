@@ -1,0 +1,265 @@
+{
+    "models": {
+        "OpenAI": {
+            "o4-mini": {
+                "max_tokens": 100000,
+                "cost": {
+                    "input": 1.10,
+                    "cached input": 0.275,
+                    "output": 4.40
+                }
+            },
+            "o3": {
+                "max_tokens": 100000,
+                "cost": {
+                    "input": 2.00,
+                    "cached input": 0.50,
+                    "output": 8.00
+                }
+            },
+            "o3-mini": {
+                "max_tokens": 100000,
+                "cost": {
+                    "input": 1.10,
+                    "cached input": 0.55,
+                    "output": 4.40
+                }
+            },
+            "o1": {
+                "max_tokens": 100000,
+                "cost": {
+                    "input": 15.00,
+                    "cached input": 7.50,
+                    "output": 60.00
+                }
+            },
+            "gpt-5": {
+                "max_tokens": 128000,
+                "cost": {
+                    "input": 1.25,
+                    "cached input": 0.125,
+                    "output": 10.00
+                }
+            },
+            "gpt-5-mini": {
+                "max_tokens": 128000,
+                "cost": {
+                    "input": 0.25,
+                    "cached input": 0.025,
+                    "output": 2.00
+                }
+            },
+            "gpt-5-nano": {
+                "max_tokens": 128000,
+                "cost": {
+                    "input": 0.05,
+                    "cached input": 0.005,
+                    "output": 0.40
+                }
+            },
+            "gpt-4.1": {
+                "max_tokens": 32768,
+                "cost": {
+                    "input": 2.00,
+                    "cached input": 0.50,
+                    "output": 8.00
+                }
+            },
+            "gpt-4.1-mini": {
+                "max_tokens": 32768,
+                "cost": {
+                    "input": 0.40,
+                    "cached input": 0.10,
+                    "output": 1.60
+                }
+            },
+            "gpt-4.1-nano": {
+                "max_tokens": 32768,
+                "cost": {
+                    "input": 0.10,
+                    "cached input": 0.025,
+                    "output": 0.40
+                }
+            },
+            "gpt-4o-2024-11-20": {
+                "max_tokens": 16384,
+                "cost": {
+                    "input": 2.50,
+                    "cached input": 1.25,
+                    "output": 10.00
+                }
+            },
+            "gpt-4o-2024-08-06": {
+                "max_tokens": 16384,
+                "cost": {
+                    "input": 2.50,
+                    "cached input": 1.25,
+                    "output": 10.00
+                }
+            },
+            "gpt-4o-mini": {
+                "max_tokens": 16384,
+                "cost": {
+                    "input": 0.15,
+                    "cached input": 0.075,
+                    "output": 0.60
+                }
+            }
+        },
+        "Anthropic": {
+            "claude-opus-4-1-20250805": {
+                "extended_thinking": true,
+                "max_tokens": 32000,
+                "cost": {
+                    "input": 15.00,
+                    "5m cache input": 18.75,
+                    "1h cache input": 30.00,
+                    "cache hits/refreshes": 1.50,
+                    "output": 75.00
+                }
+            },
+            "claude-opus-4-20250514": {
+                "extended_thinking": true,
+                "max_tokens": 32000,
+                "cost": {
+                    "input": 15.00,
+                    "5m cache input": 18.75,
+                    "1h cache input": 30.00,
+                    "cache hits/refreshes": 1.50,
+                    "output": 75.00
+                }
+            },
+            "claude-sonnet-4-20250514": {
+                "extended_thinking": true,
+                "max_tokens": 64000,
+                "cost": {
+                    "input": 3.00,
+                    "5m cache input": 3.75,
+                    "1h cache input": 6.00,
+                    "cache hits/refreshes": 0.30,
+                    "output": 15.00
+                }
+            },
+            "claude-3-7-sonnet-20250219": {
+                "extended_thinking": true,
+                "max_tokens": 64000,
+                "cost": {
+                    "input": 3.00,
+                    "5m cache input": 3.75,
+                    "1h cache input": 6.00,
+                    "cache hits/refreshes": 0.30,
+                    "output": 15.00
+                }
+            },
+            "claude-3-5-sonnet-20241022": {
+                "extended_thinking": false,
+                "max_tokens": 8192,
+                "cost": {
+                    "input": 3.00,
+                    "5m cache input": 3.75,
+                    "1h cache input": 6.00,
+                    "cache hits/refreshes": 0.30,
+                    "output": 15.00
+                }
+            },
+            "claude-3-5-sonnet-20240620": {
+                "extended_thinking": false,
+                "max_tokens": 8192,
+                "cost": {
+                    "input": 3.00,
+                    "5m cache input": 3.75,
+                    "1h cache input": 6.00,
+                    "cache hits/refreshes": 0.30,
+                    "output": 15.00
+                }
+            },
+            "claude-3-5-haiku-20241022": {
+                "extended_thinking": false,
+                "max_tokens": 8192,
+                "cost": {
+                    "input": 0.80,
+                    "5m cache input": 1.00,
+                    "1h cache input": 1.60,
+                    "cache hits/refreshes": 0.08,
+                    "output": 4.00
+                }
+            },
+            "claude-3-haiku-20240307": {
+                "extended_thinking": false,
+                "max_tokens": 4096,
+                "cost": {
+                    "input": 0.25,
+                    "5m cache input": 0.30,
+                    "1h cache input": 0.50,
+                    "cache hits/refreshes": 0.03,
+                    "output": 1.25
+                }
+            }
+        },
+        "Google": {
+            "gemini-2.5-pro": {
+                "extended_thinking": true,
+                "max_tokens": 65536,
+                "cost": {
+                    "input": {
+                        "<=200k": 1.25,
+                        ">200k": 2.50
+                    },
+                    "cache": {
+                        "<=200k": 0.31,
+                        ">200k": 0.625,
+                        "storage (per hour)": 4.50
+                    },
+                    "output": {
+                        "<=200k": 10.00,
+                        ">200k": 15.00
+                    }
+                }
+            },
+            "gemini-2.5-flash": {
+                "extended_thinking": true,
+                "max_tokens": 65536,
+                "cost": {
+                    "input": 0.30,
+                    "cache": {
+                        "text": 0.075,
+                        "storage (per hour)": 1.00
+                    },
+                    "output": 2.50
+                }
+            },
+            "gemini-2.5-flash-lite": {
+                "extended_thinking": false,
+                "max_tokens": 65536,
+                "cost": {
+                    "input": 0.10,
+                    "cache": {
+                        "text": 0.025,
+                        "storage (per hour)": 1.00
+                    },
+                    "output": 0.40
+                }
+            },
+            "gemini-2.0-flash": {
+                "extended_thinking": false,
+                "max_tokens": 8192,
+                "cost": {
+                    "input": 0.10,
+                    "cache": {
+                        "text": 0.025,
+                        "storage (per hour)": 1.00
+                    },
+                    "output": 0.40
+                }
+            },
+            "gemini-2.0-flash-lite": {
+                "extended_thinking": false,
+                "max_tokens": 8192,
+                "cost": {
+                    "input": 0.075,
+                    "output": 0.30
+                }
+            }
+        }
+    }
+}

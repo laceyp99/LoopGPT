@@ -19,6 +19,10 @@ with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
 with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
     pt_prompt = f.read()
 
+# Load model list and pricing details from a JSON file
+with open('model_list.json', 'r') as f:
+    model_info = json.load(f)
+
 def initialize_anthropic_client():
     """
     Initializes and returns an Anthropic client using API key from the .env file.
@@ -32,59 +36,6 @@ def initialize_anthropic_client():
         logger.error("ANTHROPIC_API_KEY is not set!")
     return Anthropic(api_key=api_key)
 
-# List of available models from Anthropic 
-model_list = [
-    "claude-opus-4-1-20250805",
-    "claude-opus-4-20250514",
-    "claude-sonnet-4-20250514",
-    "claude-3-7-sonnet-20250219",
-    "claude-3-5-sonnet-20241022",
-    "claude-3-5-sonnet-20240620",
-    "claude-3-5-haiku-20241022",
-    "claude-3-haiku-20240307"
-]
-# Model pricing per million tokens (MTok)
-
-# Claude Opus 4.1 Pricing
-claude_opus_4_1_input_cost     = 15.00 / 1000000
-claude_opus_4_1_output_cost    = 75.00 / 1000000
-# Claude Opus 4 Pricing
-claude_opus_4_input_cost        = 15.00 / 1000000
-claude_opus_4_output_cost       = 75.00 / 1000000
-# Claude Sonnet 4 Pricing
-claude_sonnet_4_input_cost      = 3.00 / 1000000
-claude_sonnet_4_output_cost     = 15.00 / 1000000
-# Claude 3.7 Sonnet Pricing
-claude_37_sonnet_input_cost     = 3.00 / 1000000
-claude_37_sonnet_output_cost    = 15.00 / 1000000
-# Claude 3.5 Sonnet Pricing
-claude_35_sonnet_input_cost     = 3.00 / 1000000
-claude_35_sonnet_output_cost    = 15.00 / 1000000
-# Claude 3.5 Haiku Pricing
-claude_35_haiku_input_cost      = 0.80 / 1000000
-claude_35_haiku_output_cost     = 4.00 / 1000000
-# Claude 3 Haiku Pricing
-claude_3_haiku_input_cost       = 0.25 / 1000000
-claude_3_haiku_output_cost      = 1.25 / 1000000
-
-def supports_thinking(model):
-    """
-    Check if a model supports extended thinking functionality.
-    
-    Args:
-        model (str): The model name to check.
-        
-    Returns:
-        bool: True if the model supports extended thinking, False otherwise.
-    """
-    thinking_models = [
-        "claude-opus-4-1-20250805",
-        "claude-opus-4-20250514",
-        "claude-sonnet-4-20250514", 
-        "claude-3-7-sonnet-20250219"    
-    ]
-    return model in thinking_models
-
 def calc_price(model, input_tokens, output_tokens):
     """
     Calculate the cost for a given completion based on token usage.
@@ -97,46 +48,13 @@ def calc_price(model, input_tokens, output_tokens):
     Returns:
         float: Calculated price for the API call.
     """
-    if model == "claude-opus-4-1-20250805":
-        return (input_tokens * claude_opus_4_1_input_cost) + (output_tokens * claude_opus_4_1_output_cost)
-    elif model == "claude-opus-4-20250514":
-        return (input_tokens * claude_opus_4_input_cost) + (output_tokens * claude_opus_4_output_cost)
-    elif model == "claude-sonnet-4-20250514":
-        return (input_tokens * claude_sonnet_4_input_cost) + (output_tokens * claude_sonnet_4_output_cost)
-    elif model in ["claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219"]:
-        return (input_tokens * claude_37_sonnet_input_cost) + (output_tokens * claude_37_sonnet_output_cost)
-    elif model in ["claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022"]:
-        return (input_tokens * claude_35_sonnet_input_cost) + (output_tokens * claude_35_sonnet_output_cost)
-    elif model == ["claude-3-5-haiku-latest", "claude-3-5-haiku-20241022"]:
-        return (input_tokens * claude_35_haiku_input_cost) + (output_tokens * claude_35_haiku_output_cost)
-    elif model == "claude-3-haiku-20240307":
-        return (input_tokens * claude_3_haiku_input_cost) + (output_tokens * claude_3_haiku_output_cost)
+    if model not in model_info["models"]["Anthropic"].keys():
+        logger.warning(f"Model {model} not found in model info.")
+        return False
     else:
-        logger.warning(f"Cost calculation not implemented for model: {model}. Returning 0.")
-        return 0
-
-def calculate_output_tokens(model):
-    """Calculates the maximum number of output tokens based on the model to be used for the API calls as a parameter.
-
-    Args:
-        model (str): The model name to be used for the API calls.
-
-    Raises:
-        ValueError: If the model name is not recognized.
-
-    Returns:
-        int: The maximum number of output tokens for the specified model.
-    """
-    if model in ["claude-opus-4-20250514", "claude-opus-4-1-20250805"]:
-        return 32000
-    elif model in ["claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-7-sonnet-latest"]:
-        return 64000
-    elif model in ["claude-3-5-sonnet-latest", "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-latest"]:
-        return 8192
-    elif model in ["claude-3-haiku-20240307"]:
-        return 4096
-    else:
-        raise ValueError("Invalid model selected.")
+        input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"] / 1000000
+        output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"] / 1000000
+        return (input_tokens * input_cost) + (output_tokens * output_cost)
 
 def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000):
     """
@@ -158,7 +76,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     # Prepare API call parameters
     api_params = {
         "model": model,
-        "max_tokens": calculate_output_tokens(model),
+        "max_tokens": model_info["models"]["Anthropic"][model]["max_tokens"],
         "system": pt_prompt,
         "temperature": temp,
         "messages": [{"role": "user", "content": prompt}],
@@ -166,13 +84,13 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     }
     
     # Add thinking parameter if enabled and model supports it
-    if use_thinking and supports_thinking(model):
+    if use_thinking and model_info["models"]["Anthropic"][model]["extended_thinking"]:
         api_params["thinking"] = {
             "type": "enabled",
             "budget_tokens": thinking_budget
         }
         api_params["temperature"] = 1.0  # Set temperature to 1 for thinking
-    elif use_thinking and not supports_thinking(model):
+    elif use_thinking and not model_info["models"]["Anthropic"][model]["extended_thinking"]:
         logger.warning(f"Extended thinking requested but not supported by model: {model}")
     
     completion = client.messages.create(**api_params)
@@ -238,7 +156,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
     # Prepare API call parameters
     api_params = {
         "model": model,
-        "max_tokens": calculate_output_tokens(model),
+        "max_tokens": model_info["models"]["Anthropic"][model]["max_tokens"],
         "system": loop_prompt,
         "temperature": temp,
         "messages": [{"role": "user", "content": prompt}],
@@ -249,7 +167,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
     
     # Add thinking parameter if enabled and model supports it
     # Note: Tool use with thinking only supports "auto" or "none" tool_choice
-    if use_thinking and supports_thinking(model):
+    if use_thinking and model_info["models"]["Anthropic"][model]["extended_thinking"]:
         # For tool use with thinking, we need to change tool_choice to auto
         api_params["tool_choice"] = {"type": "auto"}
         api_params["thinking"] = {
@@ -257,7 +175,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
             "budget_tokens": thinking_budget,
         }
         api_params["temperature"] = 1.0  # Set temperature to 1 for thinking
-    elif use_thinking and not supports_thinking(model):
+    elif use_thinking and not model_info["models"]["Anthropic"][model]["extended_thinking"]:
         logger.warning(f"Extended thinking requested but not supported by model: {model}")
     
     # Make the API call for structured output generation
