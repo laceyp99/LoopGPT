@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import src.utils as utils
 import src.objects as objects
 import logging
+import json
 import os
 
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +19,9 @@ with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
 with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
     pt_prompt = f.read()
 
+# Load model list and pricing details from a JSON file
+with open('model_list.json', 'r') as f:
+    model_info = json.load(f)
 
 def initialize_openai_client():
     """
@@ -32,34 +36,7 @@ def initialize_openai_client():
         logger.error("OPENAI_API_KEY is not set!")
     return OpenAI(api_key=api_key)
 
-# List of available models from OpenAI Structured Outputs (as of 3/29/2025)
-model_list = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', 'gpt-4o-mini']
-
-# OPENAI API PRICING (per token, rates for 1M tokens)
-# Pricing for GPT-4o model
-input_token_price               = 2.50 / 1000000
-cached_token_price              = 1.25 / 1000000
-output_token_price              = 10.00 / 1000000
-
-# Pricing for GPT-4o-mini model
-mini_input_token_price          = 0.150 / 1000000
-mini_cached_token_price         = 0.075 / 1000000
-mini_output_token_price         = 0.600 / 1000000
-
-# Pricing for GPT-4.1 models
-gpt41_input_price               = 2.00 / 1000000
-gpt41_cached_input_price        = 0.50 / 1000000
-gpt41_output_price              = 8.00 / 1000000
-
-gpt41_mini_input_price          = 0.40 / 1000000
-gpt41_mini_cached_input_price   = 0.10 / 1000000
-gpt41_mini_output_price         = 1.60 / 1000000
-
-gpt41_nano_input_price          = 0.10 / 1000000
-gpt41_nano_cached_input_price   = 0.025 / 1000000
-gpt41_nano_output_price         = 0.40 / 1000000
-
-def calc_price(completion, model):
+def calc_price(model, completion):
     """
     Calculate the cost for a given completion based on token usage.
 
@@ -70,28 +47,18 @@ def calc_price(completion, model):
     Returns:
         float: Calculated price for the API call.
     """
+    usage = completion.usage
     # Determine cached tokens if available
     cached_tokens = 0
     if hasattr(completion.usage, "prompt_tokens_details") and "cached_tokens" in completion.usage.prompt_tokens_details:
         cached_tokens = completion.usage.prompt_tokens_details["cached_tokens"]
-
-    prompt_tokens = completion.usage.prompt_tokens
-    completion_tokens = completion.usage.completion_tokens
-
-    # Calculate the total price based on the model and token usage
-    if model == "gpt-4o-mini":
-        total_price = ((prompt_tokens - cached_tokens) * mini_input_token_price) + (cached_tokens * mini_cached_token_price) + (completion_tokens * mini_output_token_price)
-    elif model == 'gpt-4o-2024-08-06' or model == 'gpt-4o-2024-11-20':
-        total_price = ((prompt_tokens - cached_tokens) * input_token_price) + (cached_tokens * cached_token_price) + (completion_tokens * output_token_price)
-    elif model == "gpt-4.1":
-        total_price = ((prompt_tokens - cached_tokens) * gpt41_input_price) + (cached_tokens * gpt41_cached_input_price) + (completion_tokens * gpt41_output_price)
-    elif model == "gpt-4.1-mini":
-        total_price = ((prompt_tokens - cached_tokens) * gpt41_mini_input_price) + (cached_tokens * gpt41_mini_cached_input_price) + (completion_tokens * gpt41_mini_output_price)
-    elif model == "gpt-4.1-nano":
-        total_price = ((prompt_tokens - cached_tokens) * gpt41_nano_input_price) + (cached_tokens * gpt41_nano_cached_input_price) + (completion_tokens * gpt41_nano_output_price)
     else:
-        logger.warning("Pricing not defined for model '%s'. Falling back to zero cost.", model)
-        total_price = 0
+        logger.info("No cached tokens found in usage details.")    
+    # Calculate the total price based on the model and token usage
+    input_cost = model_info["models"]["OpenAI"][model]["cost"]["input"] / 1000000
+    output_cost = model_info["models"]["OpenAI"][model]["cost"]["output"] / 1000000
+    cached_input_cost = model_info["models"]["OpenAI"][model]["cost"]["cached input"] / 1000000
+    total_price = (input_cost * usage.prompt_tokens + output_cost * usage.completion_tokens + cached_input_cost * cached_tokens)
     
     # Return the total price based on the model and the completion
     return total_price
@@ -123,7 +90,7 @@ def prompt_gen(prompt, model, temp=0.0):
     # Extract the generated content and calculate cost
     content = completion.choices[0].message.content
     messages.append({"role": "assistant", "content": content})
-    cost = calc_price(completion, model)
+    cost = calc_price(model, completion)
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
@@ -156,7 +123,7 @@ def loop_gen(prompt, model, temp=0.0):
     # Extract the generated MIDI loop and calculate cost
     midi_loop = completion.choices[0].message.parsed
     messages.append({"role": "assistant", "content": str(midi_loop)})
-    cost = calc_price(completion, model)
+    cost = calc_price(model, completion)
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")
     return midi_loop, messages, cost

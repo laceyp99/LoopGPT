@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import src.utils as utils
 import src.objects as objects
 import logging
+import json
 import os
 
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +18,10 @@ with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
     loop_prompt = f.read()
 with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
     pt_prompt = f.read()
+
+# Load model list and pricing details from a JSON file
+with open('model_list.json', 'r') as f:
+    model_info = json.load(f)
 
 def initialize_openai_client():
     """
@@ -31,46 +36,7 @@ def initialize_openai_client():
         logger.error("OPENAI_API_KEY is not set!")
     return OpenAI(api_key=api_key)
 
-# List of available models from OpenAI Structured Outputs (as of 3/9/2025)
-model_list = ['o1', 'o3', 'o3-mini', 'o4-mini', "gpt-5", "gpt-5-mini", "gpt-5-nano"]
-
-# OPENAI API PRICING (per token, rates for 1M tokens)
-
-# Pricing for the gpt-5 models
-# gpt-5
-gpt5_input_token_price              = 1.25	/ 1000000
-gpt5_cached_input_token_price       = 0.125 / 1000000
-gpt5_output_token_price             = 10.00 / 1000000
-# gpt-5-mini
-gpt5_mini_input_token_price         = 0.25	/ 1000000
-gpt5_mini_cached_input_token_price  = 0.025 / 1000000
-gpt5_mini_output_token_price        = 2.00  / 1000000
-# gpt-5-nano
-gpt5_nano_input_token_price         = 0.05	/ 1000000
-gpt5_nano_cached_input_token_price  = 0.005 / 1000000
-gpt5_nano_output_token_price        = 0.40  / 1000000
-
-# Pricing for the o1 model
-o1_input_token_price                = 15.00 / 1000000
-o1_cached_input_token_price         = 7.500 / 1000000
-o1_output_token_price               = 60.00 / 1000000
-
-# Pricing for the o3 model
-o3_input_token_price                = 2.00 / 1000000
-o3_cached_input_token_price         = 0.50 / 1000000
-o3_output_token_price               = 8.00 / 1000000
-
-# Pricing for the o3 mini model
-o3_mini_input_token_price           = 1.10 / 1000000
-o3_mini_cached_input_token_price    = 0.55 / 1000000
-o3_mini_output_token_price          = 4.40 / 1000000
-
-# Pricing for the o4 mini model
-o4_mini_input_token_price           = 1.10 / 1000000
-o4_mini_cached_input_token_price    = 0.275 / 1000000
-o4_mini_output_token_price          = 4.40 / 1000000
-
-def calc_price(completion):
+def calc_price(model, completion):
     """
     Calculate the cost for a given completion based on token usage.
 
@@ -80,29 +46,18 @@ def calc_price(completion):
     Returns:
         float: The calculated price for the API call, or None if the model is unrecognized.
     """
-    
-    model = completion.model
     usage = completion.usage
-    cached_tokens = usage.prompt_tokens_details.cached_tokens
-    
-    # Calculate the total price based on the model and token usage
-    if "o1" in model:
-        total_price = (o1_input_token_price * usage.prompt_tokens + o1_output_token_price * usage.completion_tokens + o1_cached_input_token_price * cached_tokens)
-    elif "o3-mini" in model:
-        total_price = (o3_mini_input_token_price * usage.prompt_tokens + o3_mini_output_token_price * usage.completion_tokens + o3_mini_cached_input_token_price * cached_tokens)
-    elif "o3" in model:
-        total_price = (o3_input_token_price * usage.prompt_tokens + o3_output_token_price * usage.completion_tokens + o3_cached_input_token_price * cached_tokens)
-    elif "o4-mini" in model:
-        total_price = (o4_mini_input_token_price * usage.prompt_tokens + o4_mini_output_token_price * usage.completion_tokens + o4_mini_cached_input_token_price * cached_tokens)
-    elif "gpt-5" in model:
-        total_price = (gpt5_input_token_price * usage.prompt_tokens + gpt5_output_token_price * usage.completion_tokens + gpt5_cached_input_token_price * cached_tokens)
-    elif "gpt-5-mini" in model:
-        total_price = (gpt5_mini_input_token_price * usage.prompt_tokens + gpt5_mini_output_token_price * usage.completion_tokens + gpt5_mini_cached_input_token_price * cached_tokens)
-    elif "gpt-5-nano" in model:
-        total_price = (gpt5_nano_input_token_price * usage.prompt_tokens + gpt5_nano_output_token_price * usage.completion_tokens + gpt5_nano_cached_input_token_price * cached_tokens)
+    # Determine cached tokens if available
+    cached_tokens = 0
+    if hasattr(completion.usage, "prompt_tokens_details") and "cached_tokens" in completion.usage.prompt_tokens_details:
+        cached_tokens = completion.usage.prompt_tokens_details["cached_tokens"]
     else:
-        logger.warning("Pricing not defined for model '%s'.", model)
-        total_price = 0
+        logger.info("No cached tokens found in usage details.")     
+    # Calculate the total price based on the model and token usage
+    input_cost = model_info["models"]["OpenAI"][model]["cost"]["input"] / 1000000
+    output_cost = model_info["models"]["OpenAI"][model]["cost"]["output"] / 1000000
+    cached_input_cost = model_info["models"]["OpenAI"][model]["cost"]["cached input"] / 1000000
+    total_price = (input_cost * usage.prompt_tokens + output_cost * usage.completion_tokens + cached_input_cost * cached_tokens)
     
     # Return the total price based on the model and the completion
     return total_price
@@ -135,7 +90,7 @@ def prompt_gen(prompt, model):
     content = completion.choices[0].message.content
     messages.append({"role": "assistant", "content": content})
     # Calculate the cost of the API call
-    cost = calc_price(completion)
+    cost = calc_price(model, completion)
     # Save messages for debugging and training purposes
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
@@ -168,7 +123,7 @@ def loop_gen(prompt, model):
     midi_loop = completion.choices[0].message.parsed
     messages.append({"role": "assistant", "content": f"{midi_loop}"})
     # Calculate the cost of the API call
-    cost = calc_price(completion)
+    cost = calc_price(model, completion)
     # Save messages for debugging and training purposes
     utils.save_messages_to_json(messages, filename="loop")
     return midi_loop, messages, cost

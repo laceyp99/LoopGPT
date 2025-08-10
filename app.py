@@ -30,11 +30,11 @@ def update_temp_visibility(model_choice, use_thinking):
         gr.update(): A Gradio update object to set the visibility of the temperature slider.
     """
     # Hide temperature for o1 models (they don't support temperature)
-    if model_choice in o_api.model_list:
+    if model_choice in model_info["models"]["OpenAI"].keys() and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]:
         return gr.update(visible=False)
     
     # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
-    if use_thinking and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
+    if model_choice in model_info["models"]["Anthropic"].keys() and use_thinking and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
         return gr.update(visible=False)
     
     # Show temperature for all other cases
@@ -51,7 +51,7 @@ def update_thinking_visibility(model_choice):
         gr.update(): A Gradio update object to set the visibility of the thinking checkbox.
     """    
     # Show thinking toggle only for Claude models that support it
-    if model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
+    if model_choice in model_info["models"]["Anthropic"].keys() and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
         return gr.update(visible=True)
     else:
         return gr.update(visible=False)
@@ -108,14 +108,16 @@ def run_loop(key, scale, description, temp, model_choice, use_thinking, translat
     loop_cost = 0
     
     # Route the generation process based on model choice
-    if model_choice in gpt_api.model_list:
-        if translate_prompt_choice:
-            prompt, messages, pt_cost = gpt_api.prompt_gen(prompt, model_choice, temp)    
-        loop, messages, loop_cost = gpt_api.loop_gen(prompt, model_choice, temp)
-    elif model_choice in o_api.model_list:
-        if translate_prompt_choice:
-            prompt, messages, pt_cost = o_api.prompt_gen(prompt, model_choice)
-        loop, messages, loop_cost = o_api.loop_gen(prompt, model_choice)
+    
+    if model_choice in model_info["models"]["OpenAI"].keys():
+        if model_info["models"]["OpenAI"][model_choice]["extended_thinking"]:
+            if translate_prompt_choice:
+                prompt, messages, pt_cost = o_api.prompt_gen(prompt, model_choice)
+            loop, messages, loop_cost = o_api.loop_gen(prompt, model_choice)
+        else:
+            if translate_prompt_choice:
+                prompt, messages, pt_cost = gpt_api.prompt_gen(prompt, model_choice, temp)    
+            loop, messages, loop_cost = gpt_api.loop_gen(prompt, model_choice, temp)
     elif model_choice in gemini_api.model_list:
         gemini_model = True
         if translate_prompt_choice:
@@ -164,7 +166,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
             with gr.Column():
                 gr.Markdown("## Generation Parameters")
-                model_choice_input = gr.Dropdown(choices=['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', "gpt-5", "gpt-5-mini", "gpt-5-nano", "o4-mini", "o3", "o3-mini", "o1", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", 'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', "gpt-4o-mini", "claude-opus-4-1-20250805", "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-20241022", "claude-3-haiku-20240307"], label="Model", value='gemini-2.5-flash')      
+                model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()), label="Model", value='gemini-2.5-flash')      
                 temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
                 thinking_checkbox = gr.Checkbox(label="Extended Thinking", value=False, visible=False)
                 prompt_translate_checkbox = gr.Checkbox(label="Prompt Translation", value=False)
