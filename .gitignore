@@ -2,3 +2,4 @@ venv/
 loop.json
 prompt_translation.json
 output.mid
+eval/NOTES.md
