@@ -50,11 +50,15 @@ def update_thinking_visibility(model_choice):
     Returns:
         gr.update(): A Gradio update object to set the visibility of the thinking checkbox.
     """    
-    # Show thinking toggle only for Claude models that support it
-    if model_choice in model_info["models"]["Anthropic"].keys() and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
+    # Show thinking toggle only for models that support it
+    anthropic_thinking = model_choice in model_info["models"]["Anthropic"].keys() and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]
+    gemini_thinking = model_choice in model_info["models"]["Google"].keys() and model_info["models"]["Google"][model_choice]["extended_thinking"]
+    
+    if anthropic_thinking or gemini_thinking:
         return gr.update(visible=True)
     else:
-        return gr.update(visible=False)
+        return gr.update(value=False, visible=False)
+
 
 def save_prompts(loop_gen_text, pt_text):
     """This function saves any changes to the loop generation and prompt translation prompts to the text files.
@@ -118,11 +122,11 @@ def run_loop(key, scale, description, temp, model_choice, use_thinking, translat
             if translate_prompt_choice:
                 prompt, messages, pt_cost = gpt_api.prompt_gen(prompt, model_choice, temp)    
             loop, messages, loop_cost = gpt_api.loop_gen(prompt, model_choice, temp)
-    elif model_choice in gemini_api.model_list:
+    elif model_choice in model_info["models"]["Google"].keys():
         gemini_model = True
         if translate_prompt_choice:
-            prompt, messages, pt_cost = gemini_api.prompt_gen(prompt, model_choice, temp)
-        loop, messages, loop_cost = gemini_api.loop_gen(prompt, model_choice, temp)
+            prompt, messages, pt_cost = gemini_api.prompt_gen(prompt, model_choice, temp, use_thinking)
+        loop, messages, loop_cost = gemini_api.loop_gen(prompt, model_choice, temp, use_thinking)
     elif model_choice in model_info["models"]["Anthropic"].keys(): 
         if translate_prompt_choice:
             prompt, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp, use_thinking)    
@@ -168,7 +172,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 gr.Markdown("## Generation Parameters")
                 model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()), label="Model", value='gemini-2.5-flash')      
                 temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
-                thinking_checkbox = gr.Checkbox(label="Extended Thinking", value=False, visible=False)
+                thinking_checkbox = gr.Checkbox(label="Extended Thinking", value=False, visible=True)
                 prompt_translate_checkbox = gr.Checkbox(label="Prompt Translation", value=False)
                 visualize_checkbox = gr.Checkbox(label="Show MIDI Visualization", value=True)
         prog_button = gr.Button("Generate Loop")

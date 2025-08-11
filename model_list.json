@@ -212,6 +212,8 @@
         "Google": {
             "gemini-2.5-pro": {
                 "extended_thinking": true,
+                "min_thinking_budget": 128,
+                "max_thinking_budget": 32768,
                 "max_tokens": 65536,
                 "cost": {
                     "input": {
@@ -231,6 +233,8 @@
             },
             "gemini-2.5-flash": {
                 "extended_thinking": true,
+                "min_thinking_budget": 0,
+                "max_thinking_budget": 24576,
                 "max_tokens": 65536,
                 "cost": {
                     "input": 0.30,
@@ -243,6 +247,8 @@
             },
             "gemini-2.5-flash-lite": {
                 "extended_thinking": false,
+                "min_thinking_budget": 0,
+                "max_thinking_budget": 0,
                 "max_tokens": 65536,
                 "cost": {
                     "input": 0.10,
@@ -255,6 +261,8 @@
             },
             "gemini-2.0-flash": {
                 "extended_thinking": false,
+                "min_thinking_budget": 0,
+                "max_thinking_budget": 0,
                 "max_tokens": 8192,
                 "cost": {
                     "input": 0.10,
@@ -267,6 +275,8 @@
             },
             "gemini-2.0-flash-lite": {
                 "extended_thinking": false,
+                "min_thinking_budget": 0,
+                "max_thinking_budget": 0,
                 "max_tokens": 8192,
                 "cost": {
                     "input": 0.075,

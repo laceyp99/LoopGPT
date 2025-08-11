@@ -9,6 +9,7 @@ import src.utils as utils
 import src.objects as objects
 import logging
 import os
+import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,20 +20,9 @@ with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
 with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
     pt_prompt = f.read()
 
-# List of available models from Google Gemini (as of 3/29/2025)
-model_list = [
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite-preview-06-17', 
-    'gemini-2.0-flash', 
-    'gemini-2.0-flash-lite'
-]
-
-# COST OF MODELS
-# NOTE: The Gemini API "free tier" is offered with lower rate limits.
-# Google AI Studio usage is completely free in all available countries.
-# The Gemini API "paid tier" comes with higher rate limits, additional features,
-# and different data handling.
+# Load model list and pricing details from a JSON file
+with open('model_list.json', 'r') as f:
+    model_info = json.load(f)
 
 def initialize_gemini_client():
     """Initializes and returns a Gemini client using API key from the .env file or the default key.
@@ -69,46 +59,27 @@ def calc_cost(model, input_tokens, output_tokens, cached_tokens=0):
     # Gemini 2.5 Pro
     if model == 'gemini-2.5-pro':
         if input_tokens <= 200000:
-            input_cost = 1.25 / 1000000
-            output_cost = 10.00 / 1000000
-            cache_cost = 0.31 / 1000000
+            input_cost = model_info["models"]["Google"][model]["cost"]["input"]["<=200k"] / 1000000
+            output_cost = model_info["models"]["Google"][model]["cost"]["output"]["<=200k"] / 1000000
+            cache_cost = model_info["models"]["Google"][model]["cost"]["cache"]["<=200k"] / 1000000
         else:
-            input_cost = 2.50 / 1000000
-            output_cost = 15.00 / 1000000
-            cache_cost = 0.625 / 1000000
+            input_cost = model_info["models"]["Google"][model]["cost"]["input"][">200k"] / 1000000
+            output_cost = model_info["models"]["Google"][model]["cost"]["output"][">200k"] / 1000000
+            cache_cost = model_info["models"]["Google"][model]["cost"]["cache"][">200k"] / 1000000
         return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
-
-    # Gemini 2.5 Flash
-    elif model == 'gemini-2.5-flash':
-        input_cost = 0.30 / 1000000
-        output_cost = 2.50 / 1000000
-        cache_cost = 0.075 / 1000000
-        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
-
-    # Gemini 2.5 Flash-Lite Preview
-    elif model == 'gemini-2.5-flash-lite-preview-06-17':
-        input_cost = 0.10 / 1000000
-        output_cost = 0.40 / 1000000
-        cache_cost = 0.025 / 1000000
-        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
-
-    # Gemini 2.0 Flash
-    elif model == 'gemini-2.0-flash':
-        input_cost = 0.10 / 1000000
-        output_cost = 0.40 / 1000000
-        cache_cost = 0.025 / 1000000
-        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
-
-    # Gemini 2.0 Flash-Lite
-    elif model == 'gemini-2.0-flash-lite':
-        input_cost = 0.075 / 1000000
-        output_cost = 0.30 / 1000000
-        return (input_tokens * input_cost) + (output_tokens * output_cost)
     else:
-        logger.warning(f"Cost calculation not implemented for model: {model}")
-        return 0
+        # For other models, use the default cost structure
+        input_cost = model_info["models"]["Google"][model]["cost"]["input"] / 1000000
+        output_cost = model_info["models"]["Google"][model]["cost"]["output"] / 1000000
 
-def prompt_gen(prompt, model, temp=0.0):
+        if "cache" not in model_info["models"]["Google"][model]["cost"]:
+            cache_cost = 0
+        else:
+            cache_cost = model_info["models"]["Google"][model]["cost"]["cache"]["text"] / 1000000
+        
+        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
+
+def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
     """
     Generate text content using the specified model and prompt.
 
@@ -121,15 +92,27 @@ def prompt_gen(prompt, model, temp=0.0):
         tuple: (content, messages, cost)
     """
     client = initialize_gemini_client()
+
+    if model_info["models"]["Google"][model]["extended_thinking"] and use_thinking:
+        config = types.GenerateContentConfig(
+            system_instruction=pt_prompt,
+            temperature=temp,
+            response_mime_type='text/plain',
+            thinking_config=types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])
+        )
+    else:
+        config = types.GenerateContentConfig(
+            system_instruction=pt_prompt,
+            temperature=temp,
+            response_mime_type='text/plain',
+            thinking_config=types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])
+        )
+    
     # Make the API call
     response = client.models.generate_content(
         model=model,
         contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=pt_prompt,
-            temperature=temp,
-            response_mime_type='text/plain',
-        )
+        config=config
     )
     content = response.text
     # Format into a message history for training and debugging purposes
@@ -145,7 +128,7 @@ def prompt_gen(prompt, model, temp=0.0):
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
 
-def loop_gen(prompt, model, temp=0.0):
+def loop_gen(prompt, model, temp=0.0, use_thinking=False):
     """
     Generate a MIDI bar (chord progression/melody) using the specified model and prompt.
 
@@ -158,16 +141,22 @@ def loop_gen(prompt, model, temp=0.0):
         tuple: (midi_loop, messages, cost)
     """
     client = initialize_gemini_client()
+
+    config = {
+        'response_mime_type': 'application/json',
+        'response_schema': objects.Loop_G,
+        'temperature': temp,
+        'system_instruction': loop_prompt,
+    }
+    if model_info["models"]["Google"][model]["extended_thinking"] and use_thinking:
+        config['thinking_config'] = types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])
+    else:
+        config['thinking_config'] = types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])
     # Make the API call
     response = client.models.generate_content(
         model=model,
         contents=prompt,
-        config={
-            'response_mime_type': 'application/json',
-            'response_schema': objects.Loop_G,
-            'temperature': temp,
-            'system_instruction': loop_prompt,
-        },
+        config=config
     )    
     # Extract the json string response
     assistant_response = response.text
