@@ -73,22 +73,23 @@ def scale_test(midi, root, scale):
     Raises:
         ValueError: If the provided root note or scale mode is invalid.
     """
-    # Map each note name to its pitch class.
-    note_to_pc = {}
-    for pc, names in enumerate(note_names):
-        for name in names:
-            note_to_pc[name.upper()] = pc
-
     # Validate root and scale.
     if root.upper() not in note_to_pc:
         raise ValueError(f"Invalid root note: {root}")
     if scale not in scale_intervals:
         raise ValueError(f"Invalid scale mode: {scale}")
 
+    # Map each note name to its pitch class.
+    note_to_pc = {}
+    for pc, names in enumerate(note_names):
+        for name in names:
+            note_to_pc[name.upper()] = pc
+
     # Determine the acceptable pitch classes for the given scale.
     root_pc = note_to_pc[root.upper()]
     acceptable_pcs = [(root_pc + interval) % 12 for interval in scale_intervals[scale]]
     # print(f"Root Note: {root}, Scale Mode: {scale}, Acceptable Pitch Classes: {acceptable_pcs}")
+
     # Iterate through all messages in the MIDI file.
     for msg in midi:
         if msg.type == "note_on" and msg.velocity > 0:
@@ -112,14 +113,12 @@ def duration_test(midi, duration):
         raise ValueError(f"Invalid duration: {duration}")
 
     duration_ticks = note_lengths[duration] 
-    # print(f"Duration in ticks for {duration}: {duration_ticks}")  
     ticks_per_beat = midi.ticks_per_beat
-    # print(f"Ticks per beat: {ticks_per_beat}")
     expected_ticks = duration_ticks * ticks_per_beat
     # print(f"Expected duration in ticks: {expected_ticks}")
     
     for track in midi.tracks:
-        active_notes = {}  # note -> start_time_in_ticks
+        active_notes = {}
         current_time_ticks = 0
         for msg in track:
             current_time_ticks += msg.time
@@ -130,6 +129,7 @@ def duration_test(midi, duration):
                     start_time = active_notes.pop(msg.note)
                     note_duration = current_time_ticks - start_time
                     # print(f"Note {msg.note} duration: {note_duration} ticks")
+                    
                     if note_duration != expected_ticks:
                         return False
     return True
