@@ -8,9 +8,10 @@ import src.utils as utils
 import src.objects as objects
 import logging
 import json
+import sys
 import os
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Load prompt files

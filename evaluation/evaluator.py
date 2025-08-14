@@ -1,14 +1,19 @@
 import asyncio
 import json
+from mido import MidiFile
 from datetime import datetime
 from rich.live import Live
 from rich.table import Table
+import logging
 import time
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import gemini_api, claude_api, o_api, gpt_api
 from src.midi_processing import loop_to_midi
 from evaluation import tests
-from mido import MidiFile
 
+logging.disable(logging.INFO)
 
 # Load model list and rate limiting details from a JSON file
 with open('model_list.json', 'r') as f:
@@ -133,21 +138,21 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
             temp=0.3,
             use_thinking=use_thinking,
             translate_prompt_choice=False
-        )
-        
-        midi = MidiFile()
+        )        
+        midi_file = MidiFile()
         if provider == "Google":
-            midi_file = loop_to_midi(midi, midi_data, times_as_string=True)
+            loop_to_midi(midi_file, midi_data, times_as_string=True)
         else:
-            midi_file = loop_to_midi(midi, midi_data, times_as_string=False)
+            loop_to_midi(midi_file, midi_data, times_as_string=False)
         test_results = run_midi_tests(midi_file, root, scale, duration)
 
         result = {
-            "timestamp": datetime.utcnow().isoformat(),
+            # "timestamp": datetime.datetime.now(datetime.UTC),
             "provider": provider,
             "model": model,
             "use_thinking": use_thinking,
             "prompt": {
+                "full_prompt": prompt,
                 "root": root,
                 "scale": scale,
                 "duration": duration
@@ -218,21 +223,31 @@ async def main():
 
         await asyncio.gather(*tasks)
 
-    with Live(table, refresh_per_second=4):
+    with Live(table, refresh_per_second=4) as live:
         task = asyncio.create_task(runner())
         while not task.done():
-            table.rows.clear()
+
+            table = Table(title="Model Evaluation Progress")
+            table.add_column("Provider")
+            table.add_column("Model")
+            table.add_column("Prompt")
+            table.add_column("Bar Count")
+            table.add_column("In Key")
+            table.add_column("Note Length")
+            table.add_column("Pass/Fail")
+
             for r in results:
                 table.add_row(
                     r["provider"],
                     r["model"],
-                    r["prompt"],
+                    r["prompt"]["full_prompt"],
                     "Yes" if r["use_thinking"] else "No",
                     "✅" if r["bar_count_pass"] else "❌",
                     "✅" if r["in_key_pass"] else "❌",
                     "✅" if r["note_length_pass"] else "❌",
                     "✅" if r["output_pass"] else "❌"
                 )
+            live.update(table)
             await asyncio.sleep(0.1)
         await task
 

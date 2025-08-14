@@ -3,4 +3,5 @@ loop.json
 prompt_translation.json
 output.mid
 evaluation/NOTES.md
+Generations/
 __pycache__/

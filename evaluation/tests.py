@@ -73,21 +73,21 @@ def scale_test(midi, root, scale):
     Raises:
         ValueError: If the provided root note or scale mode is invalid.
     """
-    # Validate root and scale.
-    if root.upper() not in note_to_pc:
-        raise ValueError(f"Invalid root note: {root}")
-    if scale not in scale_intervals:
-        raise ValueError(f"Invalid scale mode: {scale}")
-
     # Map each note name to its pitch class.
     note_to_pc = {}
     for pc, names in enumerate(note_names):
         for name in names:
             note_to_pc[name.upper()] = pc
 
+    # Validate root and scale.
+    if root.upper() not in note_to_pc:
+        raise ValueError(f"Invalid root note: {root}")
+    if scale.lower() not in scale_intervals:
+        raise ValueError(f"Invalid scale mode: {scale.lower()}")
+
     # Determine the acceptable pitch classes for the given scale.
     root_pc = note_to_pc[root.upper()]
-    acceptable_pcs = [(root_pc + interval) % 12 for interval in scale_intervals[scale]]
+    acceptable_pcs = [(root_pc + interval) % 12 for interval in scale_intervals[scale.lower()]]
     # print(f"Root Note: {root}, Scale Mode: {scale}, Acceptable Pitch Classes: {acceptable_pcs}")
 
     # Iterate through all messages in the MIDI file.
