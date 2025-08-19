@@ -7,6 +7,7 @@ import src.gemini_api as gemini_api
 import src.claude_api as claude_api
 import src.gpt_api as gpt_api
 import src.o_api as o_api
+import src.runs as runs
 from datetime import datetime
 from mido import MidiFile
 from PIL import Image
@@ -96,60 +97,45 @@ def run_loop(key, scale, description, temp, model_choice, use_thinking, translat
         str: The path to the generated MIDI file.
         PIL.Image: The MIDI visualization image if show_visual is True, otherwise None.
     """
-    # If the user provided API keys, update environment variables
-    if openai_key and openai_key.strip() != "":
-        os.environ["OPENAI_API_KEY"] = openai_key.strip()
-    if gemini_key and gemini_key.strip() != "":
-        os.environ["USER_GEMINI_API_KEY"] = gemini_key.strip()
-    if claude_key and claude_key.strip() != "":
-        os.environ["ANTHROPIC_API_KEY"] = claude_key.strip()
-    
-    # Condense the prompt into a single string for the model
-    prompt = f"{key} {scale} {description}."
-    
-    gemini_model = False
-    pt_cost = 0
-    loop_cost = 0
-    
-    # Route the generation process based on model choice
-    
-    if model_choice in model_info["models"]["OpenAI"].keys():
-        if model_info["models"]["OpenAI"][model_choice]["extended_thinking"]:
-            if translate_prompt_choice:
-                prompt, messages, pt_cost = o_api.prompt_gen(prompt, model_choice)
-            loop, messages, loop_cost = o_api.loop_gen(prompt, model_choice)
-        else:
-            if translate_prompt_choice:
-                prompt, messages, pt_cost = gpt_api.prompt_gen(prompt, model_choice, temp)    
-            loop, messages, loop_cost = gpt_api.loop_gen(prompt, model_choice, temp)
-    elif model_choice in model_info["models"]["Google"].keys():
-        gemini_model = True
-        if translate_prompt_choice:
-            prompt, messages, pt_cost = gemini_api.prompt_gen(prompt, model_choice, temp, use_thinking)
-        loop, messages, loop_cost = gemini_api.loop_gen(prompt, model_choice, temp, use_thinking)
-    elif model_choice in model_info["models"]["Anthropic"].keys(): 
-        if translate_prompt_choice:
-            prompt, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp, use_thinking)    
-        loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp, use_thinking)
-    else:
-        return "Invalid Model Selected", 0
-    
-    # Calculate total cost
-    total_cost = pt_cost + loop_cost
-    print(f"Total cost: {total_cost}")
-    
-    # Convert the generated loop into a MIDI file
-    midi = MidiFile() 
-    loop_to_midi(midi, loop, times_as_string=gemini_model)
-    output_path = "output.mid"
-    midi.save(output_path)
-    
-    # If the user wants to visualize the MIDI file, generate the visualization
-    visualization = None
-    if show_visual:
-        visualization = Image.open(io.BytesIO(visualize_midi_beats(midi)))
-    
-    return output_path, visualization
+    error = ""
+    try:
+        # If the user provided API keys, update environment variables
+        if openai_key and openai_key.strip() != "":
+            os.environ["OPENAI_API_KEY"] = openai_key.strip()
+        if gemini_key and gemini_key.strip() != "":
+            os.environ["USER_GEMINI_API_KEY"] = gemini_key.strip()
+        if claude_key and claude_key.strip() != "":
+            os.environ["ANTHROPIC_API_KEY"] = claude_key.strip()
+        
+        # Condense the prompt into a single string for the model
+        prompt = f"{key} {scale} {description}."
+        
+        # Generate the loop using the selected model and parameters
+        loop, messages, total_cost = runs.generate_midi(
+            model_choice=model_choice, 
+            prompt=prompt, 
+            temp=temp, 
+            translate_prompt_choice=translate_prompt_choice, 
+            use_thinking=use_thinking
+        )
+        print(f"Total cost: {total_cost}")
+        
+        # Convert the generated loop into a MIDI file
+        midi = MidiFile() 
+        loop_to_midi(midi, loop, times_as_string=model_choice in model_info["models"]["Google"].keys())
+        output_path = "output.mid"
+        midi.save(output_path)
+        
+        # If the user wants to visualize the MIDI file, generate the visualization
+        visualization = None
+        if show_visual:
+            visualization = Image.open(io.BytesIO(visualize_midi_beats(midi)))
+        
+        return output_path, visualization, error
+    except Exception as e:
+        # Catch any exception and return the error message
+        error = str(e)
+        return None, None, error
 
 # Gradio interface
 with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") as demo:
@@ -178,6 +164,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
         prog_button = gr.Button("Generate Loop")
         prog_output = gr.File(label="Download Generated MIDI")  
         vis_output = gr.Image(label="MIDI Visualization")
+        error_message = gr.Textbox(label="Error Message", interactive=False)
         # Set visibility of temperature slider and thinking checkbox based on model selection
         model_choice_input.change(
             update_temp_visibility, 
@@ -199,7 +186,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
         prog_button.click(
             run_loop,
             inputs=[key_input, mode_input, description_input, temp_input, model_choice_input, thinking_checkbox, prompt_translate_checkbox, visualize_checkbox, openai_key_input, gemini_key_input, claude_key_input],
-            outputs=[prog_output, vis_output]
+            outputs=[prog_output, vis_output, error_message]
         )
     # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
     with gr.Tab(label="Prompt Editor"):

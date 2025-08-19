@@ -1,7 +1,7 @@
 import asyncio
 import json
 from mido import MidiFile
-from datetime import datetime
+import datetime
 from rich.live import Live
 from rich.table import Table
 import logging
@@ -60,6 +60,17 @@ def save_generation_messages(provider, model, use_thinking, root, scale, duratio
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(messages, f, indent=2)
 
+def run_midi_tests(midi_data, root, scale, duration):
+    four_bars = tests.four_bars(midi_data)
+    key_test = tests.scale_test(midi_data, root, scale)
+    duration_test = tests.duration_test(midi_data, duration)
+    return {
+        "bar_count_pass": four_bars,
+        "in_key_pass": key_test,
+        "note_length_pass": duration_test,
+        "output_pass": four_bars and key_test and duration_test,
+    }
+
 async def call_model_async(prompt, model_choice, temp, use_thinking, translate_prompt_choice):
     """
     Async wrapper for calling the appropriate model API to generate a loop or prompt.
@@ -117,17 +128,6 @@ async def call_model_async(prompt, model_choice, temp, use_thinking, translate_p
 
     # Run sync call in separate thread to allow async concurrency
     return await asyncio.to_thread(sync_call)
-
-def run_midi_tests(midi_data, root, scale, duration):
-    four_bars = tests.four_bars(midi_data)
-    key_test = tests.scale_test(midi_data, root, scale)
-    duration_test = tests.duration_test(midi_data, duration)
-    return {
-        "bar_count_pass": four_bars,
-        "in_key_pass": key_test,
-        "note_length_pass": duration_test,
-        "output_pass": four_bars and key_test and duration_test,
-    }
 
 async def evaluate_model(provider, model, prompt, semaphores, results, use_thinking, root, scale, duration):
     async with semaphores[provider]:
@@ -203,6 +203,7 @@ async def main():
     table.add_column("Provider")
     table.add_column("Model")
     table.add_column("Prompt")
+    table.add_column("Use Thinking")
     table.add_column("Bar Count")
     table.add_column("In Key")
     table.add_column("Note Length")
@@ -218,7 +219,7 @@ async def main():
 
                     # If extended_thinking is supported, also test with thinking
                     ext_think = model_info["models"][provider][model]["extended_thinking"]
-                    if ext_think:
+                    if ext_think and provider != "OpenAI": 
                         tasks.append(evaluate_model(provider, model, prompt, semaphores, results, use_thinking=True, root=root, scale=scale, duration=duration))
 
         await asyncio.gather(*tasks)
@@ -231,6 +232,7 @@ async def main():
             table.add_column("Provider")
             table.add_column("Model")
             table.add_column("Prompt")
+            table.add_column("Use Thinking")
             table.add_column("Bar Count")
             table.add_column("In Key")
             table.add_column("Note Length")

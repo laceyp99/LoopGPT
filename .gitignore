@@ -1,6 +1,7 @@
 venv/
 loop.json
 prompt_translation.json
+evaluation_log.json
 output.mid
 evaluation/NOTES.md
 Generations/
