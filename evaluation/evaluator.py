@@ -10,6 +10,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import gemini_api, claude_api, o_api, gpt_api
+import src.runs as runs
 from src.midi_processing import loop_to_midi
 from evaluation import tests
 
@@ -89,41 +90,16 @@ async def call_model_async(prompt, model_choice, temp, use_thinking, translate_p
         Returns:
             tuple: Generated loop, messages, and cost.
         """
-        pt_cost = 0
         start_time = time.time()
-        if model_choice in model_info["models"]["OpenAI"]:
-            if model_info["models"]["OpenAI"][model_choice]["extended_thinking"]:
-                if translate_prompt_choice:
-                    prompt_translated, messages, pt_cost = o_api.prompt_gen(prompt, model_choice)
-                    loop, messages, loop_cost = o_api.loop_gen(prompt_translated, model_choice)
-                else:
-                    loop, messages, loop_cost = o_api.loop_gen(prompt, model_choice)
-            else:
-                if translate_prompt_choice:
-                    prompt_translated, messages, pt_cost = gpt_api.prompt_gen(prompt, model_choice, temp)
-                    loop, messages, loop_cost = gpt_api.loop_gen(prompt_translated, model_choice, temp)
-                else:
-                    loop, messages, loop_cost = gpt_api.loop_gen(prompt, model_choice, temp)
-
-        elif model_choice in model_info["models"]["Google"]:
-            if translate_prompt_choice:
-                prompt_translated, messages, pt_cost = gemini_api.prompt_gen(prompt, model_choice, temp, use_thinking)
-                loop, messages, loop_cost = gemini_api.loop_gen(prompt_translated, model_choice, temp, use_thinking)
-            else:
-                loop, messages, loop_cost = gemini_api.loop_gen(prompt, model_choice, temp, use_thinking)
-
-        elif model_choice in model_info["models"]["Anthropic"]:
-            if translate_prompt_choice:
-                prompt_translated, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp, use_thinking)
-                loop, messages, loop_cost = claude_api.loop_gen(prompt_translated, model_choice, temp, use_thinking)
-            else:
-                loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp, use_thinking)
-
-        else:
-            raise ValueError("Invalid Model Selected")
-
+        loop, messages, total_cost = runs.generate_midi(
+            model_choice=model_choice, 
+            prompt=prompt, 
+            temp=temp, 
+            translate_prompt_choice=translate_prompt_choice, 
+            use_thinking=use_thinking
+        )
         time_elapsed = time.time() - start_time
-        total_cost = pt_cost + loop_cost if translate_prompt_choice else loop_cost
+        # print(f"Total cost: {total_cost}")
         return loop, messages, total_cost, time_elapsed
 
     # Run sync call in separate thread to allow async concurrency
