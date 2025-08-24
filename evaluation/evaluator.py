@@ -325,48 +325,7 @@ async def main():
 
         # ensure final results are shown once all tasks complete
         await task
-
-        # # final refresh after completion
-        # final_table = Table(title="Model Evaluation Progress (final)")
-        # final_table.add_column("Provider")
-        # final_table.add_column("Model")
-        # final_table.add_column("Thinking")
-        # final_table.add_column("Tested")
-        # final_table.add_column("Total")
-        # final_table.add_column("Pass Rate")
-        # final_table.add_column("Avg Latency (s)")
-        # final_table.add_column("Avg Cost")
-
-        # # recompute stats (same aggregation as above)
-        # stats = {}
-        # for r in results:
-        #     key = (r["provider"], r["model"], r["use_thinking"])
-        #     s = stats.setdefault(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
-        #     s["tested"] += 1
-        #     s["passes"] += 1 if r["output_pass"] else 0
-        #     s["latency_sum"] += r.get("api_latency", 0.0) or 0.0
-        #     s["cost_sum"] += r.get("cost", 0.0) or 0.0
-
-        # for key, total in expected_tests.items():
-        #     provider, model, use_thinking = key
-        #     s = stats.get(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
-        #     tested = s["tested"]
-        #     passes = s["passes"]
-        #     avg_latency = (s["latency_sum"] / tested) if tested else 0.0
-        #     avg_cost = (s["cost_sum"] / tested) if tested else 0.0
-        #     pass_rate = (passes / tested * 100.0) if tested else 0.0
-
-        #     final_table.add_row(
-        #         provider,
-        #         model,
-        #         "Yes" if use_thinking else "No",
-        #         f"{tested}",
-        #         f"{total}",
-        #         f"{pass_rate:.1f}%",
-        #         f"{avg_latency:.2f}",
-        #         f"{avg_cost:.4f}"
-        #     )
-
+        
         live.update(new_table)
 
 if __name__ == "__main__":
