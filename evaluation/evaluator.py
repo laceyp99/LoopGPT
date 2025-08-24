@@ -1,46 +1,74 @@
-import asyncio
-import json
-from mido import MidiFile
-import datetime
 from rich.live import Live
 from rich.table import Table
+from rich.console import Console
+from mido import MidiFile
 import logging
+import datetime
+import asyncio
+import json
 import time
 import sys
 import os
+
+# Imports from the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import gemini_api, claude_api, o_api, gpt_api
 import src.runs as runs
 from src.midi_processing import loop_to_midi
 from evaluation import tests
 
+# Disable logging for cleaner output
 logging.disable(logging.INFO)
+console = Console(force_terminal=True)
 
 # Load model list and rate limiting details from a JSON file
 with open('model_list.json', 'r') as f:
     model_info = json.load(f)
 
-LOG_FILE = "evaluation_log.json"
-
 def append_log(entry):
-    """Append an entry to the JSON log file, keeping it as a list."""
-    if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 0:
-        with open(LOG_FILE, "r+", encoding="utf-8") as f:
+    """ Append an entry to the JSON log file, keeping it as a list.
+    
+    Args:
+        entry (dict): The log entry to append.
+    
+    Returns:
+        None: The function writes directly to the log file.
+    """
+    # If the log file exists and has content
+    if os.path.exists("evaluation_log.json") and os.path.getsize("evaluation_log.json") > 0:
+        with open("evaluation_log.json", "r+", encoding="utf-8") as f:
             try:
                 data = json.load(f)
                 if not isinstance(data, list):
                     raise ValueError("Log file is not a JSON list")
             except json.JSONDecodeError:
                 data = []
+            # Append the new entry to the existing list
             data.append(entry)
             f.seek(0)
+            # Write the updated list back to the file
             json.dump(data, f, indent=2)
             f.truncate()
+    # If the log file does not exist or is empty, create a new list with the entry
     else:
-        with open(LOG_FILE, "w", encoding="utf-8") as f:
+        with open("evaluation_log.json", "w", encoding="utf-8") as f:
             json.dump([entry], f, indent=2)
 
 def save_generation_messages(provider, model, use_thinking, root, scale, duration, messages):
+    """ Save the generation messages to a structured directory based on provider, model, and thinking state.
+
+    Args:
+        provider (str): The name of the provider (e.g., "OpenAI", "Google").
+        model (str): The model name.
+        use_thinking (bool): Whether extended thinking was used.
+        root (str): The musical root note.
+        scale (str): The musical scale.
+        duration (str): The note duration.
+        messages (list): The messages generated during the process.
+    
+    Returns:
+        None: Saves the messages to a JSON file in a structured directory.
+    """
     # Convert bool to readable folder name
     thinking_folder = "thinking" if use_thinking else "no-thinking"
     
@@ -62,6 +90,17 @@ def save_generation_messages(provider, model, use_thinking, root, scale, duratio
         json.dump(messages, f, indent=2)
 
 def run_midi_tests(midi_data, root, scale, duration):
+    """ Run a series of tests on the generated MIDI data to validate its structure and musicality.
+
+    Args:
+        midi_data (MidiFile): The MIDI data to test.
+        root (str): The musical root note.
+        scale (str): The musical scale.
+        duration (str): The note duration.
+    
+    Returns:
+        dict: A dictionary containing the results of the tests, including whether each test passed.
+    """
     four_bars = tests.four_bars(midi_data)
     key_test = tests.scale_test(midi_data, root, scale)
     duration_test = tests.duration_test(midi_data, duration)
@@ -88,8 +127,9 @@ async def call_model_async(prompt, model_choice, temp, use_thinking, translate_p
             translate_prompt_choice (bool): Whether to translate the prompt.
 
         Returns:
-            tuple: Generated loop, messages, and cost.
+            tuple: Generated loop, messages, cost, and time elapsed.
         """
+        # Making the designated API call and measuring API latency
         start_time = time.time()
         loop, messages, total_cost = runs.generate_midi(
             model_choice=model_choice, 
@@ -99,31 +139,48 @@ async def call_model_async(prompt, model_choice, temp, use_thinking, translate_p
             use_thinking=use_thinking
         )
         time_elapsed = time.time() - start_time
-        # print(f"Total cost: {total_cost}")
         return loop, messages, total_cost, time_elapsed
 
     # Run sync call in separate thread to allow async concurrency
     return await asyncio.to_thread(sync_call)
 
 async def evaluate_model(provider, model, prompt, semaphores, results, use_thinking, root, scale, duration):
+    """ Evaluate a specific model with the given prompt and parameters.
+
+    Args:
+        provider (str): The name of the provider (e.g., "OpenAI", "Google").
+        model (str): The model name.
+        prompt (str): The prompt to use for generation.
+        semaphores (dict): Dictionary of semaphores for rate limiting.
+        results (list): List to store results of evaluations.
+        use_thinking (bool): Whether to use extended thinking.
+        root (str): The musical root note.
+        scale (str): The musical scale.
+        duration (str): The note duration.
+    
+    Returns:
+        None: Appends the result to the results list and saves generation messages.
+    """
     async with semaphores[provider]:
-        
+        # Asynchronously calling the model API
         midi_data, messages, cost, time_elapsed = await call_model_async(
             prompt=prompt,
             model_choice=model,
             temp=0.3,
             use_thinking=use_thinking,
             translate_prompt_choice=False
-        )        
+        )
+
+        # Taking the generated loop and converting it to MIDI
         midi_file = MidiFile()
         if provider == "Google":
             loop_to_midi(midi_file, midi_data, times_as_string=True)
         else:
             loop_to_midi(midi_file, midi_data, times_as_string=False)
-        test_results = run_midi_tests(midi_file, root, scale, duration)
 
+        # Run tests on the generated MIDI file
+        test_results = run_midi_tests(midi_file, root, scale, duration)
         result = {
-            # "timestamp": datetime.datetime.now(datetime.UTC),
             "provider": provider,
             "model": model,
             "use_thinking": use_thinking,
@@ -137,29 +194,44 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
             "cost": cost,
             **test_results
         }
+
+        # Log and save the results
         results.append(result)
         append_log(result)
         save_generation_messages(provider, model, use_thinking, root, scale, duration, messages)
 
-
 async def main():
+    """ Main function to orchestrate the evaluation of models across multiple prompts and configurations. """
+
+    # Prompt options
     roots = ["C", "A", "G"]
     scales = ["Major", "Minor"]
     durations = ["quarter", "eighth"]
-
+    # Generate all combinations of prompts
     prompts = [
         (f"an arpeggiator in {root} {scale} using only {duration} note lengths", root, scale, duration)
         for root in roots
         for scale in scales
         for duration in durations
     ]
+    total_prompt_count = len(prompts)
 
-    # Build provider → models dict from JSON
     models_by_provider = {
         "OpenAI": list(model_info["models"]["OpenAI"].keys()),
         "Google": list(model_info["models"]["Google"].keys()),
         "Anthropic": list(model_info["models"]["Anthropic"].keys())
     }
+
+    # Compute expected total tests per (provider, model, use_thinking)
+    expected_tests = {}  # key: (provider, model, use_thinking) -> expected_count
+    for provider, models in models_by_provider.items():
+        for model in models:
+            ext_think = model_info["models"][provider][model]["extended_thinking"]
+            # Always test without thinking
+            expected_tests[(provider, model, False)] = total_prompt_count
+            # If supported AND not OpenAI (they don't support toggling reasoning off), add thinking runs
+            if ext_think and provider != "OpenAI":
+                expected_tests[(provider, model, True)] = total_prompt_count
 
     # Build semaphores dynamically from RPM
     semaphores = {}
@@ -175,17 +247,19 @@ async def main():
 
     results = []
 
+    # Live table that shows per-model aggregated progress
     table = Table(title="Model Evaluation Progress")
     table.add_column("Provider")
     table.add_column("Model")
-    table.add_column("Prompt")
-    table.add_column("Use Thinking")
-    table.add_column("Bar Count")
-    table.add_column("In Key")
-    table.add_column("Note Length")
-    table.add_column("Pass/Fail")
+    table.add_column("Thinking")
+    table.add_column("Tested")
+    table.add_column("Total")
+    table.add_column("Pass Rate")
+    table.add_column("Avg Latency (s)")
+    table.add_column("Avg Cost")
 
     async def runner():
+        """ Runner function to execute model evaluations concurrently. """
         tasks = []
         for prompt, root, scale, duration in prompts:
             for provider, models in models_by_provider.items():
@@ -200,34 +274,100 @@ async def main():
 
         await asyncio.gather(*tasks)
 
-    with Live(table, refresh_per_second=4) as live:
+    # Start the live table and run the evaluations
+    with Live(table, console=console, refresh_per_second=4) as live:
         task = asyncio.create_task(runner())
+
         while not task.done():
+            # Build a fresh table every refresh
+            new_table = Table(title="Model Evaluation Progress")
+            new_table.add_column("Provider")
+            new_table.add_column("Model")
+            new_table.add_column("Thinking")
+            new_table.add_column("Tested")
+            new_table.add_column("Total")
+            new_table.add_column("Pass Rate")
+            new_table.add_column("Avg Latency (s)")
+            new_table.add_column("Avg Cost")
 
-            table = Table(title="Model Evaluation Progress")
-            table.add_column("Provider")
-            table.add_column("Model")
-            table.add_column("Prompt")
-            table.add_column("Use Thinking")
-            table.add_column("Bar Count")
-            table.add_column("In Key")
-            table.add_column("Note Length")
-            table.add_column("Pass/Fail")
-
+            # Aggregate current results into stats per (provider, model, use_thinking)
+            stats = {}
             for r in results:
-                table.add_row(
-                    r["provider"],
-                    r["model"],
-                    r["prompt"]["full_prompt"],
-                    "Yes" if r["use_thinking"] else "No",
-                    "✅" if r["bar_count_pass"] else "❌",
-                    "✅" if r["in_key_pass"] else "❌",
-                    "✅" if r["note_length_pass"] else "❌",
-                    "✅" if r["output_pass"] else "❌"
+                key = (r["provider"], r["model"], r["use_thinking"])
+                s = stats.setdefault(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+                s["tested"] += 1
+                s["passes"] += 1 if r["output_pass"] else 0
+                s["latency_sum"] += r.get("api_latency", 0.0) or 0.0
+                s["cost_sum"] += r.get("cost", 0.0) or 0.0
+
+            for key, total in expected_tests.items():
+                provider, model, use_thinking = key
+                s = stats.get(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+                tested = s["tested"]
+                passes = s["passes"]
+                avg_latency = (s["latency_sum"] / tested) if tested else 0.0
+                avg_cost = (s["cost_sum"] / tested) if tested else 0.0
+                pass_rate = (passes / tested * 100.0) if tested else 0.0
+
+                new_table.add_row(
+                    provider,
+                    model,
+                    "Yes" if use_thinking else "No",
+                    f"{tested}",
+                    f"{total}",
+                    f"{pass_rate:.1f}%",
+                    f"{avg_latency:.2f}",
+                    f"{avg_cost:.4f}"
                 )
-            live.update(table)
-            await asyncio.sleep(0.1)
+
+            live.update(new_table)
+            await asyncio.sleep(0.25)
+
+        # ensure final results are shown once all tasks complete
         await task
+
+        # # final refresh after completion
+        # final_table = Table(title="Model Evaluation Progress (final)")
+        # final_table.add_column("Provider")
+        # final_table.add_column("Model")
+        # final_table.add_column("Thinking")
+        # final_table.add_column("Tested")
+        # final_table.add_column("Total")
+        # final_table.add_column("Pass Rate")
+        # final_table.add_column("Avg Latency (s)")
+        # final_table.add_column("Avg Cost")
+
+        # # recompute stats (same aggregation as above)
+        # stats = {}
+        # for r in results:
+        #     key = (r["provider"], r["model"], r["use_thinking"])
+        #     s = stats.setdefault(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+        #     s["tested"] += 1
+        #     s["passes"] += 1 if r["output_pass"] else 0
+        #     s["latency_sum"] += r.get("api_latency", 0.0) or 0.0
+        #     s["cost_sum"] += r.get("cost", 0.0) or 0.0
+
+        # for key, total in expected_tests.items():
+        #     provider, model, use_thinking = key
+        #     s = stats.get(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+        #     tested = s["tested"]
+        #     passes = s["passes"]
+        #     avg_latency = (s["latency_sum"] / tested) if tested else 0.0
+        #     avg_cost = (s["cost_sum"] / tested) if tested else 0.0
+        #     pass_rate = (passes / tested * 100.0) if tested else 0.0
+
+        #     final_table.add_row(
+        #         provider,
+        #         model,
+        #         "Yes" if use_thinking else "No",
+        #         f"{tested}",
+        #         f"{total}",
+        #         f"{pass_rate:.1f}%",
+        #         f"{avg_latency:.2f}",
+        #         f"{avg_cost:.4f}"
+        #     )
+
+        live.update(new_table)
 
 if __name__ == "__main__":
     asyncio.run(main())
