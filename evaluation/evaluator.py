@@ -1,3 +1,4 @@
+from pyexpat import model
 from rich.live import Live
 from rich.table import Table
 from rich.console import Console
@@ -163,13 +164,19 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
     """
     async with semaphores[provider]:
         # Asynchronously calling the model API
-        midi_data, messages, cost, time_elapsed = await call_model_async(
-            prompt=prompt,
-            model_choice=model,
-            temp=0.3,
-            use_thinking=use_thinking,
-            translate_prompt_choice=False
-        )
+        try:
+            midi_data, messages, cost, time_elapsed = await call_model_async(
+                prompt=prompt,
+                model_choice=model,
+                temp=0.3,
+                use_thinking=use_thinking,
+                translate_prompt_choice=False
+            )
+        except Exception as e:
+            midi_data = None
+            messages = [str(e)]
+            cost = 0
+            time_elapsed = 0
 
         # Taking the generated loop and converting it to MIDI
         midi_file = MidiFile()
@@ -178,6 +185,10 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
         else:
             loop_to_midi(midi_file, midi_data, times_as_string=False)
 
+        os.makedirs(os.path.join("MIDI", model), exist_ok=True)
+        safe_name = f"{prompt.replace(' ', '_')}_{use_thinking}.mid"
+        midi_file.save(os.path.join("MIDI", model, safe_name))        
+        
         # Run tests on the generated MIDI file
         test_results = run_midi_tests(midi_file, root, scale, duration)
         result = {
