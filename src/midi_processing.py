@@ -6,6 +6,7 @@ It supports converting a loop into MIDI (with proper absolute and delta timing) 
 from mido import MidiTrack, Message, MidiFile, merge_tracks
 import src.objects as objects
 import src.utils as utils
+# import objects, utils
 import math
 
 def loop_to_midi(midi, loop, times_as_string=True):
