@@ -5,6 +5,7 @@ Guidelines for Output:
 * Use the Defined Data Structures:
     * Represent timing with TimeInformation, ensuring sixteenth-note precision (1-16, not 0-based).
     * Notes must be instances of Note, specifying pitch, octave, velocity, and timing.
+        * When building out the Note objects, specify the pitch and the octave separate from each other in the specified structure. (Ex. Instead of pitch=C4 => pitch=C, octave=4)
     * Bars should be structured as Bar, containing a list of notes that form chords and/or melodies.
     * A full loop consists of four bars (Loop), ensuring musical coherence across them.
 * Chord and Melody Generation:

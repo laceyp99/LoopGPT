@@ -1,9 +1,9 @@
 from ollama import chat
 from pydantic import BaseModel
 import ollama
-# import src.utils as utils
-# import src.objects as objects
-import objects, utils, midi_processing
+import src.utils as utils
+import src.objects as objects
+# import objects, utils, midi_processing
 import logging
 import json
 import sys
@@ -29,7 +29,7 @@ def initialize_ollama_client(host_address):
 
 # Load model list
 model_list = [model.model for model in initialize_ollama_client(ollama_host).list().models]
-print(model_list)
+# print(model_list)
 
 def prompt_gen(prompt, model, temp=0.0):
     """
@@ -93,12 +93,3 @@ def loop_gen(prompt, model, temp=0.0):
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")
     return midi_loop, messages, 0
-
-# if __name__ == "__main__":
-#     prompt = "an arpeggiator in G Major using only eighth note lengths "
-#     model = model_list[4]  # Select the fifth model from the list
-#     midi_loop, messages, cost = loop_gen(prompt, model)
-#     midi = MidiFile() 
-#     midi_processing.loop_to_midi(midi, midi_loop, times_as_string=False)
-#     output_path = "output.mid"
-#     midi.save(output_path)

@@ -1,4 +1,5 @@
 import json
+import src.ollama_api as ollama_api
 import src.gemini_api as gemini_api
 import src.claude_api as claude_api
 import src.gpt_api as gpt_api
@@ -9,7 +10,13 @@ with open('model_list.json', 'r') as f:
     model_info = json.load(f)
 
 def generate_midi(model_choice, prompt, temp=0.0, translate_prompt_choice=False, use_thinking=False):
-    if model_choice in model_info["models"]["OpenAI"]:
+    if model_choice in ollama_api.model_list:
+        if translate_prompt_choice:
+            prompt_translated, messages, pt_cost = ollama_api.prompt_gen(prompt, model_choice)
+            loop, messages, loop_cost = ollama_api.loop_gen(prompt_translated, model_choice)
+        else:
+            loop, messages, loop_cost = ollama_api.loop_gen(prompt, model_choice)
+    elif model_choice in model_info["models"]["OpenAI"]:
         if model_info["models"]["OpenAI"][model_choice]["extended_thinking"]:
             if translate_prompt_choice:
                 prompt_translated, messages, pt_cost = o_api.prompt_gen(prompt, model_choice)

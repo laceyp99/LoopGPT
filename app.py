@@ -3,10 +3,7 @@ This file is using Gradio for the LoopGPT application. It makes the generation p
 '''
 from src.midi_processing import loop_to_midi
 from src.utils import visualize_midi_beats
-import src.gemini_api as gemini_api
-import src.claude_api as claude_api
-import src.gpt_api as gpt_api
-import src.o_api as o_api
+import src.ollama_api as ollama_api
 import src.runs as runs
 from datetime import datetime
 from mido import MidiFile
@@ -35,9 +32,13 @@ def update_temp_visibility(model_choice, use_thinking):
         return gr.update(visible=False)
     
     # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
-    if model_choice in model_info["models"]["Anthropic"].keys() and use_thinking and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
+    elif model_choice in model_info["models"]["Anthropic"].keys() and use_thinking and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
         return gr.update(visible=False)
     
+    # Hide temperature for Ollama models
+    elif model_choice in ollama_api.model_list:
+        return gr.update(visible=False)
+
     # Show temperature for all other cases
     return gr.update(visible=True)
 
@@ -156,7 +157,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
             with gr.Column():
                 gr.Markdown("## Generation Parameters")
-                model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()), label="Model", value='gemini-2.5-flash')      
+                model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()) + ollama_api.model_list, label="Model", value='gemini-2.5-flash')      
                 temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
                 thinking_checkbox = gr.Checkbox(label="Extended Thinking", value=False, visible=True)
                 prompt_translate_checkbox = gr.Checkbox(label="Prompt Translation", value=False)
