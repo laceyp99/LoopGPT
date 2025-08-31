@@ -55,13 +55,13 @@ class TimeInformation_G(BaseModel):
 
 # Note Objects
 class Note(BaseModel):
-    pitch: str = Field(..., description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B")')
+    pitch: str = Field(..., description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B") Please do not include the octave number')
     octave: int = Field(..., description='Octave of the note (e.g. 1-8)')
     velocity: int = Field(..., description='Velocity of the note (e.g. 0-127)')
     time: TimeInformation
 
 class Note_G(BaseModel):
-    pitch: str = Field(..., description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B")')
+    pitch: str = Field(..., description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B") Please do not include the octave number')
     octave: int = Field(..., description='Octave of the note (e.g. 1-8)')
     velocity: int = Field(..., description='Velocity of the note (e.g. 0-127)')
     time: TimeInformation_G = Field(..., description='Time information of the note')
