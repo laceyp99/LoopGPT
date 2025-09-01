@@ -1,14 +1,11 @@
-from ollama import chat
-from pydantic import BaseModel
 import ollama
 import src.utils as utils
 import src.objects as objects
 # import objects, utils, midi_processing
 import logging
-import json
 import sys
 import os
-from mido import MidiFile
+from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -19,16 +16,23 @@ with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
 with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
     pt_prompt = f.read()
 
-ollama_host = 'http://localhost:11434'
+# Load environment variables
 
-def initialize_ollama_client(host_address):
-    client = ollama.Client(
-        host=host_address
-    )
+
+def initialize_ollama_client(host_address="http://localhost:11434"):
+    load_dotenv(os.path.join('src', '.env'))
+    if os.getenv('OLLAMA_API_HOST_ADDRESS'):
+        client = ollama.Client(
+            host=os.getenv('OLLAMA_API_HOST_ADDRESS')
+        )
+    else:
+        client = ollama.Client(
+            host=host_address
+        )
     return client
 
 # Load model list
-model_list = [model.model for model in initialize_ollama_client(ollama_host).list().models]
+model_list = [model.model for model in initialize_ollama_client().list().models]
 # print(model_list)
 
 def prompt_gen(prompt, model, temp=0.0):
@@ -44,13 +48,13 @@ def prompt_gen(prompt, model, temp=0.0):
         tuple: (content, messages, cost)
     """
     # Initialize Ollama client and build messages for the API call
-    client = initialize_ollama_client(ollama_host)
+    client = initialize_ollama_client()
     messages = [
         {"role": "system", "content": pt_prompt},
         {"role": "user", "content": prompt},
     ]
     # Make the API call for chat completion
-    completion = chat(
+    completion = client.chat(
         model=model,
         messages=messages,
         options={
@@ -77,13 +81,13 @@ def loop_gen(prompt, model, temp=0.0):
         tuple: (midi_loop, messages, cost)
     """
     # Initialize Ollama client and build messages for the API call
-    client = initialize_ollama_client(ollama_host)
+    client = initialize_ollama_client()
     messages = [
         {"role": "system", "content": loop_prompt},
         {"role": "user", "content": prompt},
     ]
     # Make the structured output API call for MIDI data generation
-    completion = chat(
+    completion = client.chat(
         model=model,
         messages=messages,
         format=objects.Loop.model_json_schema(),
