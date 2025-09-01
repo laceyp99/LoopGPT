@@ -34,10 +34,6 @@ def update_temp_visibility(model_choice, use_thinking):
     # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
     elif model_choice in model_info["models"]["Anthropic"].keys() and use_thinking and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
         return gr.update(visible=False)
-    
-    # Hide temperature for Ollama models
-    elif model_choice in ollama_api.model_list:
-        return gr.update(visible=False)
 
     # Show temperature for all other cases
     return gr.update(visible=True)

@@ -53,7 +53,9 @@ def prompt_gen(prompt, model, temp=0.0):
     completion = chat(
         model=model,
         messages=messages,
-        # temperature=temp
+        options={
+            "temperature": temp
+        }
     )
     # Extract the generated content and calculate cost
     content = completion.message.content
@@ -85,7 +87,9 @@ def loop_gen(prompt, model, temp=0.0):
         model=model,
         messages=messages,
         format=objects.Loop.model_json_schema(),
-        # temperature=temp
+        options={
+            "temperature": temp
+        }
     )
     # Extract the generated MIDI loop and calculate cost
     midi_loop = objects.Loop.model_validate_json(completion.message.content)
