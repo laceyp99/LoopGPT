@@ -68,11 +68,10 @@ def calculate_midi_number(note):
     Returns:
         int: A MIDI number that corresponds to the note.
     """
-    cleaned_pitch = note.pitch.strip()
+    cleaned_pitch = note.pitch.strip().replace("♯", "#").replace("𝄪", "##")
     for char in cleaned_pitch:
-        if char.isdigit():
+        if not char.isalpha() and char != '#':
             cleaned_pitch = cleaned_pitch.replace(char, "")
-    cleaned_pitch = cleaned_pitch.replace("♯", "#").replace("𝄪", "##")
     base_number = base_midi_numbers[cleaned_pitch]
     midi_number = base_number + ((note.octave + 1) * 12)
     return midi_number

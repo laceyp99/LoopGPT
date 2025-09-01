@@ -55,6 +55,7 @@ def four_bars(midi):
             total_time += msg.time
 
     total_beats = total_time / ticks_per_beat
+    # print(f"Total beats: {total_beats} = {total_time}/{ticks_per_beat}")
     total_bars = total_beats / 4
     return total_bars == 4
 
@@ -140,4 +141,4 @@ if __name__ == "__main__":
     midi = MidiFile(test_path)
     print(four_bars(midi))
     print(f"C Major: {scale_test(midi, 'C', 'major')}")
-    print(f"Duration Test: {duration_test(midi, 'half')}")
+    print(f"Duration Test: {duration_test(midi, 'eighth')}")
