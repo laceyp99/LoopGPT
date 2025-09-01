@@ -1,5 +1,7 @@
 # 🎵 LoopGPT: AI-Powered Music Generation 🎵
 
+![LoopGPT Main UI](UI.png)
+
 This project is a music generation tool that enables users to create 4 bar loops using an intuitive Gradio web interface. By leveraging AI model APIs from multiple providers, the application generates MIDI compositions based on user-defined parameters, making it a great resource for musicians, producers, and AI music enthusiasts.
 
 ## ✨ Features
@@ -42,7 +44,7 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
    - Key & scale (Major/minor)  
    - Text description (e.g. “Daniel Caesar R&B soul piano loop”)  
    - Model & temperature  
-   - Optional: Prompt Translation (for LLMs)  
+   - Optional: Prompt Translation (recommended for smaller/less intelligent LLMs)  
    - Optional: Show MIDI visualization  
    - Optional: Edit the System Prompts in the Prompt Editor tab
 
@@ -54,21 +56,58 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 3. **Inspect JSON logs**  
    - `prompt_translation.json` and `loop.json` record the full message exchange and structured loop data  
 
+## Evaluation
+The evaluation suite gives a quick sanity check that each model can follow core structural instructions for a 4‑bar loop.
+
+What we currently test:
+- `Bar length`: Exactly 4 bars based on the expected ticks
+- `Scale compliance`: All note_on events fit the requested key/scale
+   - C, A, and G (Major and minor)
+- `Uniform note length`: All notes the specific length when requested
+   - quarter and eighth notes
+
+How it works:
+- A small grid of prompts (root × scale × note duration) is generated.
+- Each model (and optional “thinking” variant) is asynchronously invoked.
+- Results stream into a live Rich table (counts, pass %, avg latency, avg cost).
+- Artifacts saved for later musical / qualitative review.
+
+### Quick start
+To start the evaluation process locally, run:
+```sh
+python evaluation/evaluator.py
+```
+**Warning:** This will need to run for at least 15 minutes and will cost around $20 in API calls.
+
+### Results
+
+![Top 10 Accurate Models](evaluation\Results\top_10_models_accuracy.png)
+
+![Top 10 Fastest Models](evaluation\Results\top_10_fastest_api_latency.png)
+
+![Top 10 Cheapest Models](evaluation\Results\top_10_cheapest_models.png)
+
 ## 📂 Project Structure
 
 - `app.py`: The Gradio UI layout facilitating the generation process.
+- `model_list.json`: The main JSON database for model pricing and other characteristics
 - `src/`
   - `.env`: Configuration file
   - `gpt_api.py`: OpenAI GPT endpoints (prompt translation & structured loop generation)
   - `o_api.py`: OpenAI reasoning (o series) endpoints
   - `gemini_api.py`: Google Gemini endpoints 
   - `claude_api.py`: Anthropic Claude endpoints
+  - `ollama_api.py`: Ollama API endpoints
   - `midi_processing.py`: Conversion between `Loop` objects and `mido.MidiFile`
   - `objects.py`: Pydantic models for notes, bars, loops (with `_G` variants for Gemini)
   - `utils.py`: MIDI ↔ JSON helpers, visualization, message-logging
+  - `runs.py`: Routes the generation (with prompt translation if directed) to the right API
 - `Prompts/`
   - `loop gen.txt`: System prompt for generating the 4-bar loop
   - `prompt translation.txt`: System prompt for enriching user descriptions
+- `evaluation/`
+  - `tests.py`: The midi validation tests for the evaluation
+  - `evaluator.py`: The async evaluation script with live CLI table logging
 - `requirements.txt`: List of Python dependencies
 - `loop.json`: JSON log of the MIDI-generation conversation
 - `prompt_translation.json`: JSON log of the prompt-translation conversation
