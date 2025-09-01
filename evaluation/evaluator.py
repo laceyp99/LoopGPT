@@ -1,10 +1,8 @@
-from pyexpat import model
 from rich.live import Live
 from rich.table import Table
 from rich.console import Console
 from mido import MidiFile
 import logging
-import datetime
 import asyncio
 import json
 import time
@@ -90,28 +88,6 @@ def save_generation_messages(provider, model, use_thinking, root, scale, duratio
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(messages, f, indent=2)
 
-def run_midi_tests(midi_data, root, scale, duration):
-    """ Run a series of tests on the generated MIDI data to validate its structure and musicality.
-
-    Args:
-        midi_data (MidiFile): The MIDI data to test.
-        root (str): The musical root note.
-        scale (str): The musical scale.
-        duration (str): The note duration.
-    
-    Returns:
-        dict: A dictionary containing the results of the tests, including whether each test passed.
-    """
-    four_bars = tests.four_bars(midi_data)
-    key_test = tests.scale_test(midi_data, root, scale)
-    duration_test = tests.duration_test(midi_data, duration)
-    return {
-        "bar_count_pass": four_bars,
-        "in_key_pass": key_test,
-        "note_length_pass": duration_test,
-        "output_pass": four_bars and key_test and duration_test,
-    }
-
 async def call_model_async(prompt, model_choice, temp, use_thinking, translate_prompt_choice):
     """
     Async wrapper for calling the appropriate model API to generate a loop or prompt.
@@ -190,7 +166,7 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
         midi_file.save(os.path.join("MIDI", model, safe_name))        
         
         # Run tests on the generated MIDI file
-        test_results = run_midi_tests(midi_file, root, scale, duration)
+        test_results = tests.run_midi_tests(midi_file, root, scale, duration)
         result = {
             "provider": provider,
             "model": model,

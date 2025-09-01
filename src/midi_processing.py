@@ -3,11 +3,16 @@ This module provides functions to convert between MIDI files and our loop object
 It supports converting a loop into MIDI (with proper absolute and delta timing) and parsing a MIDI file into our structured loop objects.
 """
 
+import logging
+import sys
 from mido import MidiTrack, Message, MidiFile, merge_tracks
 import src.objects as objects
 import src.utils as utils
 # import objects, utils
 import math
+
+logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def loop_to_midi(midi, loop, times_as_string=True):
     """
@@ -63,10 +68,23 @@ def loop_to_midi(midi, loop, times_as_string=True):
     prev_tick = 0
     # Iterate through the sorted events and create MIDI messages.
     for event_time, event_type, note in events:
+        if not 0 <= note.velocity <= 127:
+            logger.info(f"[MIDI] Handling out-of-range velocity {note.velocity}")
+            velocity = max(0, min(127, note.velocity))
+        else:
+            velocity = note.velocity
+        
+        note_num = utils.calculate_midi_number(note)
+        if not 0 <= note_num <= 127:
+            logger.info(f"[MIDI] Handling out-of-range note {note_num}")
+            note_num = max(0, min(127, note_num))
+            velocity = 0
+        
         # Calculate the delta time from the previous event.
         delta_time = event_time - prev_tick
+        
         # Create the MIDI message using the delta time.
-        msg = Message(event_type, note=utils.calculate_midi_number(note), velocity=note.velocity, time=delta_time)
+        msg = Message(event_type, note=note_num, velocity=velocity, time=delta_time)
         # Append the message to the track and update previous tick.
         track.append(msg)
         prev_tick = event_time

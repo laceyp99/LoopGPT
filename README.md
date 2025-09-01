@@ -106,8 +106,10 @@ python evaluation/evaluator.py
   - `loop gen.txt`: System prompt for generating the 4-bar loop
   - `prompt translation.txt`: System prompt for enriching user descriptions
 - `evaluation/`
+  - `Results/`: Images showing evaluation analysis for the README
   - `tests.py`: The midi validation tests for the evaluation
   - `evaluator.py`: The async evaluation script with live CLI table logging
+  - `ollama_eval.py`: The serial evaluation for local model testing
 - `requirements.txt`: List of Python dependencies
 - `loop.json`: JSON log of the MIDI-generation conversation
 - `prompt_translation.json`: JSON log of the prompt-translation conversation

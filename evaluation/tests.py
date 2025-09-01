@@ -135,6 +135,28 @@ def duration_test(midi, duration):
                         return False
     return True
 
+def run_midi_tests(midi_data, root, scale, duration):
+    """ Run a series of tests on the generated MIDI data to validate its structure and musicality.
+
+    Args:
+        midi_data (MidiFile): The MIDI data to test.
+        root (str): The musical root note.
+        scale (str): The musical scale.
+        duration (str): The note duration.
+    
+    Returns:
+        dict: A dictionary containing the results of the tests, including whether each test passed.
+    """
+    bars_pass = four_bars(midi_data)
+    key_pass = scale_test(midi_data, root, scale)
+    duration_pass = duration_test(midi_data, duration)
+    return {
+        "bar_count_pass": bars_pass,
+        "in_key_pass": key_pass,
+        "note_length_pass": duration_pass,
+        "output_pass": bars_pass and key_pass and duration_pass,
+    }
+
 if __name__ == "__main__":
     # Single test example
     test_path = "output.mid"
