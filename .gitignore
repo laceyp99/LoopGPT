@@ -4,6 +4,7 @@ prompt_translation.json
 evaluation_log.json
 output.mid
 evaluation/NOTES.md
+evaluation/Results/
 Generations/
 __pycache__/
 MIDI/

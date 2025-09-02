@@ -81,11 +81,11 @@ python evaluation/evaluator.py
 
 ### Results
 
-![Top 10 Accurate Models](evaluation\Results\top_10_models_accuracy.png)
+![Accuracy](evaluation\Results\accuracy.png)
 
-![Top 10 Fastest Models](evaluation\Results\top_10_fastest_api_latency.png)
+![Latency](evaluation\Results\latency.png)
 
-![Top 10 Cheapest Models](evaluation\Results\top_10_cheapest_models.png)
+![Cost](evaluation\Results\cost.png)
 
 ## 📂 Project Structure
 
