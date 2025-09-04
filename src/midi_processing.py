@@ -5,7 +5,7 @@ It supports converting a loop into MIDI (with proper absolute and delta timing) 
 
 import logging
 import sys
-from mido import MidiTrack, Message, MidiFile, merge_tracks
+from mido import MidiTrack, Message, MidiFile, merge_tracks, MetaMessage
 import src.objects as objects
 import src.utils as utils
 # import objects, utils
@@ -89,6 +89,13 @@ def loop_to_midi(midi, loop, times_as_string=True):
         track.append(msg)
         prev_tick = event_time
     
+    final_bar_ticks = 4 * 16 * ticks_per_beat
+    if prev_tick < final_bar_ticks:
+        remaining = final_bar_ticks - prev_tick
+        track.append(MetaMessage('end_of_track', time=remaining))
+    else:
+        track.append(MetaMessage('end_of_track', time=0))
+
     # Append the track to the MIDI file.
     midi.tracks.append(track)
 

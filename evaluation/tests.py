@@ -47,15 +47,19 @@ def four_bars(midi):
     Returns:
         bool: True if the MIDI file has four bars, False otherwise.
     """
-    total_time = 0
     ticks_per_beat = midi.ticks_per_beat
     
+    max_ticks = 0
     for track in midi.tracks:
+        # print(track)
+        ticks = 0
         for msg in track:
-            total_time += msg.time
+            ticks += msg.time
+        max_ticks = max(max_ticks, ticks)
+        # print(max_ticks)
 
-    total_beats = total_time / ticks_per_beat
-    # print(f"Total beats: {total_beats} = {total_time}/{ticks_per_beat}")
+    total_beats = max_ticks / ticks_per_beat
+    print(f"Total beats: {total_beats} = {max_ticks}/{ticks_per_beat}")
     total_bars = total_beats / 4
     return total_bars == 4
 
@@ -159,8 +163,8 @@ def run_midi_tests(midi_data, root, scale, duration):
 
 if __name__ == "__main__":
     # Single test example
-    test_path = "output.mid"
+    test_path = "C:\\Users\\Patrick\\Desktop\\PROJECTS\\LoopGPT\\MIDI\\Ollama\\qwen3_size_4b-thinking-2507-fp16\\an arpeggiator in A Major using only eighth note lengths.mid"
     midi = MidiFile(test_path)
-    print(four_bars(midi))
-    print(f"C Major: {scale_test(midi, 'C', 'major')}")
-    print(f"Duration Test: {duration_test(midi, 'eighth')}")
+    print(f"4 Bar Test: {four_bars(midi)}")
+    print(f"Scale Test: {scale_test(midi, 'C', 'major')}")
+    print(f"Duration Test: {duration_test(midi, 'sixteenth')}")

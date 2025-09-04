@@ -21,8 +21,6 @@ logging.disable(logging.INFO)
 console = Console(force_terminal=True)
 
 model_list = ollama_api.model_list
-model_list.remove("phi4-reasoning:plus")
-model_list.remove("qwen3:14b")
 
 # Prompt options
 roots = ["C", "A", "G"]

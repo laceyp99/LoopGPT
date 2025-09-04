@@ -79,14 +79,6 @@ python evaluation/evaluator.py
 ```
 **Warning:** This will need to run for at least 15 minutes and will cost around $20 in API calls.
 
-### Results
-
-![Accuracy](evaluation\Results\accuracy.png)
-
-![Latency](evaluation\Results\latency.png)
-
-![Cost](evaluation\Results\cost.png)
-
 ## 📂 Project Structure
 
 - `app.py`: The Gradio UI layout facilitating the generation process.
@@ -111,6 +103,7 @@ python evaluation/evaluator.py
   - `evaluator.py`: The async evaluation script with live CLI table logging
   - `ollama_eval.py`: The serial evaluation for local model testing
 - `requirements.txt`: List of Python dependencies
+- `evaluation_log.json`: JSON log of the model evaluations
 - `loop.json`: JSON log of the MIDI-generation conversation
 - `prompt_translation.json`: JSON log of the prompt-translation conversation
 - `output.mid`: The most recent generated MIDI file

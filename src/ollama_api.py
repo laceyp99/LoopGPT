@@ -61,7 +61,7 @@ def prompt_gen(prompt, model, temp=0.0):
             "temperature": temp
         }
     )
-    # Extract the generated content and calculate cost
+    # Extract the generated content
     content = completion.message.content
     messages.append({"role": "assistant", "content": content})
     # Save messages for debugging/training purposes
@@ -95,8 +95,13 @@ def loop_gen(prompt, model, temp=0.0):
             "temperature": temp
         }
     )
-    # Extract the generated MIDI loop and calculate cost
-    midi_loop = objects.Loop.model_validate_json(completion.message.content)
+    # Extract the generated MIDI loop
+    if completion.message.content:
+        midi_loop = objects.Loop.model_validate_json(completion.message.content)
+    else:
+        print("No content returned from the model")
+        midi_loop = None
+    
     messages.append({"role": "assistant", "content": str(midi_loop)})
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")
