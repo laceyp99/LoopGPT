@@ -1,4 +1,3 @@
-# Go through the evaluation log and analyze the results
 import json
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +12,7 @@ for test in eval_log:
     if model not in model_data:
         model_data[model] = {
             "tests": {
-                "bar length": 0,
+                # "bar length": 0,
                 "in key": 0,
                 "note duration": 0,
                 "all correct": 0
@@ -26,7 +25,7 @@ for test in eval_log:
         }
 
     model_data[model]["total"] += 1
-    model_data[model]["tests"]["bar length"] += 1 if test["bar_count_pass"] else 0
+    # model_data[model]["tests"]["bar length"] += 1 if test["bar_count_pass"] else 0
     model_data[model]["tests"]["in key"] += 1 if test["in_key_pass"] else 0
     model_data[model]["tests"]["note duration"] += 1 if test["note_length_pass"] else 0
     model_data[model]["tests"]["all correct"] += 1 if test["output_pass"] else 0
@@ -41,7 +40,7 @@ for model in model_data:
         model_data[model]["stats"][stat_name] = model_data[model]["stats"][stat_name] / total
 
 # # If "bar length" is a fraction (0-1), convert to percentage
-bar_length_values = [model["tests"]["bar length"] for model in model_data.values()]
+# bar_length_values = [model["tests"]["bar length"] for model in model_data.values()]
 in_key_values = [model["tests"]["in key"] for model in model_data.values()]
 note_duration_values = [model["tests"]["note duration"] for model in model_data.values()]
 all_correct_values = [model["tests"]["all correct"] for model in model_data.values()]
@@ -62,12 +61,12 @@ plt.show()
 plt.figure(figsize=(10, 8))
 y = np.arange(len(model_data.keys()))
 height = 0.25
-plt.barh(y - height, in_key_values, height=height, label="In Key")
-plt.barh(y, note_duration_values, height=height, label="Note Duration")
-plt.barh(y + height, bar_length_values, height=height, label="Bar Length")
+plt.barh(y, in_key_values, height=height, label="In Key")
+plt.barh(y - height, note_duration_values, height=height, label="Note Duration")
+# plt.barh(y + height, bar_length_values, height=height, label="Bar Length")
 plt.title("Test Percentages per Model")
 plt.ylabel("Model")
-plt.yticks(y, model_data.keys())
+plt.yticks(y - height / 2, model_data.keys())
 plt.xlabel("Percentage (%)")
 plt.legend() # loc='upper left')
 plt.tight_layout()

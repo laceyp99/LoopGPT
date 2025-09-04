@@ -3,8 +3,6 @@ from rich.table import Table
 from rich.console import Console
 from mido import MidiFile
 import logging
-import asyncio
-import json
 import time
 import sys
 import os

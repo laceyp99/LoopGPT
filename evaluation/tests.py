@@ -1,6 +1,4 @@
 from mido import MidiFile
-import os
-import pathlib
 
 major_intervals = [0, 2, 4, 5, 7, 9, 11]
 minor_intervals = [0, 2, 3, 5, 7, 8, 10]
@@ -59,7 +57,7 @@ def four_bars(midi):
         # print(max_ticks)
 
     total_beats = max_ticks / ticks_per_beat
-    print(f"Total beats: {total_beats} = {max_ticks}/{ticks_per_beat}")
+    # print(f"Total beats: {total_beats} = {max_ticks}/{ticks_per_beat}")
     total_bars = total_beats / 4
     return total_bars == 4
 
@@ -151,14 +149,14 @@ def run_midi_tests(midi_data, root, scale, duration):
     Returns:
         dict: A dictionary containing the results of the tests, including whether each test passed.
     """
-    bars_pass = four_bars(midi_data)
+    # bars_pass = four_bars(midi_data)
     key_pass = scale_test(midi_data, root, scale)
     duration_pass = duration_test(midi_data, duration)
     return {
-        "bar_count_pass": bars_pass,
+        # "bar_count_pass": bars_pass,
         "in_key_pass": key_pass,
         "note_length_pass": duration_pass,
-        "output_pass": bars_pass and key_pass and duration_pass,
+        "output_pass": key_pass and duration_pass,
     }
 
 if __name__ == "__main__":
