@@ -5,6 +5,7 @@ evaluation_log.json
 output.mid
 evaluation/NOTES.md
 evaluation/Results/
+evaluation/Datasets/
 Generations/
 __pycache__/
 MIDI/

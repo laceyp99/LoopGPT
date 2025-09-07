@@ -26,7 +26,7 @@ scales = ["Major", "Minor"]
 durations = ["quarter", "eighth"]
 # Generate all combinations of prompts
 prompts = [
-    (f"an arpeggiator in {root} {scale} using only {duration} note lengths", root, scale, duration)
+    (f"{root} {scale} arpeggiator using only {duration} notes", root, scale, duration)
     for root in roots
     for scale in scales
     for duration in durations
