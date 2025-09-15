@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import ollama_api
 import src.runs as runs
 from src.midi_processing import loop_to_midi
-from evaluation import tests, evaluator
+from evaluation import sota_eval, tests
 
 # Disable logging for cleaner output
 logging.disable(logging.INFO)
@@ -42,21 +42,18 @@ def build_table():
     table.add_column("Total")
     table.add_column("Pass Rate")
     table.add_column("Avg Latency (s)")
-    table.add_column("Avg Cost")
     for m in model_list:
-        s = stats.get(m, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+        s = stats.get(m, {"tested": 0, "passes": 0, "latency_sum": 0.0})
         tested = s["tested"]
         passes = s["passes"]
         pass_rate = (passes / tested * 100.0) if tested else 0.0
         avg_latency = (s["latency_sum"] / tested) if tested else 0.0
-        avg_cost = (s["cost_sum"] / tested) if tested else 0.0
         table.add_row(
             m,
             str(tested),
             str(expected_total),
             f"{pass_rate:.1f}%",
-            f"{avg_latency:.2f}",
-            f"{avg_cost:.4f}"
+            f"{avg_latency:.2f}"
         )
     return table
 
@@ -90,17 +87,15 @@ with Live(build_table(), console=console, refresh_per_second=4) as live:
                     "duration": duration
                 },
                 "api_latency": time_elapsed,
-                "cost": cost,
                 **test_results
             }
             results.append(result)
-            evaluator.append_log(result)
-            evaluator.save_generation_messages("Ollama", safe_model_name, False, root, scale, duration, messages)
-            mstats = stats.setdefault(model, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+            sota_eval.append_log(result)
+            sota_eval.save_generation_messages("Ollama", safe_model_name, False, root, scale, duration, messages)
+            mstats = stats.setdefault(model, {"tested": 0, "passes": 0, "latency_sum": 0.0})
 
             # Update stats and refresh table
             mstats["tested"] += 1
             mstats["passes"] += 1 if result.get("output_pass") else 0
             mstats["latency_sum"] += time_elapsed
-            mstats["cost_sum"] += cost or 0.0
             live.update(build_table())
