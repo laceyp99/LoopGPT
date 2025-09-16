@@ -73,11 +73,18 @@ How it works:
 - Artifacts saved for later musical / qualitative review.
 
 ### Quick start
-To start the evaluation process locally, run:
+To start the evaluation process locally, you have one of two options:
+
+1. If you want to test SOTA models (OpenAI, Google, and Anthropic) via API, run:
 ```sh
-python evaluation/evaluator.py
+python evaluation/sota_eval.py
 ```
 **Warning:** This will need to run for at least 15 minutes and will cost around $20 in API calls.
+
+2. If you want to test local Ollama models, run:
+```sh
+python evaluation/ollama_eval.py
+```
 
 ## 📂 Project Structure
 
@@ -100,7 +107,7 @@ python evaluation/evaluator.py
 - `evaluation/`
   - `Results/`: Images showing evaluation analysis for the README
   - `tests.py`: The midi validation tests for the evaluation
-  - `evaluator.py`: The async evaluation script with live CLI table logging
+  - `sota_eval.py`: The async evaluation script with live CLI table logging
   - `ollama_eval.py`: The serial evaluation for local model testing
 - `requirements.txt`: List of Python dependencies
 - `evaluation_log.json`: JSON log of the model evaluations
