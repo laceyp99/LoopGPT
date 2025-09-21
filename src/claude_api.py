@@ -1,7 +1,3 @@
-"""
-This file contains API calls to Anthropic models.
-It includes endpoints for text-based prompt translation and MIDI-based generations using Anthropic's Tool Use.
-"""
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import src.objects as objects
@@ -94,13 +90,16 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     elif use_thinking and not model_info["models"]["Anthropic"][model]["extended_thinking"]:
         logger.warning(f"Extended thinking requested but not supported by model: {model}")
     
+    # Make the API call for prompt translation generation
     completion = client.messages.create(**api_params)
     
+    # Extract the generated prompt translation content
     input_tokens = 0
     output_tokens = 0
     content = "Prompt: "
     thinking_content = ""
     
+    # Process the streaming response
     for chunk in completion:
         if chunk.type == 'message_start':
             if hasattr(chunk, "message") and hasattr(chunk.message, "usage"):
@@ -108,7 +107,6 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
                 output_tokens += chunk.message.usage.output_tokens
         elif chunk.type == 'content_block_delta':
             if hasattr(chunk.delta, "thinking"):
-                # Handle thinking content
                 thinking_content += chunk.delta.thinking
             elif hasattr(chunk.delta, "text"):
                 content += chunk.delta.text
@@ -181,12 +179,14 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
     
     # Make the API call for structured output generation
     completion = client.messages.create(**api_params)
+    
     # Extract the generated MIDI loop and convert it to a Loop object
     input_tokens = 0
     output_tokens = 0
     midi_loop_chunks = []
     thinking_content = ""
     
+    # Process the streaming response
     for chunk in completion:
         if chunk.type == 'message_start':
             if hasattr(chunk, "message") and hasattr(chunk.message, "usage"):
@@ -194,7 +194,6 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
                 output_tokens += chunk.message.usage.output_tokens
         elif chunk.type == 'content_block_delta':
             if hasattr(chunk.delta, "thinking"):
-                # Handle thinking content
                 thinking_content += chunk.delta.thinking
             elif hasattr(chunk.delta, "partial_json"):
                 midi_loop_chunks.append(chunk.delta.partial_json)

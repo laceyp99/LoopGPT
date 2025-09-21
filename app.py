@@ -57,7 +57,6 @@ def update_thinking_visibility(model_choice):
     else:
         return gr.update(value=False, visible=False)
 
-
 def save_prompts(loop_gen_text, pt_text):
     """This function saves any changes to the loop generation and prompt translation prompts to the text files.
 

@@ -1,7 +1,3 @@
-"""
-This file contains API calls to OpenAI language GPT models.
-It includes endpoints for text-based prompt translation and MIDI-based generations using OpenAI's Structured Outputs.
-"""
 from openai import OpenAI
 from dotenv import load_dotenv
 import src.utils as utils
@@ -60,8 +56,6 @@ def calc_price(model, completion):
     output_cost = model_info["models"]["OpenAI"][model]["cost"]["output"] / 1000000
     cached_input_cost = model_info["models"]["OpenAI"][model]["cost"]["cached input"] / 1000000
     total_price = (input_cost * usage.prompt_tokens + output_cost * usage.completion_tokens + cached_input_cost * cached_tokens)
-    
-    # Return the total price based on the model and the completion
     return total_price
 
 def prompt_gen(prompt, model, temp=0.0):

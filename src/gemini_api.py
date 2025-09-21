@@ -1,7 +1,3 @@
-"""
-This file contains all the API calls to the Google Gemini models.
-It includes endpoints for text-based prompt translation and MIDI-based generations using Gemini's Structured Outputs.
-"""
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -31,8 +27,11 @@ def initialize_gemini_client():
     Returns:
         genai.Client: The Gemini client instance.
     """
+    # Load environment variables from .env file
     load_dotenv(os.path.join('src', '.env'))
     user_key = os.getenv('GEMINI_API_KEY')
+    
+    # Prefer user-provided key over default key
     if user_key and user_key.strip():
         logger.info("Using GEMINI_API_KEY")
         return genai.Client(api_key=user_key)
@@ -57,7 +56,7 @@ def calc_cost(model, input_tokens, output_tokens, cached_tokens=0):
     if cached_tokens is None:
         cached_tokens = 0
 
-    # Gemini 2.5 Pro
+    # Gemini 2.5 Pro has a different cost structure based on token usage
     if model == 'gemini-2.5-pro':
         if input_tokens <= 200000:
             input_cost = model_info["models"]["Google"][model]["cost"]["input"]["<=200k"] / 1000000
@@ -94,6 +93,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
     """
     client = initialize_gemini_client()
 
+    # Configure the generation parameters based on whether extended thinking is enabled
     if model_info["models"]["Google"][model]["extended_thinking"] and use_thinking:
         config = types.GenerateContentConfig(
             system_instruction=pt_prompt,
@@ -115,8 +115,8 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
         contents=prompt,
         config=config
     )
-    content = response.text
     # Format into a message history for training and debugging purposes
+    content = response.text
     messages = [
         {"role": "system", "content": pt_prompt},
         {"role": "user", "content": prompt},
@@ -143,6 +143,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False):
     """
     client = initialize_gemini_client()
 
+    # Configure the generation parameters based on whether extended thinking is enabled
     config = {
         'response_mime_type': 'application/json',
         'response_schema': objects.Loop_G,
@@ -153,22 +154,21 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False):
         config['thinking_config'] = types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])
     else:
         config['thinking_config'] = types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])
+    
     # Make the API call
     response = client.models.generate_content(
         model=model,
         contents=prompt,
         config=config
-    )    
-    # Extract the json string response
-    assistant_response = response.text
+    )  
+    midi_loop: objects.Loop_G = response.parsed  
     # Format into a message history for training and debugging purposes
+    assistant_response = response.text
     messages = [
         {"role": "system", "content": loop_prompt},
         {"role": "user", "content": prompt},
         {"role": "assistant", "content": assistant_response}
     ]
-    # Convert the response to the appropriate object
-    midi_loop: objects.Loop_G = response.parsed
     # Calculate the cost of the generation
     usage = response.usage_metadata
     cost = calc_cost(model, usage.prompt_token_count, usage.candidates_token_count, usage.cached_content_token_count)

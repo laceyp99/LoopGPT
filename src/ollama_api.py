@@ -1,7 +1,6 @@
 import ollama
 import src.utils as utils
 import src.objects as objects
-# import objects, utils, midi_processing
 import logging
 import sys
 import os
@@ -16,10 +15,15 @@ with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
 with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
     pt_prompt = f.read()
 
-# Load environment variables
-
-
 def initialize_ollama_client(host_address="http://localhost:11434"):
+    """Initializes and returns an Ollama client.
+
+    Args:
+        host_address (str, optional): The host address for the Ollama API. Defaults to "http://localhost:11434", assuming the API is running locally.
+
+    Returns:
+        ollama.Client: The initialized Ollama client.
+    """
     load_dotenv(os.path.join('src', '.env'))
     if os.getenv('OLLAMA_API_HOST_ADDRESS'):
         client = ollama.Client(
@@ -33,7 +37,6 @@ def initialize_ollama_client(host_address="http://localhost:11434"):
 
 # Load model list
 model_list = [model.model for model in initialize_ollama_client().list().models]
-# print(model_list)
 
 def prompt_gen(prompt, model, temp=0.0):
     """
@@ -45,7 +48,7 @@ def prompt_gen(prompt, model, temp=0.0):
         temp (float, optional): Temperature for generation. Defaults to 0.0.
 
     Returns:
-        tuple: (content, messages, cost)
+        tuple: (content, messages, cost=0 for Ollama)
     """
     # Initialize Ollama client and build messages for the API call
     client = initialize_ollama_client()
@@ -78,7 +81,7 @@ def loop_gen(prompt, model, temp=0.0):
         temp (float, optional): Temperature for generation. Defaults to 0.0.
 
     Returns:
-        tuple: (midi_loop, messages, cost)
+        tuple: (midi_loop, messages, cost=0 for Ollama)
     """
     # Initialize Ollama client and build messages for the API call
     client = initialize_ollama_client()
@@ -101,7 +104,6 @@ def loop_gen(prompt, model, temp=0.0):
     else:
         print("No content returned from the model")
         midi_loop = None
-    
     messages.append({"role": "assistant", "content": str(midi_loop)})
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")
