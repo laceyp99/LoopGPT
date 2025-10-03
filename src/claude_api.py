@@ -49,8 +49,15 @@ def calc_price(model, input_tokens, output_tokens):
         logger.warning(f"Model {model} not found in model info.")
         return False
     else:
-        input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"] / 1000000
-        output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"] / 1000000
+        if model == "claude-sonnet-4-5-20250929" and input_tokens <= 2000000:
+            input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"]["<=200k"] / 1000000
+            output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"]["<=200k"] / 1000000
+        elif model == "claude-sonnet-4-5-20250929" and input_tokens > 2000000:
+            input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"][">200k"] / 1000000
+            output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"][">200k"] / 1000000
+        else:
+            input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"] / 1000000
+            output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"] / 1000000
         return (input_tokens * input_cost) + (output_tokens * output_cost)
 
 def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000):

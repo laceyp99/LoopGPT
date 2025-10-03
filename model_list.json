@@ -185,6 +185,25 @@
             }
         },
         "Anthropic": {
+            "claude-sonnet-4-5-20250929":{
+                "extended_thinking": true,
+                "max_tokens": 64000,
+                "cost": {
+                    "input": {
+                        "<=200k": 3.00,
+                        ">200k": 6.00
+                    },
+                    "output": {
+                        "<=200k": 15.00,
+                        ">200k": 22.50
+                    }
+                },
+                "rate_limits": {
+                    "RPM": 50,
+                    "ITPM": 30000,
+                    "OTPM": 8000
+                }
+            },
             "claude-opus-4-1-20250805": {
                 "extended_thinking": true,
                 "max_tokens": 32000,
