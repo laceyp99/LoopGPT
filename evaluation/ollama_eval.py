@@ -40,19 +40,32 @@ def build_table():
     table.add_column("Model")
     table.add_column("Tested")
     table.add_column("Total")
-    table.add_column("Pass Rate")
+    table.add_column("Overall Pass %")
+    table.add_column("Key Accuracy %")
+    table.add_column("Duration Accuracy %")
     table.add_column("Avg Latency (s)")
     for m in model_list:
-        s = stats.get(m, {"tested": 0, "passes": 0, "latency_sum": 0.0})
+        s = stats.get(m, {
+            "tested": 0, 
+            "overall_passes": 0,
+            "key_correct": 0,
+            "key_total": 0,
+            "duration_correct": 0,
+            "duration_total": 0,
+            "latency_sum": 0.0
+        })
         tested = s["tested"]
-        passes = s["passes"]
-        pass_rate = (passes / tested * 100.0) if tested else 0.0
+        overall_pass_rate = (s["overall_passes"] / tested * 100.0) if tested else 0.0
+        key_accuracy = (s["key_correct"] / s["key_total"] * 100.0) if s["key_total"] else 0.0
+        duration_accuracy = (s["duration_correct"] / s["duration_total"] * 100.0) if s["duration_total"] else 0.0
         avg_latency = (s["latency_sum"] / tested) if tested else 0.0
         table.add_row(
             m,
             str(tested),
             str(expected_total),
-            f"{pass_rate:.1f}%",
+            f"{overall_pass_rate:.1f}%",
+            f"{key_accuracy:.1f}%",
+            f"{duration_accuracy:.1f}%",
             f"{avg_latency:.2f}"
         )
     return table
@@ -62,7 +75,7 @@ with Live(build_table(), console=console, refresh_per_second=4) as live:
         # print(model)
         for prompt, root, scale, duration in prompts:
             # print(prompt)
-            start_time = time.time()
+            start_time = time.perf_counter()
             loop, messages, cost = runs.generate_midi(
                 model_choice=model,
                 prompt=prompt,
@@ -70,7 +83,7 @@ with Live(build_table(), console=console, refresh_per_second=4) as live:
                 translate_prompt_choice=False,
                 use_thinking=False
             )
-            time_elapsed = time.time() - start_time
+            time_elapsed = time.perf_counter() - start_time
             midi = MidiFile()
             loop_to_midi(midi, loop, times_as_string=False)
             safe_model_name = model.replace(":", "_size_").replace(".", "-")
@@ -92,10 +105,22 @@ with Live(build_table(), console=console, refresh_per_second=4) as live:
             results.append(result)
             sota_eval.append_log(result)
             sota_eval.save_generation_messages("Ollama", safe_model_name, False, root, scale, duration, messages)
-            mstats = stats.setdefault(model, {"tested": 0, "passes": 0, "latency_sum": 0.0})
+            mstats = stats.setdefault(model, {"tested": 0, "passes": 0, "latency_sum": 0.0, "overall_passes": 0, "key_correct": 0, "key_total": 0, "duration_correct": 0, "duration_total": 0})
 
             # Update stats and refresh table
             mstats["tested"] += 1
-            mstats["passes"] += 1 if result.get("output_pass") else 0
+            
+            # Check if both tests have no incorrect notes
+            key_pass = result["key_results"]["incorrect"] == 0
+            duration_pass = result["duration_results"]["incorrect"] == 0
+            overall_pass = key_pass and duration_pass
+            mstats["overall_passes"] += 1 if overall_pass else 0
+            
+            # Aggregate note-level accuracy
+            mstats["key_correct"] += result["key_results"]["correct"]
+            mstats["key_total"] += result["key_results"]["total"]
+            mstats["duration_correct"] += result["duration_results"]["correct"]
+            mstats["duration_total"] += result["duration_results"]["total"]
+            
             mstats["latency_sum"] += time_elapsed
             live.update(build_table())

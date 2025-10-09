@@ -11,7 +11,6 @@ import os
 
 # Imports from the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src import gemini_api, claude_api, o_api, gpt_api
 import src.runs as runs
 from src.midi_processing import loop_to_midi
 from evaluation import tests
@@ -107,7 +106,7 @@ async def call_model_async(prompt, model_choice, temp, use_thinking, translate_p
             tuple: Generated loop, messages, cost, and time elapsed.
         """
         # Making the designated API call and measuring API latency
-        start_time = time.time()
+        start_time = time.perf_counter()
         loop, messages, total_cost = runs.generate_midi(
             model_choice=model_choice, 
             prompt=prompt, 
@@ -115,7 +114,7 @@ async def call_model_async(prompt, model_choice, temp, use_thinking, translate_p
             translate_prompt_choice=translate_prompt_choice, 
             use_thinking=use_thinking
         )
-        time_elapsed = time.time() - start_time
+        time_elapsed = time.perf_counter() - start_time
         return loop, messages, total_cost, time_elapsed
 
     # Run sync call in separate thread to allow async concurrency
@@ -153,12 +152,12 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
             messages = [str(e)]
             cost = 0
             time_elapsed = 0
-
+        
         # Taking the generated loop and converting it to MIDI
         midi_file = MidiFile()
         if provider == "Google":
             loop_to_midi(midi_file, midi_data, times_as_string=True)
-        else:
+        elif midi_data is not None:
             loop_to_midi(midi_file, midi_data, times_as_string=False)
 
         os.makedirs(os.path.join("MIDI", model), exist_ok=True)
@@ -241,7 +240,9 @@ async def main():
     table.add_column("Thinking")
     table.add_column("Tested")
     table.add_column("Total")
-    table.add_column("Pass Rate")
+    table.add_column("Overall Pass %")
+    table.add_column("Key Accuracy %")
+    table.add_column("Duration Accuracy %")
     table.add_column("Avg Latency (s)")
     table.add_column("Avg Cost")
 
@@ -273,7 +274,9 @@ async def main():
             new_table.add_column("Thinking")
             new_table.add_column("Tested")
             new_table.add_column("Total")
-            new_table.add_column("Pass Rate")
+            new_table.add_column("Overall Pass %")
+            new_table.add_column("Key Accuracy %")
+            new_table.add_column("Duration Accuracy %")
             new_table.add_column("Avg Latency (s)")
             new_table.add_column("Avg Cost")
 
@@ -281,20 +284,51 @@ async def main():
             stats = {}
             for r in results:
                 key = (r["provider"], r["model"], r["use_thinking"])
-                s = stats.setdefault(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+                s = stats.setdefault(key, {
+                    "tested": 0, 
+                    "overall_passes": 0,
+                    "key_correct": 0,
+                    "key_total": 0,
+                    "duration_correct": 0,
+                    "duration_total": 0,
+                    "latency_sum": 0.0, 
+                    "cost_sum": 0.0
+                })
                 s["tested"] += 1
-                s["passes"] += 1 if r["output_pass"] else 0
+                
+                # Check if both tests have no incorrect notes
+                key_pass = r["key_results"]["incorrect"] == 0
+                duration_pass = r["duration_results"]["incorrect"] == 0
+                overall_pass = key_pass and duration_pass
+                s["overall_passes"] += 1 if overall_pass else 0
+                
+                # Aggregate note-level accuracy
+                s["key_correct"] += r["key_results"]["correct"]
+                s["key_total"] += r["key_results"]["total"]
+                s["duration_correct"] += r["duration_results"]["correct"]
+                s["duration_total"] += r["duration_results"]["total"]
+                
                 s["latency_sum"] += r.get("api_latency", 0.0) or 0.0
                 s["cost_sum"] += r.get("cost", 0.0) or 0.0
 
             for key, total in expected_tests.items():
                 provider, model, use_thinking = key
-                s = stats.get(key, {"tested": 0, "passes": 0, "latency_sum": 0.0, "cost_sum": 0.0})
+                s = stats.get(key, {
+                    "tested": 0, 
+                    "overall_passes": 0,
+                    "key_correct": 0,
+                    "key_total": 0,
+                    "duration_correct": 0,
+                    "duration_total": 0,
+                    "latency_sum": 0.0, 
+                    "cost_sum": 0.0
+                })
                 tested = s["tested"]
-                passes = s["passes"]
+                overall_pass_rate = (s["overall_passes"] / tested * 100.0) if tested else 0.0
+                key_accuracy = (s["key_correct"] / s["key_total"] * 100.0) if s["key_total"] else 0.0
+                duration_accuracy = (s["duration_correct"] / s["duration_total"] * 100.0) if s["duration_total"] else 0.0
                 avg_latency = (s["latency_sum"] / tested) if tested else 0.0
                 avg_cost = (s["cost_sum"] / tested) if tested else 0.0
-                pass_rate = (passes / tested * 100.0) if tested else 0.0
 
                 new_table.add_row(
                     provider,
@@ -302,11 +336,12 @@ async def main():
                     "Yes" if use_thinking else "No",
                     f"{tested}",
                     f"{total}",
-                    f"{pass_rate:.1f}%",
+                    f"{overall_pass_rate:.1f}%",
+                    f"{key_accuracy:.1f}%",
+                    f"{duration_accuracy:.1f}%",
                     f"{avg_latency:.2f}",
                     f"{avg_cost:.4f}"
                 )
-
             live.update(new_table)
             await asyncio.sleep(0.25)
 
