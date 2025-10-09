@@ -36,31 +36,6 @@ note_lengths = {
     "whole": 4
 }
 
-def four_bars(midi):
-    """Returns True if the MIDI file has exactly four bars.
-
-    Args:
-        midi (MidiFile): The MIDI file to check.
-
-    Returns:
-        bool: True if the MIDI file has four bars, False otherwise.
-    """
-    ticks_per_beat = midi.ticks_per_beat
-    
-    max_ticks = 0
-    for track in midi.tracks:
-        # print(track)
-        ticks = 0
-        for msg in track:
-            ticks += msg.time
-        max_ticks = max(max_ticks, ticks)
-        # print(max_ticks)
-
-    total_beats = max_ticks / ticks_per_beat
-    # print(f"Total beats: {total_beats} = {max_ticks}/{ticks_per_beat}")
-    total_bars = total_beats / 4
-    return total_bars == 4
-
 def scale_test(midi, root, scale):
     """
     Test whether all note events in a MIDI file belong to the specified scale.
@@ -78,29 +53,50 @@ def scale_test(midi, root, scale):
     """
     # Map each note name to its pitch class.
     note_to_pc = {}
-    for pc, names in enumerate(note_names):
+    for pc, names in enumerate(utils.note_names):
         for name in names:
             note_to_pc[name.upper()] = pc
 
     # Validate root and scale.
     if root.upper() not in note_to_pc:
         raise ValueError(f"Invalid root note: {root}")
-    if scale.lower() not in scale_intervals:
+    if scale.lower() not in utils.scale_intervals:
         raise ValueError(f"Invalid scale mode: {scale.lower()}")
 
     # Determine the acceptable pitch classes for the given scale.
     root_pc = note_to_pc[root.upper()]
-    acceptable_pcs = [(root_pc + interval) % 12 for interval in scale_intervals[scale.lower()]]
+    acceptable_pcs = [(root_pc + interval) % 12 for interval in utils.scale_intervals[scale.lower()]]
     # print(f"Root Note: {root}, Scale Mode: {scale}, Acceptable Pitch Classes: {acceptable_pcs}")
 
+    correct = 0
+    incorrect = 0
+    total = 0
+    correct_pitches = set()
+    incorrect_pitches = set()
+    
     # Iterate through all messages in the MIDI file.
     for msg in midi:
         if msg.type == "note_on" and msg.velocity > 0:
             # print(f"Checking note: {msg.note}, Pitch Class: {msg.note % 12}")
-            if (msg.note % 12) not in acceptable_pcs:
-                return False
-            
-    return True
+            total += 1
+            if (msg.note % 12) in acceptable_pcs:
+                correct += 1
+                correct_pitches.add(msg.note % 12)
+            else:
+                incorrect += 1
+                incorrect_pitches.add(msg.note % 12)
+    
+    results = {
+        "total": total,
+        "correct": correct,
+        "incorrect": incorrect,
+        "pitches": {
+            "correct": list(correct_pitches),
+            "incorrect": list(incorrect_pitches)
+        }
+    }
+    return results
+                
 
 def duration_test(midi, duration):
     """Test whether all note events in a MIDI file have the specified duration.
@@ -120,6 +116,11 @@ def duration_test(midi, duration):
     expected_ticks = duration_ticks * ticks_per_beat
     # print(f"Expected duration in ticks: {expected_ticks}")
     
+    total = 0
+    correct = 0
+    incorrect = 0
+    incorrect_lengths = {}
+    
     for track in midi.tracks:
         active_notes = {}
         current_time_ticks = 0
@@ -129,13 +130,27 @@ def duration_test(midi, duration):
                 active_notes[msg.note] = current_time_ticks
             elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
                 if msg.note in active_notes:
+                    total += 1
                     start_time = active_notes.pop(msg.note)
                     note_duration = current_time_ticks - start_time
                     # print(f"Note {msg.note} duration: {note_duration} ticks")
                     
                     if note_duration != expected_ticks:
-                        return False
-    return True
+                        incorrect += 1
+                        ratio = note_duration / ticks_per_beat
+                        if ratio not in incorrect_lengths.keys():
+                            incorrect_lengths[ratio] = 1
+                        else: 
+                            incorrect_lengths[ratio] += 1
+                    else:
+                        correct += 1
+    results = {
+        "total": total,
+        "correct": correct,
+        "incorrect": incorrect,
+        "lengths": incorrect_lengths
+    }
+    return results
 
 def run_midi_tests(midi_data, root, scale, duration):
     """ Run a series of tests on the generated MIDI data to validate its structure and musicality.
@@ -149,19 +164,17 @@ def run_midi_tests(midi_data, root, scale, duration):
     Returns:
         dict: A dictionary containing the results of the tests, including whether each test passed.
     """
-    # bars_pass = four_bars(midi_data)
-    key_pass = scale_test(midi_data, root, scale)
-    duration_pass = duration_test(midi_data, duration)
+    key_results = scale_test(midi_data, root, scale)
+    duration_results = duration_test(midi_data, duration)
     return {
-        # "bar_count_pass": bars_pass,
-        "in_key_pass": key_pass,
-        "note_length_pass": duration_pass,
-        "output_pass": key_pass and duration_pass,
+        "key_results": key_results,
+        "duration_results": duration_results,
+        "overall_pass": key_results["incorrect"] == 0 and duration_results["incorrect"] == 0
     }
 
 if __name__ == "__main__":
     # Single test example
-    test_path = "C:\\Users\\Patrick\\Desktop\\PROJECTS\\LoopGPT\\MIDI\\Ollama\\qwen3_size_4b-thinking-2507-fp16\\an arpeggiator in A Major using only eighth note lengths.mid"
+    test_path = "path/to/your/midi.mid"
     midi = MidiFile(test_path)
     print(f"4 Bar Test: {four_bars(midi)}")
     print(f"Scale Test: {scale_test(midi, 'C', 'major')}")
