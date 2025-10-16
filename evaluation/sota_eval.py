@@ -155,10 +155,13 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
         
         # Taking the generated loop and converting it to MIDI
         midi_file = MidiFile()
-        if provider == "Google":
-            loop_to_midi(midi_file, midi_data, times_as_string=True)
-        elif midi_data is not None:
-            loop_to_midi(midi_file, midi_data, times_as_string=False)
+        try:
+            if provider == "Google":
+                loop_to_midi(midi_file, midi_data, times_as_string=True)
+            elif midi_data is not None:
+                loop_to_midi(midi_file, midi_data, times_as_string=False)
+        except ValueError as e:
+            print(f"Error processing MIDI data: {e}")
 
         os.makedirs(os.path.join("MIDI", model), exist_ok=True)
         safe_name = f"{prompt.replace(' ', '_')}_{use_thinking}.mid"

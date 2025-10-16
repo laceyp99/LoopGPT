@@ -30,6 +30,13 @@ def loop_to_midi(midi, loop, times_as_string=True):
     Returns:
         None. The function modifies the midi.tracks in place.
     """
+    if loop is None:
+        raise ValueError("The loop object is None. Ensure it is properly initialized.")
+    
+    bars = [getattr(loop, f"Bar_{i}", None) for i in range(1, 5)]
+    if any(bar is None for bar in bars):
+        raise ValueError("One or more bars in the loop object are None. Ensure all bars are initialized.")
+
     # Create a new track to hold the MIDI messages of the Loop
     track = MidiTrack()
     # Calculated ticks per sixteenth note, based on provided ticks per beat (quarter note).
