@@ -48,15 +48,14 @@ async def evaluate_model(provider, model, prompt, semaphores, results, translate
             cost = 0.0
             time_elapsed = 0.0
 
+        midi_file = MidiFile()
         try:
             # Convert generated loop to MIDI
-            midi_file = MidiFile()
             if provider == "Google":
                 loop_to_midi(midi_file, midi_data, times_as_string=True)
             else:
                 loop_to_midi(midi_file, midi_data, times_as_string=False)
-        except Exception as e:
-            midi_file = MidiFile()
+        except ValueError as e:
             messages.append(f"MIDI Conversion Error: {str(e)}")
 
         # Save MIDI

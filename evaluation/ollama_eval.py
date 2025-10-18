@@ -84,8 +84,13 @@ with Live(build_table(), console=console, refresh_per_second=4) as live:
                 use_thinking=False
             )
             time_elapsed = time.perf_counter() - start_time
+
             midi = MidiFile()
-            loop_to_midi(midi, loop, times_as_string=False)
+            try:
+                loop_to_midi(midi, loop, times_as_string=False)
+            except ValueError as e:
+                print(f"Error converting loop to MIDI for model {model} with prompt '{prompt}': {e}")
+            
             safe_model_name = model.replace(":", "_size_").replace(".", "-")
             os.makedirs(os.path.join("MIDI", "Ollama", safe_model_name), exist_ok=True)
             midi.save(os.path.join("MIDI", "Ollama", safe_model_name, f"{prompt}.mid"))
