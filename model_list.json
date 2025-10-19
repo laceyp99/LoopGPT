@@ -185,6 +185,19 @@
             }
         },
         "Anthropic": {
+            "claude-haiku-4-5-20251001":{
+                "extended_thinking": true,
+                "max_tokens": 64000,
+                "cost": {
+                    "input": 1.00,
+                    "output": 5.00
+                },
+                "rate_limits": {
+                    "RPM": 50,
+                    "ITPM": 30000,
+                    "OTPM": 8000
+                }
+            },
             "claude-sonnet-4-5-20250929":{
                 "extended_thinking": true,
                 "max_tokens": 64000,
