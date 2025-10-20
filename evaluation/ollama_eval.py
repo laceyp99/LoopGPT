@@ -21,7 +21,7 @@ console = Console(force_terminal=True)
 model_list = ollama_api.model_list
 
 # Prompt options
-roots = ["C", "A", "G"]
+roots = ["C", "D", "E", "F#", "G#", "A#"]
 scales = ["Major", "Minor"]
 durations = ["quarter", "eighth"]
 # Generate all combinations of prompts

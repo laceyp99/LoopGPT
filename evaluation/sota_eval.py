@@ -191,9 +191,8 @@ async def evaluate_model(provider, model, prompt, semaphores, results, use_think
 
 async def main():
     """ Main function to orchestrate the evaluation of models across multiple prompts and configurations. """
-
     # Prompt options
-    roots = ["C", "A", "G"]
+    roots = ["C", "D", "E", "F#", "G#", "A#"]
     scales = ["Major", "Minor"]
     durations = ["quarter", "eighth"]
     # Generate all combinations of prompts
