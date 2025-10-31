@@ -54,7 +54,7 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
    - View the piano-roll image (if enabled)
 
 3. **Inspect JSON logs**  
-   - `prompt_translation.json` and `loop.json` record the full message exchange and structured loop data  
+   - `prompt_translation.json`, `loop.json`, and `evaluation_log.json` record the full message exchange and structured loop data  
 
 ## Evaluation
 The evaluation suite gives a quick sanity check that each model can follow core structural instructions for a 4‑bar loop.

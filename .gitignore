@@ -3,7 +3,7 @@ loop.json
 prompt_translation.json
 evaluation_log.json
 output.mid
-evaluation/NOTES.md
+evaluation/helper.py
 evaluation/Results/
 evaluation/Datasets/
 Generations/
