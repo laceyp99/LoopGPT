@@ -19,7 +19,7 @@ with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
 with open('model_list.json', 'r') as f:
     model_info = json.load(f)
 
-def prompt_gen(prompt, model):
+def prompt_gen(prompt, model, effort="medium"):
     """
     Generate a text-based completion using the specified model and prompt.
 
@@ -41,6 +41,7 @@ def prompt_gen(prompt, model):
     completion = client.chat.completions.create(
         model=model,
         messages=messages,
+        reasoning_effort=effort
     )
     # Extract the generated content and calculate cost
     content = completion.choices[0].message.content
@@ -50,7 +51,7 @@ def prompt_gen(prompt, model):
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
 
-def loop_gen(prompt, model):
+def loop_gen(prompt, model, effort="medium"):
     """
     Generate MIDI-based output using the specified model and prompt.
     
@@ -72,6 +73,7 @@ def loop_gen(prompt, model):
     completion = client.beta.chat.completions.parse(
         model=model,
         messages=messages,
+        reasoning_effort=effort,
         response_format=objects.Loop,
     )
     # Extract the generated content and calculate cost

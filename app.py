@@ -40,7 +40,7 @@ def update_temp_visibility(model_choice, use_thinking):
 
 def update_thinking_visibility(model_choice):
     """This function updates the visibility of the thinking checkbox based on the selected model.
-    Only Claude models that support thinking will show the checkbox.
+    Only Claude and Gemini models that support thinking will show the checkbox.
 
     Args:
         model_choice (str): The selected model choice.
@@ -56,6 +56,24 @@ def update_thinking_visibility(model_choice):
         return gr.update(visible=True)
     else:
         return gr.update(value=False, visible=False)
+
+def update_effort_visibility(model_choice):
+    """This function updates the visibility of the reasoning effort based on the selected model.
+    Only OpenAI models that support thinking will show the dropdown that determines the effort.
+
+    Args:
+        model_choice (str): The selected model choice.
+
+    Returns:
+        gr.update(): A Gradio update object to set the choices, selected value, and visibility of the effort dropdown.
+    """    
+    openai_reasoning = model_choice in model_info["models"]["OpenAI"].keys() and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]
+    if openai_reasoning and model_choice == "gpt-5.1":
+        return gr.update(choices=["none", "low", "medium", "high"], value="medium", visible=True)
+    elif openai_reasoning:
+        return gr.update(choices=["minimal", "low", "medium", "high"], value="medium", visible=True)
+    else:
+        return gr.update(value="medium", visible=False)
 
 def save_prompts(loop_gen_text, pt_text):
     """This function saves any changes to the loop generation and prompt translation prompts to the text files.
@@ -73,7 +91,7 @@ def save_prompts(loop_gen_text, pt_text):
         f.write(pt_text)
     return "Prompts saved successfully at " + datetime.now().strftime("%I:%M:%S %p on %B %d, %Y") + "."
 
-def run_loop(key, scale, description, temp, model_choice, use_thinking, translate_prompt_choice, show_visual, openai_key, gemini_key, claude_key):
+def run_loop(key, scale, description, temp, model_choice, use_thinking, effort, translate_prompt_choice, show_visual, openai_key, gemini_key, claude_key):
     """Run the loop generation process based on user inputs and selected model.
 
     Args:
@@ -82,7 +100,8 @@ def run_loop(key, scale, description, temp, model_choice, use_thinking, translat
         description (str): A description of the loop that the user input in the text box.
         temp (float): The sampling temperature for the model that the user selects from the slider.
         model_choice (str): The model that the user selects from the dropdown.
-        use_thinking (bool): Whether to enable extended thinking for supported Claude models.
+        use_thinking (bool): Whether to enable extended thinking for supported Claude and Gemini models.
+        effort (str): The reasoning effort level for supported OpenAI models.
         translate_prompt_choice (bool): Whether to translate the prompt or not during the generation process.
         show_visual (bool): Whether to show the MIDI visualization or not in the UI as a result.
         openai_key (str): The OpenAI API key that the user inputs in the text box.
@@ -112,7 +131,8 @@ def run_loop(key, scale, description, temp, model_choice, use_thinking, translat
             prompt=prompt, 
             temp=temp, 
             translate_prompt_choice=translate_prompt_choice, 
-            use_thinking=use_thinking
+            use_thinking=use_thinking,
+            effort=effort
         )
         print(f"Total cost: {total_cost}")
         
@@ -155,6 +175,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()) + ollama_api.model_list, label="Model", value='gemini-2.5-flash')      
                 temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
                 thinking_checkbox = gr.Checkbox(label="Extended Thinking", value=False, visible=True)
+                effort_input = gr.Dropdown(choices=["minimal", "low", "medium", "high"], label="Reasoning Effort", value="medium", visible=False)
                 prompt_translate_checkbox = gr.Checkbox(label="Prompt Translation", value=False)
                 visualize_checkbox = gr.Checkbox(label="Show MIDI Visualization", value=True)
         prog_button = gr.Button("Generate Loop")
@@ -172,6 +193,11 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
             inputs=model_choice_input, 
             outputs=thinking_checkbox
         )
+        model_choice_input.change(
+            update_effort_visibility,
+            inputs=model_choice_input,
+            outputs=effort_input
+        )
         # Also update temperature visibility when thinking checkbox changes
         thinking_checkbox.change(
             update_temp_visibility,
@@ -181,7 +207,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
         # When the user clicks the button, run the loop generation function based on the current inputs
         prog_button.click(
             run_loop,
-            inputs=[key_input, mode_input, description_input, temp_input, model_choice_input, thinking_checkbox, prompt_translate_checkbox, visualize_checkbox, openai_key_input, gemini_key_input, claude_key_input],
+            inputs=[key_input, mode_input, description_input, temp_input, model_choice_input, thinking_checkbox, effort_input, prompt_translate_checkbox, visualize_checkbox, openai_key_input, gemini_key_input, claude_key_input],
             outputs=[prog_output, vis_output, error_message]
         )
     # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
