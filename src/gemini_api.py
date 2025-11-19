@@ -57,7 +57,7 @@ def calc_cost(model, input_tokens, output_tokens, cached_tokens=0):
         cached_tokens = 0
 
     # Gemini 2.5 Pro has a different cost structure based on token usage
-    if model == 'gemini-2.5-pro':
+    if model == 'gemini-2.5-pro' or model == 'gemini-3-pro-preview':
         if input_tokens <= 200000:
             input_cost = model_info["models"]["Google"][model]["cost"]["input"]["<=200k"] / 1000000
             output_cost = model_info["models"]["Google"][model]["cost"]["output"]["<=200k"] / 1000000

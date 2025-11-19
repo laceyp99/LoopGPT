@@ -33,10 +33,14 @@ def update_temp_visibility(model_choice, use_thinking):
     
     # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
     elif model_choice in model_info["models"]["Anthropic"].keys() and use_thinking and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]:
-        return gr.update(visible=False)
+        return gr.update(visible=False, value=1.0)
 
+    # Hide temperature for Gemini-3-Pro-Preview (Google recommends removing this parameter and using the Gemini 3 default of 1.0)
+    elif model_choice == "gemini-3-pro-preview":
+        return gr.update(visible=False, value=1.0)
+    
     # Show temperature for all other cases
-    return gr.update(visible=True)
+    return gr.update(visible=True, value=0.1)
 
 def update_thinking_visibility(model_choice):
     """This function updates the visibility of the thinking checkbox based on the selected model.
