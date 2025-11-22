@@ -204,6 +204,9 @@
                 "max_tokens": 64000,
                 "cost": {
                     "input": 1.00,
+                    "5m cache input": 1.25,
+                    "1h cache input": 2.00,
+                    "cache hits/refreshes": 0.10,
                     "output": 5.00
                 },
                 "rate_limits": {
@@ -216,14 +219,11 @@
                 "extended_thinking": true,
                 "max_tokens": 64000,
                 "cost": {
-                    "input": {
-                        "<=200k": 3.00,
-                        ">200k": 6.00
-                    },
-                    "output": {
-                        "<=200k": 15.00,
-                        ">200k": 22.50
-                    }
+                    "input": 3.00,
+                    "output": 15.00,
+                    "5m cache input": 3.75,
+                    "1h cache input": 6.00,
+                    "cache hits/refreshes": 0.30
                 },
                 "rate_limits": {
                     "RPM": 50,
@@ -276,22 +276,6 @@
                 "rate_limits": {
                     "RPM": 50,
                     "ITPM": 30000,
-                    "OTPM": 8000
-                }
-            },
-            "claude-3-7-sonnet-20250219": {
-                "extended_thinking": true,
-                "max_tokens": 64000,
-                "cost": {
-                    "input": 3.00,
-                    "5m cache input": 3.75,
-                    "1h cache input": 6.00,
-                    "cache hits/refreshes": 0.30,
-                    "output": 15.00
-                },
-                "rate_limits": {
-                    "RPM": 50,
-                    "ITPM": 20000,
                     "OTPM": 8000
                 }
             },

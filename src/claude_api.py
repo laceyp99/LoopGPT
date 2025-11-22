@@ -33,7 +33,7 @@ def initialize_anthropic_client():
         logger.error("ANTHROPIC_API_KEY is not set!")
     return Anthropic(api_key=api_key)
 
-def calc_price(model, input_tokens, output_tokens):
+def calc_price(model, input_tokens, output_tokens, cache_creation=0, cache_read=0):
     """
     Calculate the cost for a given completion based on token usage.
 
@@ -49,16 +49,15 @@ def calc_price(model, input_tokens, output_tokens):
         logger.warning(f"Model {model} not found in model info.")
         return False
     else:
-        if model == "claude-sonnet-4-5-20250929" and input_tokens <= 2000000:
-            input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"]["<=200k"] / 1000000
-            output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"]["<=200k"] / 1000000
-        elif model == "claude-sonnet-4-5-20250929" and input_tokens > 2000000:
-            input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"][">200k"] / 1000000
-            output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"][">200k"] / 1000000
-        else:
-            input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"] / 1000000
-            output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"] / 1000000
-        return (input_tokens * input_cost) + (output_tokens * output_cost)
+        input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"] / 1000000
+        output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"] / 1000000
+
+        cached_5min = model_info["models"]["Anthropic"][model]["cost"]["5m cache input"] / 1000000
+        cached_1hour = model_info["models"]["Anthropic"][model]["cost"]["1h cache input"] / 1000000
+        cache_hits = model_info["models"]["Anthropic"][model]["cost"]["cache hits/refreshes"] / 1000000
+                    
+        total_price = (input_tokens * input_cost) + (output_tokens * output_cost) + (cache_creation * cached_5min) + (cache_read * cache_hits)
+        return total_price
 
 def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000):
     """
@@ -81,7 +80,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     api_params = {
         "model": model,
         "max_tokens": model_info["models"]["Anthropic"][model]["max_tokens"],
-        "system": pt_prompt,
+        "system": [{"type": "text", "text": pt_prompt, "cache_control": {"type": "ephemeral"}}],
         "temperature": temp,
         "messages": [{"role": "user", "content": prompt}],
         "stream": True
@@ -103,6 +102,8 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     # Extract the generated prompt translation content
     input_tokens = 0
     output_tokens = 0
+    cache_creation = 0
+    cache_read = 0
     content = "Prompt: "
     thinking_content = ""
     
@@ -110,8 +111,10 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     for chunk in completion:
         if chunk.type == 'message_start':
             if hasattr(chunk, "message") and hasattr(chunk.message, "usage"):
-                input_tokens = chunk.message.usage.input_tokens
-                output_tokens += chunk.message.usage.output_tokens
+                input_tokens += getattr(chunk.message.usage, "input_tokens", 0)
+                output_tokens += getattr(chunk.message.usage, "output_tokens", 0)
+                cache_creation += getattr(chunk.message.usage, "cache_creation_input_tokens", 0)
+                cache_read += getattr(chunk.message.usage, "cache_read_input_tokens", 0)
         elif chunk.type == 'content_block_delta':
             if hasattr(chunk.delta, "thinking"):
                 thinking_content += chunk.delta.thinking
@@ -119,16 +122,23 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
                 content += chunk.delta.text
         elif chunk.type == 'message_delta':
             if hasattr(chunk, "usage"):
-                output_tokens += chunk.usage.output_tokens
+                input_tokens += getattr(chunk.usage, "input_tokens", 0)
+                output_tokens += getattr(chunk.usage, "output_tokens", 0)
+                cache_creation += getattr(chunk.usage, "cache_creation_input_tokens", 0)
+                cache_read += getattr(chunk.usage, "cache_read_input_tokens", 0)
+        elif chunk.type == 'message_stop':
+            break
     
     # Extract the generated content and format it into a message history
     messages = [
         {"role": "system", "content": pt_prompt},
         {"role": "user", "content": prompt},
-        {"role": "assistant", "content": thinking_content},
-        {"role": "assistant", "content": content}
     ]
-    cost = calc_price(model, input_tokens, output_tokens)
+    if thinking_content:
+        messages.append({"role": "assistant", "content": thinking_content})
+    messages.append({"role": "assistant", "content": content})
+
+    cost = calc_price(model, input_tokens, output_tokens, cache_creation, cache_read)
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
@@ -163,7 +173,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
     api_params = {
         "model": model,
         "max_tokens": model_info["models"]["Anthropic"][model]["max_tokens"],
-        "system": loop_prompt,
+        "system": [{"type": "text", "text": loop_prompt, "cache_control": {"type": "ephemeral"}}],
         "temperature": temp,
         "messages": [{"role": "user", "content": prompt}],
         "tools": tools,
@@ -190,6 +200,9 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
     # Extract the generated MIDI loop and convert it to a Loop object
     input_tokens = 0
     output_tokens = 0
+    cache_creation = 0
+    cache_read = 0
+
     midi_loop_chunks = []
     thinking_content = ""
     
@@ -197,8 +210,10 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
     for chunk in completion:
         if chunk.type == 'message_start':
             if hasattr(chunk, "message") and hasattr(chunk.message, "usage"):
-                input_tokens = chunk.message.usage.input_tokens
-                output_tokens += chunk.message.usage.output_tokens
+                input_tokens += getattr(chunk.message.usage, "input_tokens", 0)
+                output_tokens += getattr(chunk.message.usage, "output_tokens", 0)
+                cache_creation += getattr(chunk.message.usage, "cache_creation_input_tokens", 0)
+                cache_read += getattr(chunk.message.usage, "cache_read_input_tokens", 0)
         elif chunk.type == 'content_block_delta':
             if hasattr(chunk.delta, "thinking"):
                 thinking_content += chunk.delta.thinking
@@ -206,7 +221,12 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
                 midi_loop_chunks.append(chunk.delta.partial_json)
         elif chunk.type == 'message_delta':
             if hasattr(chunk, "usage"):
-                output_tokens += chunk.usage.output_tokens
+                input_tokens += getattr(chunk.usage, "input_tokens", 0)
+                output_tokens += getattr(chunk.usage, "output_tokens", 0)
+                cache_creation += getattr(chunk.usage, "cache_creation_input_tokens", 0)
+                cache_read += getattr(chunk.usage, "cache_read_input_tokens", 0)
+        elif chunk.type == 'message_stop':
+            break
     
     midi_loop = ''.join(midi_loop_chunks)
     loop = objects.Loop.model_validate_json(midi_loop)
@@ -214,11 +234,13 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000)
     # Create the messages history 
     messages = [
         {"role": "system", "content": loop_prompt},
-        {"role": "user", "content": prompt},
-        {"role": "assistant", "content": thinking_content},
-        {"role": "assistant", "content": midi_loop}
+        {"role": "user", "content": prompt}
     ]
-    cost = calc_price(model, input_tokens, output_tokens)
+    if thinking_content:
+        messages.append({"role": "assistant", "content": thinking_content})
+    messages.append({"role": "assistant", "content": midi_loop})
+    
+    cost = calc_price(model, input_tokens, output_tokens, cache_creation, cache_read)
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")
     return loop, messages, cost
