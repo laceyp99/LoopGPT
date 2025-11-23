@@ -40,25 +40,20 @@ def initialize_gemini_client():
         logger.info("Using DEFAULT_GEMINI_API_KEY")
         return genai.Client(api_key=default_key)
 
-def calc_cost(model, input_tokens, output_tokens, cached_tokens=0):
+def calc_cost(model, usage):
     """
     Calculate the cost for a given completion based on token usage.
 
     Args:
         model (str): The model identifier used for the request.
-        input_tokens (int): The number of input tokens.
-        output_tokens (int): The number of output tokens.
-        cached_tokens (int, optional): The number of cached tokens. Defaults to 0.
+        usage (types.UsageMetadata): The usage metadata from the API response.
 
     Returns:
         float: Calculated price for the API call.
     """
-    if cached_tokens is None:
-        cached_tokens = 0
-
-    # Gemini 2.5 Pro has a different cost structure based on token usage
-    if model == 'gemini-2.5-pro' or model == 'gemini-3-pro-preview':
-        if input_tokens <= 200000:
+    # Gemini 3 and 2.5 Pro has a different cost structure based on token usage
+    if model in ['gemini-2.5-pro', 'gemini-3-pro-preview']:
+        if usage.prompt_token_count <= 200000:
             input_cost = model_info["models"]["Google"][model]["cost"]["input"]["<=200k"] / 1000000
             output_cost = model_info["models"]["Google"][model]["cost"]["output"]["<=200k"] / 1000000
             cache_cost = model_info["models"]["Google"][model]["cost"]["cache"]["<=200k"] / 1000000
@@ -66,18 +61,29 @@ def calc_cost(model, input_tokens, output_tokens, cached_tokens=0):
             input_cost = model_info["models"]["Google"][model]["cost"]["input"][">200k"] / 1000000
             output_cost = model_info["models"]["Google"][model]["cost"]["output"][">200k"] / 1000000
             cache_cost = model_info["models"]["Google"][model]["cost"]["cache"][">200k"] / 1000000
-        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
+        # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
+        storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1
     else:
         # For other models, use the default cost structure
         input_cost = model_info["models"]["Google"][model]["cost"]["input"] / 1000000
         output_cost = model_info["models"]["Google"][model]["cost"]["output"] / 1000000
-
-        if "cache" not in model_info["models"]["Google"][model]["cost"]:
-            cache_cost = 0
-        else:
+        # Check if cache cost is defined for the model
+        if hasattr(model_info["models"]["Google"][model]["cost"], "cache"):
             cache_cost = model_info["models"]["Google"][model]["cost"]["cache"]["text"] / 1000000
-        
-        return (input_tokens * input_cost) + (output_tokens * output_cost) + (cached_tokens * cache_cost)
+            # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
+            storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1
+        else:
+            cache_cost = 0
+            storage_cost = 0
+    # Gemini doesn't subtract cached tokens from prompt tokens, so we need to do that here
+    if usage.cached_content_token_count:
+        new_input_tokens = usage.prompt_token_count - usage.cached_content_token_count
+        cached = usage.cached_content_token_count
+    else:
+        new_input_tokens = usage.prompt_token_count
+        cached = 0
+    # Calculate total cost
+    return (new_input_tokens * input_cost) + (usage.candidates_token_count * output_cost) + (cached * cache_cost) + storage_cost
 
 def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
     """
@@ -123,8 +129,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
         {"role": "assistant", "content": content}
     ]
     # Calculate the cost of the generation
-    usage = response.usage_metadata
-    cost = calc_cost(model, usage.prompt_token_count, usage.candidates_token_count, usage.cached_content_token_count)
+    cost = calc_cost(model, response.usage_metadata)
     # Save the messages to a JSON file for debugging and training purposes
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
@@ -170,8 +175,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False):
         {"role": "assistant", "content": assistant_response}
     ]
     # Calculate the cost of the generation
-    usage = response.usage_metadata
-    cost = calc_cost(model, usage.prompt_token_count, usage.candidates_token_count, usage.cached_content_token_count)
+    cost = calc_cost(model, response.usage_metadata)
     # Save the messages to a JSON file for debugging and training purposes
     utils.save_messages_to_json(messages, filename="loop")
     return midi_loop, messages, cost

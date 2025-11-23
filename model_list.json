@@ -315,7 +315,7 @@
         "Google": {
             "gemini-3-pro-preview": {
                 "extended_thinking": true,
-                "min_thinking_budget": 0,
+                "min_thinking_budget": 128,
                 "max_thinking_budget": 24576,
                 "max_tokens": 64000,
                 "cost": {
@@ -324,9 +324,9 @@
                         ">200k": 4.00
                     },
                     "cache": {
-                        "<=200k": 0.00,
-                        ">200k": 0.00,
-                        "storage (per hour)": 0.00
+                        "<=200k": 0.20,
+                        ">200k": 0.40,
+                        "storage hour": 4.50
                     },
                     "output": {
                         "<=200k": 12.00,
@@ -350,9 +350,9 @@
                         ">200k": 2.50
                     },
                     "cache": {
-                        "<=200k": 0.31,
-                        ">200k": 0.625,
-                        "storage (per hour)": 4.50
+                        "<=200k": 0.125,
+                        ">200k": 0.25,
+                        "storage hour": 4.50
                     },
                     "output": {
                         "<=200k": 10.00,
@@ -373,8 +373,8 @@
                 "cost": {
                     "input": 0.30,
                     "cache": {
-                        "text": 0.075,
-                        "storage (per hour)": 1.00
+                        "text": 0.03,
+                        "storage hour": 1.00
                     },
                     "output": 2.50
                 },
@@ -392,8 +392,8 @@
                 "cost": {
                     "input": 0.10,
                     "cache": {
-                        "text": 0.025,
-                        "storage (per hour)": 1.00
+                        "text": 0.01,
+                        "storage hour": 1.00
                     },
                     "output": 0.40
                 },
@@ -411,7 +411,7 @@
                     "input": 0.10,
                     "cache": {
                         "text": 0.025,
-                        "storage (per hour)": 1.00
+                        "storage hour": 1.00
                     },
                     "output": 0.40
                 },
