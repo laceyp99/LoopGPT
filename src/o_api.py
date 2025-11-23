@@ -41,7 +41,8 @@ def prompt_gen(prompt, model, effort="medium"):
     completion = client.chat.completions.create(
         model=model,
         messages=messages,
-        reasoning_effort=effort
+        reasoning_effort=effort,
+        prompt_cache_retention="in_memory"
     )
     # Extract the generated content and calculate cost
     content = completion.choices[0].message.content

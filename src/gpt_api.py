@@ -38,24 +38,27 @@ def calc_price(model, completion):
     Calculate the cost for a given completion based on token usage.
 
     Args:
-        completion: The response object from the API containing token usage.
         model (str): The model identifier used for the request.
+        completion: The response object from the API containing token usage.
 
     Returns:
         float: Calculated price for the API call.
     """
     usage = completion.usage
-    # Determine cached tokens if available
-    cached_tokens = 0
-    if hasattr(completion.usage, "prompt_tokens_details") and "cached_tokens" in completion.usage.prompt_tokens_details:
-        cached_tokens = completion.usage.prompt_tokens_details["cached_tokens"]
-    else:
-        logger.info("No cached tokens found in usage details.")    
     # Calculate the total price based on the model and token usage
     input_cost = model_info["models"]["OpenAI"][model]["cost"]["input"] / 1000000
     output_cost = model_info["models"]["OpenAI"][model]["cost"]["output"] / 1000000
     cached_input_cost = model_info["models"]["OpenAI"][model]["cost"]["cached input"] / 1000000
-    total_price = (input_cost * usage.prompt_tokens + output_cost * usage.completion_tokens + cached_input_cost * cached_tokens)
+
+    # Determine cached tokens if available
+    if hasattr(usage, "prompt_tokens_details") and "cached_tokens" in usage.prompt_tokens_details:
+        new_input_tokens = usage.prompt_tokens - usage.prompt_tokens_details["cached_tokens"]
+        cached_tokens = usage.prompt_tokens_details["cached_tokens"]
+    else:
+        new_input_tokens = usage.prompt_tokens 
+        cached_tokens = 0
+    # Calculate total price
+    total_price = input_cost * new_input_tokens + output_cost * usage.completion_tokens + cached_input_cost * cached_tokens
     return total_price
 
 def prompt_gen(prompt, model, temp=0.0):
@@ -80,7 +83,8 @@ def prompt_gen(prompt, model, temp=0.0):
     completion = client.chat.completions.create(
         model=model,
         messages=messages,
-        temperature=temp
+        temperature=temp,
+        prompt_cache_retention="in_memory"
     )
     # Extract the generated content and calculate cost
     content = completion.choices[0].message.content
@@ -113,7 +117,8 @@ def loop_gen(prompt, model, temp=0.0):
         model=model,
         messages=messages,
         response_format=objects.Loop,
-        temperature=temp
+        temperature=temp,
+        prompt_cache_retention="in_memory"
     )
     # Extract the generated MIDI loop and calculate cost
     midi_loop = completion.choices[0].message.parsed

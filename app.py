@@ -74,8 +74,10 @@ def update_effort_visibility(model_choice):
     openai_reasoning = model_choice in model_info["models"]["OpenAI"].keys() and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]
     if openai_reasoning and model_choice == "gpt-5.1":
         return gr.update(choices=["none", "low", "medium", "high"], value="medium", visible=True)
-    elif openai_reasoning:
+    elif openai_reasoning and model_choice in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
         return gr.update(choices=["minimal", "low", "medium", "high"], value="medium", visible=True)
+    elif openai_reasoning:
+        return gr.update(choices=["low", "medium", "high"], value="medium", visible=True)
     else:
         return gr.update(value="medium", visible=False)
 
