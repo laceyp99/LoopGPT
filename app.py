@@ -73,13 +73,13 @@ def update_effort_visibility(model_choice):
     """    
     openai_reasoning = model_choice in model_info["models"]["OpenAI"].keys() and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]
     if openai_reasoning and model_choice == "gpt-5.1":
-        return gr.update(choices=["none", "low", "medium", "high"], value="medium", visible=True)
+        return gr.update(choices=["none", "low", "medium", "high"], value="none", visible=True)
     elif openai_reasoning and model_choice in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
-        return gr.update(choices=["minimal", "low", "medium", "high"], value="medium", visible=True)
+        return gr.update(choices=["minimal", "low", "medium", "high"], value="minimal", visible=True)
     elif openai_reasoning:
-        return gr.update(choices=["low", "medium", "high"], value="medium", visible=True)
+        return gr.update(choices=["low", "medium", "high"], value="low", visible=True)
     else:
-        return gr.update(value="medium", visible=False)
+        return gr.update(value="low", visible=False)
 
 def save_prompts(loop_gen_text, pt_text):
     """This function saves any changes to the loop generation and prompt translation prompts to the text files.
@@ -124,7 +124,7 @@ def run_loop(key, scale, description, temp, model_choice, use_thinking, effort, 
         if openai_key and openai_key.strip() != "":
             os.environ["OPENAI_API_KEY"] = openai_key.strip()
         if gemini_key and gemini_key.strip() != "":
-            os.environ["USER_GEMINI_API_KEY"] = gemini_key.strip()
+            os.environ["GEMINI_API_KEY"] = gemini_key.strip()
         if claude_key and claude_key.strip() != "":
             os.environ["ANTHROPIC_API_KEY"] = claude_key.strip()
         
@@ -168,7 +168,7 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
         with gr.Row():
             with gr.Accordion("API Keys", open=False):
                 openai_key_input = gr.Textbox(lines=1, type="password", label="OpenAI API Key", value="")
-                gemini_key_input = gr.Textbox(lines=1, type="password", label="Gemini API Key (Optional)", value="")
+                gemini_key_input = gr.Textbox(lines=1, type="password", label="Gemini API Key", value="")
                 claude_key_input = gr.Textbox(lines=1, type="password", label="Claude API Key", value="")
         with gr.Row():
             with gr.Column():

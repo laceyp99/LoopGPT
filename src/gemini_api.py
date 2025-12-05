@@ -1,8 +1,9 @@
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
-import src.utils as utils
-import src.objects as objects
+# import src.utils as utils
+# import src.objects as objects
+import utils, objects
 import logging
 import os
 import sys
@@ -27,18 +28,16 @@ def initialize_gemini_client():
     Returns:
         genai.Client: The Gemini client instance.
     """
-    # Load environment variables from .env file
-    load_dotenv(os.path.join('src', '.env'))
     user_key = os.getenv('GEMINI_API_KEY')
+    if not user_key:
+        # Load environment variables from .env file
+        load_dotenv(os.path.join('src', '.env'))
+        user_key = os.getenv("GEMINI_API_KEY")
     
-    # Prefer user-provided key over default key
-    if user_key and user_key.strip():
-        logger.info("Using GEMINI_API_KEY")
-        return genai.Client(api_key=user_key)
-    else:
-        default_key = os.getenv('DEFAULT_GEMINI_API_KEY')
-        logger.info("Using DEFAULT_GEMINI_API_KEY")
-        return genai.Client(api_key=default_key)
+    if not user_key:
+        raise ValueError("GEMINI_API_KEY not found in environment variables or .env file.")
+    
+    return genai.Client(api_key=user_key)
 
 def calc_cost(model, usage):
     """
