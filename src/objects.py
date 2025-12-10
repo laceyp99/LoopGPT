@@ -46,12 +46,12 @@ class SixteenthNote_G(Enum):
 
 # Time Information Objects
 class TimeInformation(BaseModel):
-    start_beat: SixteenthNote = Field(..., description="Starting beat of the chord in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")  # Start beat of the chord (e.g. 1-8)
-    duration: SixteenthNote = Field(..., description="Duration of the chord in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")  # Duration of the chord (e.g. 1-4)
+    start_beat: SixteenthNote = Field(..., description="Starting beat of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
+    duration: SixteenthNote = Field(..., description="Duration of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
 
 class TimeInformation_G(BaseModel):
-    start_beat: SixteenthNote_G = Field(..., description="Starting beat of the chord in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")  # Start beat of the chord (e.g. 1-8)
-    duration: SixteenthNote_G = Field(..., description="Duration of the chord in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")  # Duration of the chord (e.g. 1-4)
+    start_beat: SixteenthNote_G = Field(..., description="Starting beat of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
+    duration: SixteenthNote_G = Field(..., description="Duration of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
 
 # Note Objects
 class Note(BaseModel):

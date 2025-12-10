@@ -1,9 +1,9 @@
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
-# import src.utils as utils
-# import src.objects as objects
-import utils, objects
+import src.utils as utils
+import src.objects as objects
+# import utils, objects
 import logging
 import os
 import sys
