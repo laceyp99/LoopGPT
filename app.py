@@ -17,6 +17,45 @@ import json
 with open('model_list.json', 'r') as f:
     model_info = json.load(f)
 
+def get_providers():
+    """Get list of available providers including Ollama if models are available.
+    
+    Returns:
+        list: List of provider names.
+    """
+    providers = list(model_info["models"].keys())
+    if ollama_api.model_list:
+        providers.append("Ollama")
+    return providers
+
+def get_models_for_provider(provider):
+    """Get list of models for a specific provider.
+    
+    Args:
+        provider (str): The provider name.
+        
+    Returns:
+        list: List of model names for the provider.
+    """
+    if provider == "Ollama":
+        return ollama_api.model_list
+    elif provider in model_info["models"]:
+        return list(model_info["models"][provider].keys())
+    return []
+
+def update_model_choices(provider):
+    """Update the model dropdown choices based on the selected provider.
+    
+    Args:
+        provider (str): The selected provider.
+        
+    Returns:
+        gr.update(): A Gradio update object with new choices and default value.
+    """
+    models = get_models_for_provider(provider)
+    default_value = models[0] if models else None
+    return gr.update(choices=models, value=default_value)
+
 def update_temp_visibility(model_choice, use_thinking):
     """This function updates the visibility of the temperature slider based on the selected model and thinking option.
 
@@ -178,7 +217,9 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 description_input = gr.Textbox(label="Description", value="A rhythmic sad pop song")
             with gr.Column():
                 gr.Markdown("## Generation Parameters")
-                model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()) + ollama_api.model_list, label="Model", value='gemini-2.5-flash')      
+                # model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()) + ollama_api.model_list, label="Model", value='gemini-2.5-flash')      
+                provider_input = gr.Dropdown(choices=get_providers(), label="Provider", value="Google")
+                model_choice_input = gr.Dropdown(choices=list(model_info["models"]["Google"].keys()), label="Model", value='gemini-2.5-flash')    
                 temp_input = gr.Slider(0.0, 1.0, step=0.1, value=0.1, label="Temperature (t)")
                 thinking_checkbox = gr.Checkbox(label="Extended Thinking", value=False, visible=True)
                 effort_input = gr.Dropdown(choices=["minimal", "low", "medium", "high"], label="Reasoning Effort", value="medium", visible=False)
@@ -188,6 +229,12 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
         prog_output = gr.File(label="Download Generated MIDI")  
         vis_output = gr.Image(label="MIDI Visualization")
         error_message = gr.Textbox(label="Error Message", interactive=False)
+        # Update model choices when provider changes
+        provider_input.change(
+            update_model_choices,
+            inputs=provider_input,
+            outputs=model_choice_input
+        )
         # Set visibility of temperature slider and thinking checkbox based on model selection
         model_choice_input.change(
             update_temp_visibility, 
