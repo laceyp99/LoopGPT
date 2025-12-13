@@ -1,6 +1,20 @@
 {
     "models": {
         "OpenAI": {
+            "gpt-5.2": {
+                "extended_thinking": true,
+                "max_tokens": 128000,
+                "cost": {
+                    "input": 1.75,
+                    "cached input": 0.175,
+                    "output": 14.00
+                },
+                "rate_limits": {
+                    "TPM": 4000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
+                }
+            },
             "gpt-5.1": {
                 "extended_thinking": true,
                 "max_tokens": 128000,
@@ -10,9 +24,9 @@
                     "output": 10.00
                 },
                 "rate_limits": {
-                    "TPM": 800000,
-                    "RPM": 5000,
-                    "TPD": 100000000
+                    "TPM": 4000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "gpt-5": {
@@ -24,9 +38,9 @@
                     "output": 10.00
                 },
                 "rate_limits": {
-                    "TPM": 800000,
-                    "RPM": 5000,
-                    "TPD": 100000000
+                    "TPM": 2000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "gpt-5-mini": {
@@ -38,9 +52,9 @@
                     "output": 2.00
                 },
                 "rate_limits": {
-                    "TPM": 4000000,
-                    "RPM": 5000,
-                    "TPD": 40000000
+                    "TPM": 10000000,
+                    "RPM": 10000,
+                    "TPD": 1000000000
                 }
             },
             "gpt-5-nano": {
@@ -52,9 +66,9 @@
                     "output": 0.40
                 },
                 "rate_limits": {
-                    "TPM": 4000000,
-                    "RPM": 5000,
-                    "TPD": 40000000
+                    "TPM": 10000000,
+                    "RPM": 10000,
+                    "TPD": 1000000000
                 }
             },
             "o4-mini": {
@@ -66,9 +80,9 @@
                     "output": 4.40
                 },
                 "rate_limits": {
-                    "TPM": 4000000,
-                    "RPM": 5000,
-                    "TPD": 40000000
+                    "TPM": 10000000,
+                    "RPM": 10000,
+                    "TPD": 1000000000
                 }
             },
             "o3": {
@@ -80,9 +94,9 @@
                     "output": 8.00
                 },
                 "rate_limits": {
-                    "TPM": 800000,
-                    "RPM": 5000,
-                    "TPD": 100000000
+                    "TPM": 20000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "o3-mini": {
@@ -94,9 +108,9 @@
                     "output": 4.40
                 },
                 "rate_limits": {
-                    "TPM": 4000000,
-                    "RPM": 5000,
-                    "TPD": 40000000
+                    "TPM": 2000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "o1": {
@@ -108,9 +122,9 @@
                     "output": 60.00
                 },
                 "rate_limits": {
-                    "TPM": 800000,
-                    "RPM": 5000,
-                    "TPD": 100000000
+                    "TPM": 2000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "gpt-4.1": {
@@ -122,9 +136,9 @@
                     "output": 8.00
                 },
                 "rate_limits": {
-                    "TPM": 800000,
-                    "RPM": 5000,
-                    "TPD": 100000000
+                    "TPM": 2000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "gpt-4.1-mini": {
@@ -136,9 +150,9 @@
                     "output": 1.60
                 },
                 "rate_limits": {
-                    "TPM": 4000000,
-                    "RPM": 5000,
-                    "TPD": 40000000
+                    "TPM": 10000000,
+                    "RPM": 10000,
+                    "TPD": 1000000000
                 }
             },
             "gpt-4.1-nano": {
@@ -150,9 +164,9 @@
                     "output": 0.40
                 },
                 "rate_limits": {
-                    "TPM": 4000000,
-                    "RPM": 5000,
-                    "TPD": 40000000
+                    "TPM": 100000000,
+                    "RPM": 10000,
+                    "TPD": 1000000000
                 }
             },
             "gpt-4o-2024-11-20": {
@@ -164,9 +178,9 @@
                     "output": 10.00
                 },
                 "rate_limits": {
-                    "TPM": 800000,
-                    "RPM": 5000,
-                    "TPD": 100000000
+                    "TPM": 2000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "gpt-4o-2024-08-06": {
@@ -178,9 +192,9 @@
                     "output": 10.00
                 },
                 "rate_limits": {
-                    "TPM": 800000,
-                    "RPM": 5000,
-                    "TPD": 100000000
+                    "TPM": 2000000,
+                    "RPM": 10000,
+                    "TPD": 200000000
                 }
             },
             "gpt-4o-mini": {
@@ -192,14 +206,30 @@
                     "output": 0.60
                 },
                 "rate_limits": {
-                    "TPM": 4000000,
-                    "RPM": 5000,
-                    "TPD": 40000000
+                    "TPM": 10000000,
+                    "RPM": 10000,
+                    "TPD": 1000000000
                 }
             }
         },
         "Anthropic": {
-            "claude-haiku-4-5-20251001":{
+            "claude-opus-4-5":{
+                "extended_thinking": true,
+                "max_tokens": 64000,
+                "cost": {
+                    "input": 5.00,
+                    "5m cache input": 6.25,
+                    "1h cache input": 10.00,
+                    "cache hits/refreshes": 0.50,
+                    "output": 25.00
+                },
+                "rate_limits": {
+                    "RPM": 50,
+                    "ITPM": 30000,
+                    "OTPM": 8000
+                }
+            },
+            "claude-haiku-4-5":{
                 "extended_thinking": true,
                 "max_tokens": 64000,
                 "cost": {
@@ -215,7 +245,7 @@
                     "OTPM": 8000
                 }
             },
-            "claude-sonnet-4-5-20250929":{
+            "claude-sonnet-4-5":{
                 "extended_thinking": true,
                 "max_tokens": 64000,
                 "cost": {
@@ -247,7 +277,7 @@
                     "OTPM": 8000
                 }
             },
-            "claude-opus-4-20250514": {
+            "claude-opus-4-0": {
                 "extended_thinking": true,
                 "max_tokens": 32000,
                 "cost": {
@@ -263,7 +293,7 @@
                     "OTPM": 8000
                 }
             },
-            "claude-sonnet-4-20250514": {
+            "claude-sonnet-4-0": {
                 "extended_thinking": true,
                 "max_tokens": 64000,
                 "cost": {
@@ -279,7 +309,7 @@
                     "OTPM": 8000
                 }
             },
-            "claude-3-5-haiku-20241022": {
+            "claude-3-5-haiku-latest": {
                 "extended_thinking": false,
                 "max_tokens": 8192,
                 "cost": {

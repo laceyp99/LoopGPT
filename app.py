@@ -111,7 +111,9 @@ def update_effort_visibility(model_choice):
         gr.update(): A Gradio update object to set the choices, selected value, and visibility of the effort dropdown.
     """    
     openai_reasoning = model_choice in model_info["models"]["OpenAI"].keys() and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]
-    if openai_reasoning and model_choice == "gpt-5.1":
+    if openai_reasoning and model_choice == "gpt-5.2":
+        return gr.update(choices=["none", "low", "medium", "high", "xhigh"], value="none", visible=True)
+    elif openai_reasoning and model_choice == "gpt-5.1":
         return gr.update(choices=["none", "low", "medium", "high"], value="none", visible=True)
     elif openai_reasoning and model_choice in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
         return gr.update(choices=["minimal", "low", "medium", "high"], value="minimal", visible=True)
