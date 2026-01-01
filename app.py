@@ -75,7 +75,7 @@ def update_temp_visibility(model_choice, use_thinking):
         return gr.update(visible=False, value=1.0)
 
     # Hide temperature for Gemini-3-Pro-Preview (Google recommends removing this parameter and using the Gemini 3 default of 1.0)
-    elif model_choice == "gemini-3-pro-preview":
+    elif model_choice == "gemini-3-pro-preview" or model_choice == "gemini-3-flash-preview":
         return gr.update(visible=False, value=1.0)
     
     # Show temperature for all other cases

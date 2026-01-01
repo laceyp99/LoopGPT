@@ -343,6 +343,25 @@
             }
         },
         "Google": {
+            "gemini-3-flash-preview": {
+                "extended_thinking": true,
+                "min_thinking_budget": 128,
+                "max_thinking_budget": 24576,
+                "max_tokens": 64000,
+                "cost": {
+                    "input": 0.50,
+                    "cache": {
+                        "text": 0.05,
+                        "storage hour": 1.00
+                    },
+                    "output": 3.00
+                },
+                "rate_limits": {
+                    "RPM": 5,
+                    "TPM": 250000,
+                    "RPD": 20
+                }
+            },
             "gemini-3-pro-preview": {
                 "extended_thinking": true,
                 "min_thinking_budget": 128,
