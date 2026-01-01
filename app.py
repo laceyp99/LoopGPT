@@ -93,7 +93,7 @@ def update_thinking_visibility(model_choice):
     """    
     # Show thinking toggle only for models that support it
     anthropic_thinking = model_choice in model_info["models"]["Anthropic"].keys() and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]
-    gemini_thinking = model_choice in model_info["models"]["Google"].keys() and model_info["models"]["Google"][model_choice]["extended_thinking"]
+    gemini_thinking = model_choice in model_info["models"]["Google"].keys() and model_info["models"]["Google"][model_choice]["extended_thinking"] and model_choice not in ["gemini-3-pro-preview", "gemini-3-flash-preview"]
     
     if anthropic_thinking or gemini_thinking:
         return gr.update(visible=True)
@@ -119,6 +119,10 @@ def update_effort_visibility(model_choice):
         return gr.update(choices=["minimal", "low", "medium", "high"], value="minimal", visible=True)
     elif openai_reasoning:
         return gr.update(choices=["low", "medium", "high"], value="low", visible=True)
+    elif model_choice == "gemini-3-pro-preview":
+        return gr.update(choices=["low", "high"], value="low", visible=True)
+    elif model_choice == "gemini-3-flash-preview":
+        return gr.update(choices=["minimal","low", "medium", "high"], value="minimal", visible=True)
     else:
         return gr.update(value="low", visible=False)
 

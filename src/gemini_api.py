@@ -84,7 +84,7 @@ def calc_cost(model, usage):
     # Calculate total cost
     return (new_input_tokens * input_cost) + (usage.candidates_token_count * output_cost) + (cached * cache_cost) + storage_cost
 
-def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
+def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     """
     Generate text content using the specified model and prompt.
 
@@ -92,28 +92,43 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
         prompt (str): The user prompt to generate text.
         model (str): The model identifier to use.
         temp (float, optional): Temperature for generation. Defaults to 0.0.
-
+        use_thinking (bool, optional): Whether to enable extended thinking. Defaults to None.
+        effort (str, optional): Reasoning effort level (not used in Gemini). Defaults to None.
     Returns:
         tuple: (content, messages, cost)
     """
     client = initialize_gemini_client()
 
+    config = {
+        "system_instruction": pt_prompt,
+        "temperature": temp,
+        "response_mime_type": 'text/plain',
+    }
     # Configure the generation parameters based on whether extended thinking is enabled
-    if model_info["models"]["Google"][model]["extended_thinking"] and use_thinking:
-        config = types.GenerateContentConfig(
-            system_instruction=pt_prompt,
-            temperature=temp,
-            response_mime_type='text/plain',
-            thinking_config=types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])
-        )
-    else:
-        config = types.GenerateContentConfig(
-            system_instruction=pt_prompt,
-            temperature=temp,
-            response_mime_type='text/plain',
-            thinking_config=types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])
-        )
-    
+    model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
+    if model_with_thinking and use_thinking:
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])})
+    elif model_with_thinking and use_thinking == False:
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])})
+    elif model == "gemini-3-flash-preview":
+        if effort == "minimal":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="minimal")})
+        elif effort == "low":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
+        elif effort == "medium":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="medium")})
+        elif effort == "high":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        else:
+            print("No effort level specified; using default thinking configuration.")
+    elif model == "gemini-3-pro-preview":
+        if effort == "low":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
+        elif effort == "high":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        else:
+            print("No effort level specified; using default thinking configuration.")
+
     # Make the API call
     response = client.models.generate_content(
         model=model,
@@ -133,7 +148,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False):
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return content, messages, cost
 
-def loop_gen(prompt, model, temp=0.0, use_thinking=False):
+def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     """
     Generate a MIDI bar (chord progression/melody) using the specified model and prompt.
 
@@ -141,6 +156,8 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False):
         prompt (str): The user prompt to generate MIDI data.
         model (str): The model identifier to use.
         temp (float, optional): Temperature for generation. Defaults to 0.0.
+        use_thinking (bool, optional): Whether to enable extended thinking. Defaults to None.
+        effort (str, optional): Reasoning effort level (not used in Gemini). Defaults to None.
 
     Returns:
         tuple: (midi_loop, messages, cost)
@@ -149,16 +166,35 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False):
 
     # Configure the generation parameters based on whether extended thinking is enabled
     config = {
+        'system_instruction': loop_prompt,
+        'temperature': temp,
         'response_mime_type': 'application/json',
         'response_schema': objects.Loop_G,
-        'temperature': temp,
-        'system_instruction': loop_prompt,
     }
-    if model_info["models"]["Google"][model]["extended_thinking"] and use_thinking:
-        config['thinking_config'] = types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])
-    else:
-        config['thinking_config'] = types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])
-    
+    model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
+    if model_with_thinking and use_thinking:
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])})
+    elif model_with_thinking and use_thinking == False:
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])})
+    elif model == "gemini-3-flash-preview":
+        if effort == "minimal":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="minimal")})
+        elif effort == "low":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
+        elif effort == "medium":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="medium")})
+        elif effort == "high":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        else:
+            print("No effort level specified; using default thinking configuration.")
+    elif model == "gemini-3-pro-preview":
+        if effort == "low":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
+        elif effort == "high":
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        else:
+            print("No effort level specified; using default thinking configuration.")
+
     # Make the API call
     response = client.models.generate_content(
         model=model,
