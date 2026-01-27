@@ -6,9 +6,11 @@ from src.midi_processing import loop_to_midi
 from src.utils import visualize_midi_plotly
 import src.ollama_api as ollama_api
 import src.runs as runs
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from mido import MidiFile
 import gradio as gr
+import time
 import os
 import json
 
@@ -199,6 +201,10 @@ def run_loop(
 ):
     """Run the loop generation process based on user inputs and selected model.
 
+    This is a generator function that yields progress updates, allowing the generation
+    to be cancelled by Gradio's cancellation mechanism. The API call runs in a background
+    thread while the generator periodically yields status updates.
+
     Args:
         key (str): The key for the loop that the user selects from the dropdown.
         scale (str): The scale for the loop that the user selects from the Major/minor dropdown.
@@ -213,11 +219,11 @@ def run_loop(
         gemini_key (str): The Gemini API key that the user inputs in the text box.
         claude_key (str): The Claude API key that the user inputs in the text box.
 
-    Returns:
-        str: The path to the generated MIDI file.
-        PIL.Image: The MIDI visualization image if show_visual is True, otherwise None.
+    Yields:
+        tuple: (file_path, visualization, status_message, cancel_button_update) -
+               intermediate yields show progress and keep cancel visible,
+               final yield contains the generated MIDI file and hides the cancel button.
     """
-    error = ""
     try:
         # If the user provided API keys, update environment variables
         if openai_key and openai_key.strip() != "":
@@ -230,15 +236,29 @@ def run_loop(
         # Condense the prompt into a single string for the model
         prompt = f"{key} {scale} {description}."
 
-        # Generate the loop using the selected model and parameters
-        loop, messages, total_cost = runs.generate_midi(
-            model_choice=model_choice,
-            prompt=prompt,
-            temp=temp,
-            translate_prompt_choice=translate_prompt_choice,
-            use_thinking=use_thinking,
-            effort=effort,
-        )
+        # Yield initial status and show cancel button - this is a cancellation checkpoint
+        yield None, None, "Working on it...", gr.update(visible=True)
+
+        # Run API call in background thread so we can yield periodically for cancellation
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                runs.generate_midi,
+                model_choice=model_choice,
+                prompt=prompt,
+                temp=temp,
+                translate_prompt_choice=translate_prompt_choice,
+                use_thinking=use_thinking,
+                effort=effort,
+            )
+
+            # Poll for completion, yielding periodically to allow cancellation
+            while not future.done():
+                time.sleep(0.5)  # Check every 500ms
+                yield None, None, "Working on it...", gr.update(visible=True)
+
+            # Get the result (will raise exception if the API call failed)
+            loop, messages, total_cost = future.result()
+
         print(f"Total cost: {total_cost}")
 
         # Convert the generated loop into a MIDI file
@@ -256,11 +276,12 @@ def run_loop(
         if show_visual:
             visualization = visualize_midi_plotly(midi)
 
-        return output_path, visualization, error
+        # Final yield with the completed result and hide cancel button
+        yield output_path, visualization, "", gr.update(visible=False)
+
     except Exception as e:
-        # Catch any exception and return the error message
-        error = str(e)
-        return None, None, error
+        # Catch any exception and yield the error message, hide cancel button
+        yield None, None, str(e), gr.update(visible=False)
 
 
 # Gradio interface
@@ -309,7 +330,6 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 )
             with gr.Column():
                 gr.Markdown("## Generation Parameters")
-                # model_choice_input = gr.Dropdown(choices=list(model_info["models"]["OpenAI"].keys()) + list(model_info["models"]["Anthropic"].keys()) + list(model_info["models"]["Google"].keys()) + ollama_api.model_list, label="Model", value='gemini-2.5-flash')
                 provider_input = gr.Dropdown(
                     choices=get_providers(), label="Provider", value="Google"
                 )
@@ -336,7 +356,9 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 visualize_checkbox = gr.Checkbox(
                     label="Show MIDI Visualization", value=True
                 )
-        prog_button = gr.Button("Generate Loop")
+        with gr.Row():
+            prog_button = gr.Button("Generate Loop", variant="primary")
+            cancel_button = gr.Button("Cancel", variant="stop", visible=False)
         prog_output = gr.File(label="Download Generated MIDI")
         vis_output = gr.Plot(label="MIDI Visualization")
         error_message = gr.Textbox(label="Error Message", interactive=False)
@@ -365,7 +387,8 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
             outputs=temp_input,
         )
         # When the user clicks the button, run the loop generation function based on the current inputs
-        prog_button.click(
+        # Capture the event so we can cancel it with the cancel button
+        gen_event = prog_button.click(
             run_loop,
             inputs=[
                 key_input,
@@ -381,7 +404,18 @@ with gr.Blocks(css=""".center-title { text-align: center; font-size: 3em; }""") 
                 gemini_key_input,
                 claude_key_input,
             ],
-            outputs=[prog_output, vis_output, error_message],
+            outputs=[prog_output, vis_output, error_message, cancel_button],
+        )
+        # Cancel button stops waiting for the API response and hides itself
+        cancel_button.click(
+            fn=lambda: (
+                None,
+                None,
+                "Generation cancelled.",
+                gr.update(visible=False),
+            ),
+            outputs=[prog_output, vis_output, error_message, cancel_button],
+            cancels=[gen_event],
         )
     # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
     with gr.Tab(label="Prompt Editor"):
