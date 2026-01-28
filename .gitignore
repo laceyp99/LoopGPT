@@ -3,9 +3,11 @@ loop.json
 prompt_translation.json
 evaluation_log.json
 output.mid
+output.mp3
 evaluation/helper.py
 evaluation/Results/
 evaluation/Datasets/
+soundfonts/*.sf2
 Generations/
 __pycache__/
 MIDI/
