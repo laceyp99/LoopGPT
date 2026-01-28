@@ -8,8 +8,8 @@ This project is a music generation tool that enables users to create 4 bar loops
 
 - Interact with a sleek Gradio interface for an inviting user experience
 - Visualize MIDI output using piano roll display
-- **Audio playback** - Listen to generated MIDI with high-quality piano sound (Salamander Grand Piano)
-- **Session history** - Browse and replay your last 20 generations from the sidebar
+- Audio playback to listen to generated MIDI inside the browser
+- Manage your last 20 generations from the history sidebar
 - View/Edit the system prompts that instruct the model through the generation process
 - Generate 4-bar loops with customizable parameters
 - Optional prompt translation for guided reasoning when using language models

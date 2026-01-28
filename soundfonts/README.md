@@ -6,9 +6,9 @@ Place your SoundFont (.sf2) files here for MIDI audio playback.
 
 **Salamander Grand Piano** - A high-quality sampled grand piano
 
-Download: https://freepats.zenvoid.org/Piano/SalamanderGrandPiano/
+Navigate to https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html
 
-1. Download `SalamanderGrandPiano-SF2-V3+20200602.tar.xz`
+1. Scroll down to `Salamander Grand Piano` and Download the SF2 option.
 2. Extract the archive
 3. Copy `SalamanderGrandPiano.sf2` to this directory
 
