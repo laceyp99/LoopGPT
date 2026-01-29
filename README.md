@@ -42,7 +42,7 @@ To enable audio playback of generated MIDI loops, you'll need:
    - Linux: `apt install ffmpeg`
 
 3. **SoundFont file** - Piano samples
-   - Download [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/SalamanderGrandPiano/) (~400MB)
+   - Download [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) (~400MB)
    - Extract and place `SalamanderGrandPiano.sf2` in the `soundfonts/` directory
 
 *Note: Audio playback is optional. The app will still generate and download MIDI files without these dependencies.*
