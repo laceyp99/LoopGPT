@@ -9,7 +9,7 @@ import src.o_api as o_api
 with open('model_list.json', 'r') as f:
     model_info = json.load(f)
 
-def generate_midi(model_choice, prompt, temp=0.0, translate_prompt_choice=False, use_thinking=False, effort="medium"):
+def generate_midi(model_choice, prompt, temp=0.0, translate_prompt_choice=False, use_thinking=False, effort="low"):
     """Generate MIDI loops based on user prompts using the specified model. This function mainly handles routing to the appropriate APIs and then managing the prompt translation step if needed.
 
     Args:
@@ -56,10 +56,10 @@ def generate_midi(model_choice, prompt, temp=0.0, translate_prompt_choice=False,
     # Anthropic Claude
     elif model_choice in model_info["models"]["Anthropic"]:
         if translate_prompt_choice:
-            prompt_translated, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp, use_thinking)
-            loop, messages, loop_cost = claude_api.loop_gen(prompt_translated, model_choice, temp, use_thinking)
+            prompt_translated, messages, pt_cost = claude_api.prompt_gen(prompt, model_choice, temp, use_thinking, effort)
+            loop, messages, loop_cost = claude_api.loop_gen(prompt_translated, model_choice, temp, use_thinking, effort)
         else:
-            loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp, use_thinking)
+            loop, messages, loop_cost = claude_api.loop_gen(prompt, model_choice, temp, use_thinking, effort)
     else:
         raise ValueError("Invalid Model Selected")
     
