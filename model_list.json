@@ -3,6 +3,7 @@
         "OpenAI": {
             "gpt-5.2": {
                 "extended_thinking": true,
+                "effort_options": ["none", "low", "medium", "high", "xhigh"],
                 "max_tokens": 128000,
                 "cost": {
                     "input": 1.75,
@@ -17,6 +18,7 @@
             },
             "gpt-5.1": {
                 "extended_thinking": true,
+                "effort_options": ["none", "low", "medium", "high"],
                 "max_tokens": 128000,
                 "cost": {
                     "input": 1.25,
@@ -31,6 +33,7 @@
             },
             "gpt-5": {
                 "extended_thinking": true,
+                "effort_options": ["minimal", "low", "medium", "high"],
                 "max_tokens": 128000,
                 "cost": {
                     "input": 1.25,
@@ -45,6 +48,7 @@
             },
             "gpt-5-mini": {
                 "extended_thinking": true,
+                "effort_options": ["minimal", "low", "medium", "high"],
                 "max_tokens": 128000,
                 "cost": {
                     "input": 0.25,
@@ -59,6 +63,7 @@
             },
             "gpt-5-nano": {
                 "extended_thinking": true,
+                "effort_options": ["minimal", "low", "medium", "high"],
                 "max_tokens": 128000,
                 "cost": {
                     "input": 0.05,
@@ -73,6 +78,7 @@
             },
             "o4-mini": {
                 "extended_thinking": true,
+                "effort_options": ["low", "medium", "high"],
                 "max_tokens": 100000,
                 "cost": {
                     "input": 1.10,
@@ -87,6 +93,7 @@
             },
             "o3": {
                 "extended_thinking": true,
+                "effort_options": ["low", "medium", "high"],
                 "max_tokens": 100000,
                 "cost": {
                     "input": 2.00,
@@ -101,6 +108,7 @@
             },
             "o3-mini": {
                 "extended_thinking": true,
+                "effort_options": ["low", "medium", "high"],
                 "max_tokens": 100000,
                 "cost": {
                     "input": 1.10,
@@ -115,6 +123,7 @@
             },
             "o1": {
                 "extended_thinking": true,
+                "effort_options": ["low", "medium", "high"],
                 "max_tokens": 100000,
                 "cost": {
                     "input": 15.00,
@@ -215,6 +224,7 @@
         "Anthropic": {
             "claude-opus-4-6":{
                 "extended_thinking": true,
+                "effort_options": ["low", "medium", "high", "max"],
                 "max_tokens": 128000,
                 "cost": {
                     "input": 5.00,
@@ -361,6 +371,7 @@
         "Google": {
             "gemini-3-flash-preview": {
                 "extended_thinking": true,
+                "effort_options": ["minimal", "low", "medium", "high"],
                 "min_thinking_budget": 128,
                 "max_thinking_budget": 24576,
                 "max_tokens": 64000,
@@ -380,6 +391,7 @@
             },
             "gemini-3-pro-preview": {
                 "extended_thinking": true,
+                "effort_options": ["low", "high"],
                 "min_thinking_budget": 128,
                 "max_thinking_budget": 24576,
                 "max_tokens": 64000,

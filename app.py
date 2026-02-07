@@ -149,34 +149,28 @@ def update_effort_visibility(model_choice):
     Returns:
         gr.update(): A Gradio update object to set the choices, selected value, and visibility of the effort dropdown.
     """
-    openai_reasoning = (
-        model_choice in model_info["models"]["OpenAI"].keys()
-        and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]
-    )
-    if openai_reasoning and model_choice == "gpt-5.2":
+    openai_effort = [model for model, data in model_info["models"]["OpenAI"].items() if "effort_options" in data]
+    google_effort = [model for model, data in model_info["models"]["Google"].items() if "effort_options" in data]
+    anthropic_effort = [model for model, data in model_info["models"]["Anthropic"].items() if "effort_options" in data]
+
+    if model_choice in openai_effort:
         return gr.update(
-            choices=["none", "low", "medium", "high", "xhigh"],
-            value="none",
-            visible=True,
+            choices=model_info["models"]["OpenAI"][model_choice]["effort_options"],
+            value=model_info["models"]["OpenAI"][model_choice]["effort_options"][0],
+            visible=True
         )
-    elif openai_reasoning and model_choice == "gpt-5.1":
+    elif model_choice in google_effort:
         return gr.update(
-            choices=["none", "low", "medium", "high"], value="none", visible=True
+            choices=model_info["models"]["Google"][model_choice]["effort_options"],
+            value=model_info["models"]["Google"][model_choice]["effort_options"][0],
+            visible=True
         )
-    elif openai_reasoning and model_choice in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
+    elif model_choice in anthropic_effort:
         return gr.update(
-            choices=["minimal", "low", "medium", "high"], value="minimal", visible=True
+            choices=model_info["models"]["Anthropic"][model_choice]["effort_options"],
+            value=model_info["models"]["Anthropic"][model_choice]["effort_options"][0],
+            visible=True
         )
-    elif openai_reasoning:
-        return gr.update(choices=["low", "medium", "high"], value="low", visible=True)
-    elif model_choice == "gemini-3-pro-preview":
-        return gr.update(choices=["low", "high"], value="low", visible=True)
-    elif model_choice == "gemini-3-flash-preview":
-        return gr.update(
-            choices=["minimal", "low", "medium", "high"], value="minimal", visible=True
-        )
-    elif model_choice == "claude-opus-4-6":
-        return gr.update(choices=["low", "medium", "high", "max"], value="low", visible=True)
     else:
         return gr.update(value="low", visible=False)
 
