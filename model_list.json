@@ -242,6 +242,7 @@
             "claude-opus-4-5":{
                 "extended_thinking": true,
                 "max_tokens": 64000,
+                "max_thinking_budget": 59000,
                 "cost": {
                     "input": 5.00,
                     "5m cache input": 6.25,
@@ -258,6 +259,7 @@
             "claude-haiku-4-5":{
                 "extended_thinking": true,
                 "max_tokens": 64000,
+                "max_thinking_budget": 59000,
                 "cost": {
                     "input": 1.00,
                     "5m cache input": 1.25,
@@ -274,6 +276,7 @@
             "claude-sonnet-4-5":{
                 "extended_thinking": true,
                 "max_tokens": 64000,
+                "max_thinking_budget": 59000,
                 "cost": {
                     "input": 3.00,
                     "output": 15.00,
@@ -290,6 +293,7 @@
             "claude-opus-4-1-20250805": {
                 "extended_thinking": true,
                 "max_tokens": 32000,
+                "max_thinking_budget": 27000,
                 "cost": {
                     "input": 15.00,
                     "5m cache input": 18.75,
@@ -306,6 +310,7 @@
             "claude-opus-4-0": {
                 "extended_thinking": true,
                 "max_tokens": 32000,
+                "max_thinking_budget": 27000,
                 "cost": {
                     "input": 15.00,
                     "5m cache input": 18.75,
@@ -322,6 +327,7 @@
             "claude-sonnet-4-0": {
                 "extended_thinking": true,
                 "max_tokens": 64000,
+                "max_thinking_budget": 59000,
                 "cost": {
                     "input": 3.00,
                     "5m cache input": 3.75,
@@ -445,7 +451,7 @@
             "gemini-2.5-flash": {
                 "extended_thinking": true,
                 "min_thinking_budget": 0,
-                "max_thinking_budget": 24576,
+                "max_thinking_budget": -1,
                 "max_tokens": 65536,
                 "cost": {
                     "input": 0.30,
@@ -462,9 +468,9 @@
                 }
             },
             "gemini-2.5-flash-lite": {
-                "extended_thinking": false,
+                "extended_thinking": true,
                 "min_thinking_budget": 0,
-                "max_thinking_budget": 0,
+                "max_thinking_budget": -1,
                 "max_tokens": 65536,
                 "cost": {
                     "input": 0.10,
