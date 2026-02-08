@@ -126,16 +126,12 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     # Add thinking parameter if enabled and model supports it
     if use_thinking and model_info["models"]["Anthropic"][model]["extended_thinking"]:
         if model == "claude-opus-4-6":
-            api_params["thinking"] = {
-                "type": "adaptive"
-            }
-            api_params["output_config"] = {
-                "effort": effort
-            }
+            api_params["thinking"] = {"type": "adaptive"}
+            api_params["output_config"] = {"effort": effort}
         else:
             api_params["thinking"] = {
                 "type": "enabled",
-                "budget_tokens": thinking_budget
+                "budget_tokens": model_info["models"]["Anthropic"][model]["max_thinking_budget"]
             }
         api_params["temperature"] = 1.0  # Set temperature to 1 for thinking
     elif use_thinking and not model_info["models"]["Anthropic"][model]["extended_thinking"]:
@@ -159,7 +155,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     utils.save_messages_to_json(messages, filename="prompt_translation")
     return output["prompt_translation"], messages, cost
 
-def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000, effort="low"):
+def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     """
     Generate a MIDI bar (chord progression/melody) using the specified model and prompt.
 
@@ -203,16 +199,12 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000,
         # For tool use with thinking, we need to change tool_choice to auto
         api_params["tool_choice"] = {"type": "auto"}
         if model == "claude-opus-4-6":
-            api_params["thinking"] = {
-                "type": "adaptive"
-            }
-            api_params["output_config"] = {
-                "effort": effort
-            }
+            api_params["thinking"] = {"type": "adaptive"}
+            api_params["output_config"] = {"effort": effort}
         else:
             api_params["thinking"] = {
                 "type": "enabled",
-                "budget_tokens": thinking_budget
+                "budget_tokens": model_info["models"]["Anthropic"][model]["max_thinking_budget"]
             }
         api_params["temperature"] = 1.0  # Set temperature to 1 for thinking
     elif use_thinking and not model_info["models"]["Anthropic"][model]["extended_thinking"]:

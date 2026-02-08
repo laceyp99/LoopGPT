@@ -111,21 +111,13 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     elif model_with_thinking and use_thinking == False:
         config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])})
     elif model == "gemini-3-flash-preview":
-        if effort == "minimal":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="minimal")})
-        elif effort == "low":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
-        elif effort == "medium":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="medium")})
-        elif effort == "high":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        if effort in ["minimal", "low", "medium", "high"]:
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
         else:
             print("No effort level specified; using default thinking configuration.")
     elif model == "gemini-3-pro-preview":
-        if effort == "low":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
-        elif effort == "high":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        if effort in ["low", "high"]:
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
         else:
             print("No effort level specified; using default thinking configuration.")
 
@@ -177,21 +169,13 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     elif model_with_thinking and use_thinking == False:
         config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])})
     elif model == "gemini-3-flash-preview":
-        if effort == "minimal":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="minimal")})
-        elif effort == "low":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
-        elif effort == "medium":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="medium")})
-        elif effort == "high":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        if effort in ["minimal", "low", "medium", "high"]:
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
         else:
             print("No effort level specified; using default thinking configuration.")
     elif model == "gemini-3-pro-preview":
-        if effort == "low":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="low")})
-        elif effort == "high":
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level="high")})
+        if effort in ["low", "high"]:
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
         else:
             print("No effort level specified; using default thinking configuration.")
 
