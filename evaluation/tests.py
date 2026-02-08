@@ -176,6 +176,5 @@ if __name__ == "__main__":
     # Single test example
     test_path = "path/to/your/midi.mid"
     midi = MidiFile(test_path)
-    print(f"4 Bar Test: {four_bars(midi)}")
     print(f"Scale Test: {scale_test(midi, 'C', 'major')}")
     print(f"Duration Test: {duration_test(midi, 'sixteenth')}")

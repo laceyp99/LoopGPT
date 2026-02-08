@@ -66,6 +66,8 @@ def prompt_gen(prompt, model, temp=0.0):
     )
     # Extract the generated content
     content = completion.message.content
+    if completion.message.thinking:
+        messages.append({"role": "assistant", "content": completion.message.thinking})
     messages.append({"role": "assistant", "content": content})
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="prompt_translation")
@@ -104,6 +106,8 @@ def loop_gen(prompt, model, temp=0.0):
     else:
         print("No content returned from the model")
         midi_loop = None
+    if completion.message.thinking:
+        messages.append({"role": "assistant", "content": completion.message.thinking})
     messages.append({"role": "assistant", "content": str(midi_loop)})
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")
