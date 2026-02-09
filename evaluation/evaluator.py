@@ -494,17 +494,8 @@ class Evaluator:
                                 "name": f"{effort}{translate_suffix}",
                             }
                         )
-                # For Anthropic/Google, test thinking on/off with effort levels
+                # For Anthropic/Google, test thinking with effort levels
                 elif provider in ["Anthropic", "Google"] and effort_options:
-                    # Without thinking
-                    variations.append(
-                        {
-                            "use_thinking": False,
-                            "effort": None,
-                            "translate_prompt": translate,
-                            "name": f"standard{translate_suffix}",
-                        }
-                    )
                     # With thinking + effort levels
                     for effort in effort_options:
                         variations.append(

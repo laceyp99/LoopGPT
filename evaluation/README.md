@@ -79,24 +79,6 @@ The `models` parameter accepts several formats:
 | `"ollama"` | All local Ollama models |
 | `["gpt-4o-mini", "claude-sonnet-4-5"]` | Specific models by name |
 
-```python
-# All models from one provider
-results = evaluator.evaluate(
-    prompts="melody",
-    roots=["C"],
-    models="anthropic",
-    run_name="anthropic_test"
-)
-
-# Specific models
-results = evaluator.evaluate(
-    prompts="melody",
-    roots=["C"],
-    models=["gpt-4o-mini", "claude-sonnet-4-5", "gemini-2.5-flash"],
-    run_name="model_comparison"
-)
-```
-
 ### Testing Reasoning Variations
 
 When `test_reasoning=True`, the evaluator tests all thinking modes and effort levels for compatible models:
@@ -115,10 +97,10 @@ results = evaluator.evaluate(
 
 | Provider | Model Type | Variations |
 |----------|------------|------------|
-| OpenAI | o-series (o1, o3, etc.) | 4 effort levels (minimal, low, medium, high) |
-| Anthropic | Extended thinking models | thinking off + thinking on with 4 effort levels |
-| Google | Thinking-capable models | thinking off + thinking on with 4 effort levels |
-| Ollama | All | Single standard run |
+| OpenAI | gpt 5+ and o-series | various effort levels (none, minimal, low, medium, high, xhigh) |
+| Anthropic | claude 4+ | thinking off/on, only effort levels for claude-opus-4-6 |
+| Google | gemini 2.5+ | thinking off/on,  only effort levels for gemini 3 family |
+| Ollama | All | only thinking on if the model supports it |
 
 ### Testing Prompt Translation
 
@@ -182,11 +164,17 @@ When using `test_reasoning` or `test_prompt_translation`, variation subfolders a
 
 ```
 C_major/
-├── thinking_false/
+├── standard/
 │   └── ...
-├── thinking_true_effort_low/
+├── standard_translated/
 │   └── ...
-├── thinking_true_effort_high/
+├── low/
+│   └── ...
+├── low_translated/
+│   └── ...
+├── high/
+│   └── ...
+├── high_translated/
 │   └── ...
 └── ...
 ```
@@ -286,51 +274,6 @@ Individual results for each generation:
 }
 ```
 
-## API Reference
-
-### Evaluator Class
-
-```python
-class Evaluator:
-    def __init__(
-        self,
-        output_dir: str = "evaluations",  # Base directory for outputs
-        temperature: float = 0.0,          # Default generation temperature
-    )
-```
-
-### evaluate() Method
-
-```python
-def evaluate(
-    self,
-    prompts: str | list[str],              # Prompt(s) to test
-    roots: list[str],                       # Root notes (e.g., ["C", "D", "F#"])
-    models: str | list[str] = "all",        # Model specification
-    run_name: str,                          # Required: name for this run
-    tests: list[str] = ["scale", "duration"],  # Tests to run
-    test_reasoning: bool = False,           # Test thinking/effort variations
-    test_prompt_translation: bool = False,  # Test with/without translation
-) -> dict:
-```
-
-**Returns:** Summary dictionary with aggregated statistics.
-
-### run_tests() Method
-
-Run tests on a MIDI file directly (useful for custom workflows):
-
-```python
-def run_tests(
-    self,
-    midi_data: MidiFile,    # MIDI file to test
-    root: str,              # Root note
-    scale: str,             # Scale (major/minor)
-    prompt: str,            # Original prompt (for param detection)
-    tests: list[str],       # List of test names
-) -> dict:
-```
-
 ## Adding Custom Tests
 
 To add a new test:
@@ -365,62 +308,6 @@ def _detect_test_params(self, prompt: str, test_name: str) -> dict:
         # Your detection logic
         return {"param1": value1, "param2": value2}
     ...
-```
-
-## Examples
-
-### Full Evaluation Suite
-
-```python
-from evaluation.evaluator import Evaluator
-
-evaluator = Evaluator(output_dir="my_evals", temperature=0.3)
-
-results = evaluator.evaluate(
-    prompts=[
-        "an arpeggiator using only quarter notes",
-        "an arpeggiator using only eighth notes",
-        "a melodic bass line with half notes",
-    ],
-    roots=["C", "D", "E", "F", "G", "A", "B"],
-    models="all",
-    run_name="comprehensive_eval",
-    tests=["scale", "duration"],
-    test_reasoning=True,
-    test_prompt_translation=True,
-)
-
-print(f"Pass rate: {results['totals']['overall_pass_rate']:.1%}")
-print(f"Total cost: ${results['totals']['total_cost']:.2f}")
-```
-
-### Quick Model Comparison
-
-```python
-evaluator = Evaluator()
-
-results = evaluator.evaluate(
-    prompts="simple C major arpeggio with quarter notes",
-    roots=["C"],
-    models=["gpt-4o-mini", "claude-sonnet-4-5", "gemini-2.5-flash"],
-    run_name="quick_comparison"
-)
-
-for model, stats in results["by_model"].items():
-    print(f"{model}: {stats['pass_rate']:.1%} pass, {stats['avg_latency']:.2f}s avg")
-```
-
-### Ollama-Only Evaluation
-
-```python
-evaluator = Evaluator()
-
-results = evaluator.evaluate(
-    prompts="eighth note melody",
-    roots=["C", "G"],
-    models="ollama",
-    run_name="local_model_test"
-)
 ```
 
 ## Error Handling
