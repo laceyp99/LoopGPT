@@ -84,6 +84,19 @@ def calc_cost(model, usage):
     # Calculate total cost
     return (new_input_tokens * input_cost) + (usage.candidates_token_count * output_cost) + (cached * cache_cost) + storage_cost
 
+def process_output(response):
+    final_result = ""
+    thinking_content = ""
+    for part in response.candidates[0].content.parts:
+        if not part.text:
+            continue
+        if part.thought:
+            thinking_content += part.text
+        else:
+            final_result += part.text
+    return final_result, thinking_content
+
+
 def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     """
     Generate text content using the specified model and prompt.
@@ -107,17 +120,17 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     # Configure the generation parameters based on whether extended thinking is enabled
     model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
     if model_with_thinking and use_thinking:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])})
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"], include_thoughts=True)})
     elif model_with_thinking and use_thinking == False:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])})
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"], include_thoughts=True)})
     elif model == "gemini-3-flash-preview":
         if effort in ["minimal", "low", "medium", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
         else:
             print("No effort level specified; using default thinking configuration.")
     elif model == "gemini-3-pro-preview":
         if effort in ["low", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
         else:
             print("No effort level specified; using default thinking configuration.")
 
@@ -128,12 +141,14 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
         config=config
     )
     # Format into a message history for training and debugging purposes
-    content = response.text
+    content, thinking_content = process_output(response)
     messages = [
         {"role": "system", "content": pt_prompt},
         {"role": "user", "content": prompt},
         {"role": "assistant", "content": content}
     ]
+    if thinking_content:
+        messages.insert(2, {"role": "assistant", "content": thinking_content})
     # Calculate the cost of the generation
     cost = calc_cost(model, response.usage_metadata)
     # Save the messages to a JSON file for debugging and training purposes
@@ -165,17 +180,17 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     }
     model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
     if model_with_thinking and use_thinking:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"])})
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"], include_thoughts=True)})
     elif model_with_thinking and use_thinking == False:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"])})
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"], include_thoughts=True)})
     elif model == "gemini-3-flash-preview":
         if effort in ["minimal", "low", "medium", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
         else:
             print("No effort level specified; using default thinking configuration.")
     elif model == "gemini-3-pro-preview":
         if effort in ["low", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort)})
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
         else:
             print("No effort level specified; using default thinking configuration.")
 
@@ -185,14 +200,16 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
         contents=prompt,
         config=config
     )  
+    content, thinking_content = process_output(response)
     midi_loop: objects.Loop_G = response.parsed  
     # Format into a message history for training and debugging purposes
-    assistant_response = response.text
     messages = [
         {"role": "system", "content": loop_prompt},
         {"role": "user", "content": prompt},
-        {"role": "assistant", "content": assistant_response}
+        {"role": "assistant", "content": content}
     ]
+    if thinking_content:
+        messages.insert(2, {"role": "assistant", "content": thinking_content})
     # Calculate the cost of the generation
     cost = calc_cost(model, response.usage_metadata)
     # Save the messages to a JSON file for debugging and training purposes
