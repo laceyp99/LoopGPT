@@ -11,3 +11,4 @@ soundfonts/*.sf2
 Generations/
 __pycache__/
 MIDI/
+runs/

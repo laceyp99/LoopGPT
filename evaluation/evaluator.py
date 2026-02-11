@@ -11,6 +11,7 @@ This module provides a flexible evaluation framework that can:
 from rich.live import Live
 from rich.table import Table
 from rich.console import Console
+from rich.logging import RichHandler
 from mido import MidiFile
 from pathlib import Path
 from datetime import datetime
@@ -28,15 +29,6 @@ import src.runs as runs
 import src.ollama_api as ollama_api
 from src.midi_processing import loop_to_midi
 from evaluation.tests import scale_test, duration_test
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    stream=sys.stderr,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
-
 
 class Evaluator:
     """
@@ -59,7 +51,6 @@ class Evaluator:
     """
 
     SCALES = ["major", "minor"]
-    EFFORT_LEVELS = ["minimal", "low", "medium", "high"]
 
     AVAILABLE_TESTS = {
         "scale": scale_test,
@@ -87,10 +78,29 @@ class Evaluator:
         self.output_dir = Path(output_dir)
         self.temperature = temperature
         self.console = Console(force_terminal=True)
+        self._setup_logging()
 
         # Load model info
         with open("model_list.json", "r") as f:
             self.model_info = json.load(f)
+
+    def _setup_logging(self):
+        log_path = self.output_dir / "run.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+            )
+        )
+
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+
+        # 🔑 Remove any existing console handlers
+        root_logger.handlers.clear()
+        root_logger.addHandler(file_handler)
 
     def evaluate(self, prompts: Union[str, list[str]], roots: list[str], models: Union[str, list[str]] = "all", run_name: str = None,
         tests: list[str] = ["scale", "duration"], test_reasoning: bool = False, test_prompt_translation: bool = False) -> dict:
@@ -153,7 +163,7 @@ class Evaluator:
             test_reasoning=test_reasoning,
             test_prompt_translation=test_prompt_translation,
         )
-
+        logger = logging.getLogger(__name__)
         logger.info(f"Starting evaluation '{run_name}' with {len(tasks)} total tasks")
 
         # Separate async and sync tasks
@@ -279,7 +289,7 @@ class Evaluator:
 
         if isinstance(models, str):
             models_lower = models.lower()
-
+            logger = logging.getLogger(__name__)
             if models_lower == "all":
                 # All cloud models from model_list.json
                 for provider in ["OpenAI", "Anthropic", "Google"]:
@@ -687,14 +697,14 @@ class Evaluator:
         table.add_column("Pass Rate")
         table.add_column("Avg Latency")
 
-        with Live(table, console=self.console, refresh_per_second=1) as live:
+        with Live(table, console=self.console, refresh_per_second=2) as live:
             for i, task in enumerate(tasks):
                 result = self._run_single(task, run_path, tests_to_run)
                 results.append(result)
 
                 # Update table
                 new_table = Table(
-                    title=f"Ollama Evaluation Progress ({i + 1}/{total_tasks})"
+                    title=f"Evaluation Progress ({len(results)}/{total_tasks})"
                 )
                 new_table.add_column("Model")
                 new_table.add_column("Tested")
@@ -776,7 +786,7 @@ class Evaluator:
             "tests": {},
             "error": None,
         }
-
+        logger = logging.getLogger(__name__)
         # Generate MIDI
         try:
             start_time = time.perf_counter()
@@ -996,5 +1006,24 @@ class Evaluator:
 
 
 if __name__ == "__main__":
-    eval = Evaluator(output_dir="eval_runs",temperature=0.0)
-    eval.evaluate(prompts="An arpeggiator in only quarter notes", roots=["C", "G"], models=["deepseek-r1:14b-qwen-distill-q4_K_M","ministral-3:14b","gpt-oss:20b"], run_name="ollama_test", tests=["scale", "duration"], test_reasoning=False, test_prompt_translation=False)
+
+    # with open('model_list.json', 'r') as f:
+    #     model_info = json.load(f)
+    
+    # model_names = [m for provider in model_info['models'].values() for m in provider.keys()]
+    # print(len(model_names))
+
+    eval = Evaluator(output_dir="runs",temperature=0.0)
+    eval.evaluate(
+        prompts=[
+            "An arpeggiator in only quarter notes",
+            "An arpeggiator in only eighth notes",
+            "An arpeggiator in only sixteenth notes"
+        ],
+        roots=["C", "A", "F#", "Eb"], 
+        models="ollama",
+        run_name="arpeggiator_local_pt", 
+        tests=["scale", "duration"], 
+        test_reasoning=False, 
+        test_prompt_translation=True
+    )

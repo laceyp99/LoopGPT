@@ -52,6 +52,7 @@ Set up your API keys in `src/.env` or via the Gradio "API Keys" panel:
 OPENAI_API_KEY="your-openai-api-key-here"
 GEMINI_API_KEY="your-gemini-api-key-here"
 ANTHROPIC_API_KEY="your-anthropic-api-key-here"
+OLLAMA_API_HOST_ADDRESS="your-ollama-base-url-here"
 ```
 ### Run the Gradio UI
 To start the web interface locally, run:
@@ -77,56 +78,23 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
    - View the piano-roll image (if enabled)
 
 3. **Browse History**
-   - Click **History >>** to open the sidebar
+   - Click **History** to open the sidebar
    - Select a previous generation from the dropdown
    - Click **Load** to view/play it, or **Delete** to remove it
 
 4. **Inspect JSON logs**  
-   - `prompt_translation.json`, `loop.json`, and `evaluation_log.json` record the full message exchange and structured loop data  
-
-## Evaluation
-The evaluation suite gives a quick sanity check that each model can follow core structural instructions for a 4-bar loop.
-
-What we currently test:
-- `Bar length`: Exactly 4 bars based on the expected ticks
-- `Scale compliance`: All note_on events fit the requested key/scale
-   - C, D, E, F#, G#, and A# (Major and minor)
-- `Uniform note length`: All notes the specific length when requested
-   - quarter and eighth notes
-
-How it works:
-- A small grid of prompts (root x scale x note duration) is generated.
-- Each model (and optional "thinking" variant) is asynchronously invoked.
-- Results stream into a live Rich table (counts, pass %, avg latency, avg cost).
-- Artifacts saved for later musical / qualitative review.
-
-### Quick start
-To start the evaluation process locally, you have one of two options:
-
-1. If you want to test SOTA models (OpenAI, Google, and Anthropic) via API, run:
-```sh
-python evaluation/sota_eval.py
-```
-**Warning:** This will need to run for at least 30 minutes and will cost around $40 in API calls.
-
-2. If you want to test local Ollama models, run:
-```sh
-python evaluation/ollama_eval.py
-```
-
-3. If you want to test the prompt translation feature with the smaller SOTA models via API, run:
-```sh
-python evaluation/prompt_translation_eval.py
-```
+   - `prompt_translation.json` and `loop.json` record the full message exchange and reasoning  
 
 ## Project Structure
 
 - `app.py`: The Gradio UI layout facilitating the generation process.
 - `model_list.json`: The main JSON database for model pricing and other characteristics
+- `Prompts/`
+  - `loop gen.txt`: System prompt for generating the 4-bar loop
+  - `prompt translation.txt`: System prompt for enriching user descriptions
 - `src/`
   - `.env`: Configuration file
-  - `gpt_api.py`: OpenAI GPT endpoints (prompt translation & structured loop generation)
-  - `o_api.py`: OpenAI reasoning (o series) endpoints
+  - `openai_api.py`: OpenAI Responses endpoints
   - `gemini_api.py`: Google Gemini endpoints 
   - `claude_api.py`: Anthropic Claude endpoints
   - `ollama_api.py`: Ollama API endpoints
@@ -136,24 +104,17 @@ python evaluation/prompt_translation_eval.py
   - `runs.py`: Routes the generation (with prompt translation if directed) to the right API
   - `audio.py`: MIDI to audio conversion using FluidSynth
   - `history.py`: Session history management (save/load/delete generations)
-- `Prompts/`
-  - `loop gen.txt`: System prompt for generating the 4-bar loop
-  - `prompt translation.txt`: System prompt for enriching user descriptions
-- `soundfonts/`: Place SoundFont (.sf2) files here for audio playback
-- `generations/`: Auto-created directory storing session history (MIDI, audio, metadata)
 - `evaluation/`
-  - `Results/`: Images showing evaluation analysis for the README
   - `tests.py`: The midi validation tests for the evaluation
-  - `analysis.py`: The data analysis visualization of the SOTA and Ollama evaluation data
-  - `sota_eval.py`: The async evaluation script with live CLI table logging
-  - `prompt_translation_analysis.py`: The data analysis visualization of the prompt translation evaluation data
-  - `prompt_translation_eval.py`: The async evaluation script with live CLI table logging
-  - `ollama_eval.py`: The serial evaluation for local model testing
+  - `evaluator.py`: The evaluator class with the ability for modular testing
+  - `analysis.py`: The data analysis visualization of the evaluation data
+  - `README.md`: Further documentation on the evaluation subdirectory
+- `soundfonts/`: Place SoundFont (.sf2) files here for audio playback
 - `requirements.txt`: List of Python dependencies
-- `evaluation_log.json`: JSON log of the model evaluations
 - `loop.json`: JSON log of the MIDI-generation conversation
 - `prompt_translation.json`: JSON log of the prompt-translation conversation
 - `output.mid`: The most recent generated MIDI file
+- `output.mp3`: The most recent converted audio file
 
 ## Limitations
 
