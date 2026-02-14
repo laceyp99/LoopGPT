@@ -27,6 +27,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import src.runs as runs
 import src.ollama_api as ollama_api
+from src.utils import DURATION_KEYWORDS
 from src.midi_processing import loop_to_midi
 from evaluation.tests import scale_test, duration_test
 
@@ -45,9 +46,7 @@ class Evaluator:
 
     Attributes:
         SCALES: List of scales to test (always major and minor)
-        EFFORT_LEVELS: Available effort levels for reasoning models
         AVAILABLE_TESTS: Registry of available test functions
-        DURATION_KEYWORDS: Mapping of keywords to duration values for auto-detection
     """
 
     SCALES = ["major", "minor"]
@@ -55,16 +54,6 @@ class Evaluator:
     AVAILABLE_TESTS = {
         "scale": scale_test,
         "duration": duration_test,
-    }
-
-    DURATION_KEYWORDS = {
-        "sixteenth": "sixteenth",
-        "16th": "sixteenth",
-        "eighth": "eighth",
-        "8th": "eighth",
-        "quarter": "quarter",
-        "half": "half",
-        "whole": "whole",
     }
 
     def __init__(self, output_dir: str = "evaluations", temperature: float = 0.0):
@@ -410,7 +399,7 @@ class Evaluator:
         """
         if test_name == "duration":
             prompt_lower = prompt.lower()
-            for keyword, duration_value in self.DURATION_KEYWORDS.items():
+            for keyword, duration_value in DURATION_KEYWORDS.items():
                 if keyword in prompt_lower:
                     return {"duration": duration_value}
             return {}

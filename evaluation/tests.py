@@ -1,40 +1,10 @@
 from mido import MidiFile
+import sys
+import os
 
-major_intervals = [0, 2, 4, 5, 7, 9, 11]
-minor_intervals = [0, 2, 3, 5, 7, 8, 10]
-harmonic_minor_intervals = [0, 2, 3, 5, 7, 8, 11]
-melodic_minor_intervals = [0, 2, 3, 5, 7, 9, 11]
-
-scale_intervals = {
-    "major": major_intervals,
-    "minor": minor_intervals,
-    "harmonic minor": harmonic_minor_intervals,
-    "melodic minor": melodic_minor_intervals
-}
-
-# Define note names with their potential enharmonic spellings.
-note_names = [
-    ["B#", "C"],     # 0
-    ["C#", "Db"],    # 1
-    ["D"],           # 2
-    ["D#", "Eb"],    # 3
-    ["E", "Fb"],     # 4
-    ["E#", "F"],     # 5
-    ["F#", "Gb"],    # 6
-    ["G"],           # 7
-    ["G#", "Ab"],    # 8
-    ["A"],           # 9
-    ["A#", "Bb"],    #10
-    ["B", "Cb"]      #11
-]
-
-note_lengths = {
-    "sixteenth": 0.25,
-    "eighth": 0.5,
-    "quarter": 1,
-    "half": 2,
-    "whole": 4
-}
+# Imports from parent directory
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.utils import SCALE_INTERVALS, DURATION_BEATS, note_name_to_pitch_class
 
 def scale_test(midi, root, scale):
     """
@@ -51,21 +21,16 @@ def scale_test(midi, root, scale):
     Raises:
         ValueError: If the provided root note or scale mode is invalid.
     """
-    # Map each note name to its pitch class.
-    note_to_pc = {}
-    for pc, names in enumerate(note_names):
-        for name in names:
-            note_to_pc[name.upper()] = pc
-
     # Validate root and scale.
-    if root.upper() not in note_to_pc:
+    try:
+        root_pc = note_name_to_pitch_class(root)
+    except ValueError:
         raise ValueError(f"Invalid root note: {root}")
-    if scale.lower() not in scale_intervals:
+    if scale.lower() not in SCALE_INTERVALS:
         raise ValueError(f"Invalid scale mode: {scale.lower()}")
 
     # Determine the acceptable pitch classes for the given scale.
-    root_pc = note_to_pc[root.upper()]
-    acceptable_pcs = [(root_pc + interval) % 12 for interval in scale_intervals[scale.lower()]]
+    acceptable_pcs = [(root_pc + interval) % 12 for interval in SCALE_INTERVALS[scale.lower()]]
     # print(f"Root Note: {root}, Scale Mode: {scale}, Acceptable Pitch Classes: {acceptable_pcs}")
 
     correct = 0
@@ -108,10 +73,10 @@ def duration_test(midi, duration):
     Returns:
         bool: True if all note events have the specified duration; False otherwise.
     """
-    if duration not in note_lengths:
+    if duration not in DURATION_BEATS:
         raise ValueError(f"Invalid duration: {duration}")
 
-    duration_ticks = note_lengths[duration] 
+    duration_ticks = DURATION_BEATS[duration] 
     ticks_per_beat = midi.ticks_per_beat
     expected_ticks = duration_ticks * ticks_per_beat
     # print(f"Expected duration in ticks: {expected_ticks}")

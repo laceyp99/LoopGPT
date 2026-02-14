@@ -1,23 +1,22 @@
 # LoopGPT Evaluation Framework
 
-A unified evaluation framework for testing MIDI loop generation across multiple AI models.
+A unified evaluation framework for testing MIDI loop generation across multiple AI models, with an interactive Plotly Dash dashboard for analyzing results.
 
 ## Overview
 
-The `Evaluator` class provides a flexible, extensible pipeline for:
+The evaluation framework has two main components:
 
-- Testing multiple prompts across multiple models in a single run
-- Automatically appending root notes and scales to your prompts
-- Auto-detecting test parameters (like duration) from prompt text
-- Running async for cloud providers (OpenAI, Anthropic, Google) and sync for local models (Ollama)
-- Saving structured results including MIDI files, chat history, and test results
+- **`Evaluator`** -- Runs structured evaluations across models, prompts, roots, and scales, saving MIDI files, chat history, and test results.
+- **`analysis.py`** -- An interactive Plotly Dash dashboard that loads evaluation run data and visualizes it across 7 tabs with 19 chart types.
 
 ## Quick Start
+
+### Run an Evaluation
 
 ```python
 from evaluation.evaluator import Evaluator
 
-evaluator = Evaluator()
+evaluator = Evaluator(output_dir="runs", temperature=0.0)
 
 results = evaluator.evaluate(
     prompts="an arpeggiator using only quarter notes",
@@ -27,18 +26,38 @@ results = evaluator.evaluate(
 )
 ```
 
+### Launch the Dashboard
+
+```bash
+# Interactive run selection
+python evaluation/analysis.py
+
+# Direct path to a run
+python evaluation/analysis.py runs/20260210_224954_arpeggiator_local_pt
+```
+
+The dashboard opens at `http://127.0.0.1:8050/`.
+
 ## Installation
 
-The evaluator uses dependencies already in `requirements.txt`. No additional installation needed.
+All dependencies are in `requirements.txt`:
 
-## Usage
+```bash
+pip install -r requirements.txt
+```
+
+Key packages: `dash`, `dash-bootstrap-components`, `pandas`, `plotly`, `mido`, `rich`.
+
+---
+
+## Evaluator
 
 ### Basic Evaluation
 
 ```python
 from evaluation.evaluator import Evaluator
 
-evaluator = Evaluator()
+evaluator = Evaluator(output_dir="runs", temperature=0.0)
 
 # Single prompt, multiple roots, one provider
 results = evaluator.evaluate(
@@ -48,6 +67,8 @@ results = evaluator.evaluate(
     run_name="quarter_note_test"
 )
 ```
+
+The evaluator automatically appends `" in {root} {scale}"` to each prompt and runs both major and minor scales for every root.
 
 ### Multiple Prompts
 
@@ -89,32 +110,32 @@ results = evaluator.evaluate(
     roots=["C", "G"],
     models=["o3", "claude-sonnet-4-5"],
     run_name="reasoning_test",
-    test_reasoning=True  # Tests all effort levels: minimal, low, medium, high
+    test_reasoning=True
 )
 ```
-
-**What gets tested:**
 
 | Provider | Model Type | Variations |
 |----------|------------|------------|
 | OpenAI | gpt 5+ and o-series | various effort levels (none, minimal, low, medium, high, xhigh) |
 | Anthropic | claude 4+ | thinking off/on, only effort levels for claude-opus-4-6 |
-| Google | gemini 2.5+ | thinking off/on,  only effort levels for gemini 3 family |
+| Google | gemini 2.5+ | thinking off/on, only effort levels for gemini 3 family |
 | Ollama | All | only thinking on if the model supports it |
 
 ### Testing Prompt Translation
 
-When `test_prompt_translation=True`, each combination runs twice: with and without the prompt translation feature:
+When `test_prompt_translation=True`, each combination runs twice -- with and without the prompt translation feature (which enriches the user prompt via an extra API call before generation):
 
 ```python
 results = evaluator.evaluate(
     prompts="jazzy walking bass",
     roots=["E", "A"],
-    models="openai",
+    models="ollama",
     run_name="translation_comparison",
     test_prompt_translation=True
 )
 ```
+
+This roughly doubles the number of generations and, for translated runs, approximately doubles latency per generation due to the extra API call.
 
 ### Configuring Tests
 
@@ -130,24 +151,144 @@ results = evaluator.evaluate(
 )
 ```
 
-**Available tests:**
-
 | Test | Description | Auto-Detection |
 |------|-------------|----------------|
 | `scale` | Validates notes belong to the specified scale | Always uses root/scale from prompt |
 | `duration` | Validates note durations match expected value | Detects from keywords: `quarter`, `eighth`, `sixteenth`, `16th`, `8th`, `half`, `whole` |
 
-The `scale` test always runs since root and scale are always applied to prompts.
+The `scale` test always runs since root and scale are always applied to prompts. Duration keywords are defined in `src/utils.py` as `DURATION_KEYWORDS` and shared across the codebase.
+
+### Evaluator Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `output_dir` | `str` | `"evaluations"` | Base directory for all run outputs |
+| `temperature` | `float` | `0.0` | Temperature for generation |
+
+#### `evaluate()` Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `prompts` | `str \| list[str]` | required | Base prompt(s) -- `" in {root} {scale}"` is appended |
+| `roots` | `list[str]` | required | Root notes to test (e.g. `["C", "F#", "Eb"]`) |
+| `models` | `str \| list[str]` | `"all"` | Provider name, `"all"`, or list of model names |
+| `run_name` | `str` | required | Name for this run (used in output directory) |
+| `tests` | `list[str]` | `["scale", "duration"]` | Which validation tests to run |
+| `test_reasoning` | `bool` | `False` | Test all thinking/effort variations |
+| `test_prompt_translation` | `bool` | `False` | Test with and without prompt translation |
+
+---
+
+## Analysis Dashboard
+
+The dashboard is a Plotly Dash application that loads evaluation run data and provides interactive visualization across 7 tabs.
+
+### Launching
+
+```bash
+# Interactive selection from available runs
+python evaluation/analysis.py
+
+# Direct path
+python evaluation/analysis.py runs/20260210_224954_arpeggiator_local_pt
+
+# Just the run name (looks in runs/ automatically)
+python evaluation/analysis.py 20260210_224954_arpeggiator_local_pt
+```
+
+### Global Filters
+
+A filter bar at the top of every page lets you narrow results by:
+
+- **Models** -- Select which models to include
+- **Root Notes** -- Filter by root note (e.g. C, F#, Eb)
+- **Scale Type** -- Major, minor, or both
+- **Variation** -- Standard, translated, reasoning effort levels
+
+All charts update in real time when filters change.
+
+### Dashboard Tabs
+
+#### Tab 1: Overview
+- Metric cards: total generations, pass rate, best/worst model, total cost, average latency
+- Overall pass rate by model (horizontal bar chart)
+
+#### Tab 2: Model Performance
+- Per-test breakdown: scale vs duration vs overall pass rate per model
+- Major vs minor pass rate comparison per model
+- Model x scale heatmap
+- Model x root heatmap
+
+#### Tab 3: Root & Scale
+- Pass rate by root note
+- Major vs minor pass rate per root note
+- Full model x root+scale heatmap
+
+#### Tab 4: Prompt Translation
+- Side-by-side pass rate comparison: standard vs translated
+- Translation impact delta (positive = translation helped)
+- Latency comparison: standard vs translated
+
+#### Tab 5: Latency
+- Latency distribution box plots per model (split by standard/translated when applicable)
+- Latency vs pass rate scatter plot
+
+#### Tab 6: Cost
+- Total cost by model
+- Cost per generation vs pass rate scatter plot
+
+#### Tab 7: Error Patterns
+- Generation failure rate (API/conversion errors) per model
+- Most common incorrect pitch classes by model (as note names)
+- Incorrect intervals relative to prompted root per model (e.g. m3, P5 -- helps identify systematic confusions)
+- Incorrect durations by model showing actual vs requested duration
+
+### Exporting
+
+Click the **Export Dashboard** button to save all 19 charts as individual HTML files plus a combined `dashboard.html` to `runs/<run>/analysis/`:
+
+```
+runs/20260210_224954_arpeggiator_local_pt/
+└── analysis/
+    ├── dashboard.html              # Combined single-page dashboard
+    ├── pass_rate_by_model.html
+    ├── per_test_breakdown.html
+    ├── incorrect_intervals.html
+    └── ... (19 chart files total)
+```
+
+The exported HTML files are self-contained and can be shared without a running server.
+
+### Programmatic Usage
+
+You can also use the data loading and chart building functions directly:
+
+```python
+from evaluation.analysis import load_run, build_pass_rate_by_model
+
+df, config, summary = load_run("runs/20260210_224954_arpeggiator_local_pt")
+
+# df is a pandas DataFrame with one row per generation
+print(df.groupby("model")["overall_pass"].mean())
+
+# Build individual charts
+fig = build_pass_rate_by_model(df)
+fig.show()
+```
+
+---
 
 ## Output Structure
 
 Each evaluation run creates a timestamped directory:
 
 ```
-evaluations/
-└── 20260207_143022_my_first_eval/
+runs/
+└── 20260210_224954_my_first_eval/
     ├── config.json                    # Full evaluation configuration
     ├── summary.json                   # Aggregated results + statistics
+    ├── analysis/                      # Created by dashboard export
+    │   └── dashboard.html
     └── results/
         └── OpenAI/
             └── gpt-4o-mini/
@@ -164,19 +305,13 @@ When using `test_reasoning` or `test_prompt_translation`, variation subfolders a
 
 ```
 C_major/
-├── standard/
-│   └── ...
-├── standard_translated/
-│   └── ...
-├── low/
-│   └── ...
-├── low_translated/
-│   └── ...
-├── high/
-│   └── ...
-├── high_translated/
-│   └── ...
-└── ...
+├── output.mid              # Standard variation (no subfolder)
+├── messages.json
+├── test_results.json
+└── standard_translated/    # Translated variation
+    ├── output.mid
+    ├── messages.json
+    └── test_results.json
 ```
 
 ### config.json
@@ -224,8 +359,8 @@ Aggregated statistics for the entire run:
             "avg_latency": 2.1
         }
     },
-    "by_root": { ... },
-    "by_scale": { ... }
+    "by_root": { "C": { "tested": 24, "passed": 18, "pass_rate": 0.75 } },
+    "by_scale": { "major": { "tested": 24, "passed": 20, "pass_rate": 0.833 } }
 }
 ```
 
@@ -274,9 +409,9 @@ Individual results for each generation:
 }
 ```
 
-## Adding Custom Tests
+---
 
-To add a new test:
+## Adding Custom Tests
 
 1. Create the test function in `tests.py`:
 
@@ -296,19 +431,13 @@ def my_custom_test(midi, param1, param2):
 AVAILABLE_TESTS = {
     "scale": scale_test,
     "duration": duration_test,
-    "my_test": my_custom_test,  # Add here
+    "my_test": my_custom_test,
 }
 ```
 
-3. Add keyword detection if needed:
+3. Add keyword detection in `_detect_test_params()` if the test parameters should be auto-detected from prompt text.
 
-```python
-def _detect_test_params(self, prompt: str, test_name: str) -> dict:
-    if test_name == "my_test":
-        # Your detection logic
-        return {"param1": value1, "param2": value2}
-    ...
-```
+---
 
 ## Error Handling
 
@@ -317,18 +446,19 @@ The evaluator continues on failures, logging errors and saving partial results:
 - API errors are captured in `test_results.json` with an `"error"` field
 - Failed generations are counted in `summary.json` under `failed_generations`
 - MIDI conversion errors are logged but don't halt the evaluation
+- All logs are written to `<output_dir>/run.log`
 
 ## Performance Notes
 
 - **Cloud providers** run asynchronously with rate limiting based on RPM from `model_list.json`
-- **Ollama** runs synchronously (one request at a time)
-- A live progress table displays during evaluation
+- **Ollama** runs synchronously, sorted by model to minimize GPU memory swaps
+- A live Rich progress table displays during evaluation with per-model pass rates, latency, and cost
 - Large evaluations (many models x many prompts x many roots) can take significant time and incur API costs
 
 ## File Reference
 
 | File | Description |
 |------|-------------|
-| `evaluator.py` | Main `Evaluator` class |
-| `tests.py` | MIDI validation test functions |
-| `analysis.py` | Visualization utilities for results |
+| `evaluator.py` | Main `Evaluator` class -- orchestrates generation, testing, and result saving |
+| `tests.py` | MIDI validation test functions (`scale_test`, `duration_test`) |
+| `analysis.py` | Interactive Plotly Dash dashboard (7 tabs, 19 charts, global filters, export) |

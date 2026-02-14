@@ -7,59 +7,209 @@ import numpy as np
 import json
 import mido
 
+# Flat list of chromatic note names (pitch class 0-11, sharps only)
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+# Enharmonic note name variants per pitch class (for scale spelling, validation, etc.)
+ENHARMONIC_NOTE_NAMES = [
+    ["B#", "C", "Dbb"],   # 0
+    ["C#", "Db", "B##"],  # 1
+    ["D", "C##", "Ebb"],  # 2
+    ["D#", "Eb", "Fbb"],  # 3
+    ["E", "Fb", "D##"],   # 4
+    ["E#", "F", "Gbb"],   # 5
+    ["F#", "Gb", "E##"],  # 6
+    ["G", "F##", "Abb"],  # 7
+    ["G#", "Ab"],          # 8
+    ["A", "G##", "Bbb"],  # 9
+    ["A#", "Bb", "Cbb"],  # 10
+    ["B", "Cb", "A##"],   # 11
+]
 # A dictionary that maps note names to their corresponding MIDI numbers
 base_midi_numbers = {
     "C": 0,
-    "B♯♯": 1,
-    "B##": 1,
-    "C♯": 1,
-    "C#": 1,
-    "D♭": 1,
-    "Db": 1,
-    "C♯♯": 2,
-    "C##": 2,
-    "D": 2,
-    "D♯": 3,
-    "D#": 3,
-    "E♭": 3,
-    "Eb": 3,
-    "D♯♯": 4,
-    "D##": 4,
-    "E": 4,
-    "Fb": 4,
-    "F♭": 4,
-    "E♯": 5,
-    "E#": 5,
-    "F": 5,
-    "E♯♯": 6,
-    "E##": 6,
-    "F♯": 6,
-    "F#": 6,
-    "Gb": 6,
-    "G♭": 6,
-    "F♯♯": 7,
-    "F##": 7,
-    "G": 7,
-    "G♯": 8,
-    "G#": 8,
-    "A♭": 8,
-    "Ab": 8,
-    "G♯♯": 9,
-    "G##": 9,
-    "A": 9,
-    "A♯": 10,
-    "A#": 10,
-    "B♭": 10,
-    "Bb": 10,
-    "A♯♯": 11,
-    "A##": 11,
-    "B": 11,
-    "Cb": 11,
-    "C♭": 11,
-    "B♯": 12,
-    "B#": 12,
+    "B♯♯": 1, "B##": 1, "C♯": 1, "C#": 1,
+    "D♭": 1, "Db": 1,
+    "C♯♯": 2, "C##": 2, "D": 2,
+    "D♯": 3, "D#": 3, "E♭": 3, "Eb": 3,
+    "D♯♯": 4, "D##": 4, "E": 4, "Fb": 4, "F♭": 4,
+    "E♯": 5, "E#": 5, "F": 5,
+    "E♯♯": 6, "E##": 6, "F♯": 6, "F#": 6, "Gb": 6, "G♭": 6,
+    "F♯♯": 7, "F##": 7, "G": 7,
+    "G♯": 8, "G#": 8, "A♭": 8, "Ab": 8,
+    "G♯♯": 9, "G##": 9, "A": 9,
+    "A♯": 10, "A#": 10, "B♭": 10, "Bb": 10,
+    "A♯♯": 11, "A##": 11, "B": 11, "Cb": 11, "C♭": 11,
+    "B♯": 12, "B#": 12
 }
 
+# Scale intervals (semitones from root) for each mode
+SCALE_INTERVALS = {
+    "major": [0, 2, 4, 5, 7, 9, 11],
+    "minor": [0, 2, 3, 5, 7, 8, 10],
+    "harmonic minor": [0, 2, 3, 5, 7, 8, 11],
+    "melodic minor": [0, 2, 3, 5, 7, 9, 11],
+}
+
+# Canonical duration definitions: name -> beats, sixteenths, display string, and aliases
+DURATION_MAP = {
+    "sixteenth": {"beats": 0.25, "sixteenths": 1,  "display": "1/16",  "aliases": ["16th"]},
+    "eighth":    {"beats": 0.5,  "sixteenths": 2,  "display": "1/8",   "aliases": ["8th"]},
+    "quarter":   {"beats": 1.0,  "sixteenths": 4,  "display": "1/4",   "aliases": []},
+    "half":      {"beats": 2.0,  "sixteenths": 8,  "display": "1/2",   "aliases": []},
+    "whole":     {"beats": 4.0,  "sixteenths": 16, "display": "1 bar", "aliases": []},
+}
+
+# Derived lookups from DURATION_MAP
+DURATION_BEATS = {name: d["beats"] for name, d in DURATION_MAP.items()}
+DURATION_SIXTEENTHS_TO_DISPLAY = {d["sixteenths"]: d["display"] for d in DURATION_MAP.values()}
+DURATION_KEYWORDS = {name: name for name in DURATION_MAP}
+for name, d in DURATION_MAP.items():
+    for alias in d["aliases"]:
+        DURATION_KEYWORDS[alias] = name
+DURATION_BEATS_TO_NAME = {d["beats"]: name.title() for name, d in DURATION_MAP.items()}
+
+# Interval names (semitones 0-11 relative to root)
+INTERVAL_NAMES = [
+    "Root", "m2", "M2", "m3", "M3", "P4",
+    "Tritone", "P5", "m6", "M6", "m7", "M7",
+]
+
+PLOTLY_BG = "#1a1a2e"
+PLOTLY_BG_ALT = "#252540"       # Slightly lighter (e.g. black key lanes)
+PLOTLY_GRID = "#2a2a4a"
+PLOTLY_GRID_STRONG = "#4a4a6a"  # Bar boundaries
+PLOTLY_TEXT = "#e0e0e0"
+PLOTLY_ACCENT = "#0f3460"
+PLOTLY_CARD_BG = "#16213e"
+
+def pitch_class_to_note(pc):
+    """Convert a pitch class integer (0-11) to a note name.
+
+    Args:
+        pc (int): Pitch class (0 = C, 1 = C#, ..., 11 = B).
+
+    Returns:
+        str: Note name string (sharp spelling).
+    """
+    return NOTE_NAMES[pc % 12]
+
+
+def note_name_to_pitch_class(name):
+    """Convert a note name to its pitch class using base_midi_numbers.
+
+    Supports ASCII and unicode sharps/flats, double sharps, etc.
+
+    Args:
+        name (str): Note name (e.g. "C", "F#", "Eb", "G##").
+
+    Returns:
+        int: Pitch class (0-11).
+
+    Raises:
+        ValueError: If the note name is not recognized.
+    """
+    pc = base_midi_numbers.get(name)
+    if pc is None:
+        raise ValueError(f"Unrecognized note name: {name}")
+    return pc % 12
+
+
+def pitch_class_to_interval(pc, root_pc):
+    """Convert a pitch class to an interval name relative to a root.
+
+    Args:
+        pc (int): Pitch class of the note.
+        root_pc (int): Pitch class of the root note.
+
+    Returns:
+        str: Interval name (e.g. "m3", "P5").
+    """
+    semitones = (pc - root_pc) % 12
+    return INTERVAL_NAMES[semitones]
+
+
+def velocity_to_color(velocity):
+    """Map MIDI velocity (0-127) to a color gradient from dark purple to bright coral.
+
+    Args:
+        velocity (int): MIDI velocity value (0-127).
+
+    Returns:
+        str: CSS rgb color string.
+    """
+    t = velocity / 127.0
+    r = int(45 + t * (255 - 45))
+    g = int(27 + t * (107 - 27))
+    b = int(78 + t * (91 - 78))
+    return f"rgb({r},{g},{b})"
+
+
+def is_black_key(midi_pitch):
+    """Check if a MIDI pitch corresponds to a black key on a piano.
+
+    Args:
+        midi_pitch (int): MIDI pitch number.
+
+    Returns:
+        bool: True if the pitch is a black key (C#, D#, F#, G#, A#).
+    """
+    return (midi_pitch % 12) in [1, 3, 6, 8, 10]
+
+
+def format_duration_sixteenths(sixteenths):
+    """Format a duration in sixteenth notes to a human-readable string.
+
+    Uses the canonical DURATION_MAP for standard values, falls back to
+    fractional notation for non-standard durations.
+
+    Args:
+        sixteenths (float): Duration in sixteenth note units.
+
+    Returns:
+        str: Formatted duration string (e.g. "1/4", "1 bar", "3/16").
+    """
+    sixteenths_int = int(sixteenths)
+    display = DURATION_SIXTEENTHS_TO_DISPLAY.get(sixteenths_int)
+    if display:
+        return display
+    return f"{sixteenths_int}/16"
+
+
+def beats_to_duration_name(beats):
+    """Convert a beat ratio to a human-readable duration name.
+
+    Args:
+        beats (float): Duration in beats (e.g. 0.25, 0.5, 1.0, 2.0, 4.0).
+
+    Returns:
+        str: Duration name (e.g. "Sixteenth", "Quarter") or "{beats} beats" for
+            non-standard values.
+    """
+    name = DURATION_BEATS_TO_NAME.get(beats)
+    if name:
+        return name
+    return f"{beats} beats"
+
+
+def apply_plotly_theme(fig):
+    """Apply the shared LoopGPT dark theme to a Plotly figure.
+
+    Args:
+        fig (go.Figure): Plotly figure to style.
+
+    Returns:
+        go.Figure: The styled figure (modified in place).
+    """
+    fig.update_layout(
+        paper_bgcolor=PLOTLY_BG,
+        plot_bgcolor=PLOTLY_BG,
+        font=dict(color=PLOTLY_TEXT, family="Segoe UI, sans-serif"),
+        xaxis=dict(gridcolor=PLOTLY_GRID, zerolinecolor=PLOTLY_GRID),
+        yaxis=dict(gridcolor=PLOTLY_GRID, zerolinecolor=PLOTLY_GRID),
+        margin=dict(l=60, r=30, t=50, b=60),
+    )
+    return fig
 
 def scale(scale_letter, scale_mode):
     """Returns all the possible notes of a scale given the scale letter and mode.
@@ -70,41 +220,27 @@ def scale(scale_letter, scale_mode):
 
     Returns:
         list[str]: A list of note names in the scale.
+
+    Raises:
+        ValueError: If the scale letter or mode is invalid.
     """
-    # Define the scale intervals for each mode
-    scale_intervals = {"major": [0, 2, 4, 5, 7, 9, 11], "minor": [0, 2, 3, 5, 7, 8, 10]}
-    # Define the note names including all possible enharmonic spellings
-    note_names = [
-        ["B#", "C", "Dbb"],  # 0
-        ["C#", "Db", "B##"],  # 1
-        ["D", "C##", "Ebb"],  # 2
-        ["D#", "Eb", "Fbb"],  # 3
-        ["E", "Fb", "D##"],  # 4
-        ["E#", "F", "Gbb"],  # 5
-        ["F#", "Gb", "E##"],  # 6
-        ["G", "F##", "Abb"],  # 7
-        ["G#", "Ab"],  # 8
-        ["A", "G##", "Bbb"],  # 9
-        ["A#", "Bb", "Cbb"],  # 10
-        ["B", "Cb", "A##"],  # 11
-    ]
-    # Find the starting index of the scale
+    # Find the starting pitch class of the scale letter
     start_index = None
-    for i, enharmonics in enumerate(note_names):
+    for i, enharmonics in enumerate(ENHARMONIC_NOTE_NAMES):
         if scale_letter in enharmonics:
             start_index = i
             break
     if start_index is None:
         raise ValueError(f"Invalid scale letter: {scale_letter}")
 
-    scale = []
-    # Get the scale intervals
-    intervals = scale_intervals[scale_mode]
-    # Generate the scale
-    for interval in intervals:
-        for note in note_names[(start_index + interval) % 12]:
-            scale.append(note)
-    return scale
+    if scale_mode not in SCALE_INTERVALS:
+        raise ValueError(f"Invalid scale mode: {scale_mode}")
+
+    result = []
+    for interval in SCALE_INTERVALS[scale_mode]:
+        for note in ENHARMONIC_NOTE_NAMES[(start_index + interval) % 12]:
+            result.append(note)
+    return result
 
 
 def calculate_midi_number(note):
@@ -135,12 +271,8 @@ def midi_number_to_name_and_octave(midi_number):
         note_name (str): The note name corresponding to the MIDI number.
         octave (int): The octave of the note corresponding to the MIDI number.
     """
-    # Calculate the octave and note name based on the MIDI number
     octave = midi_number // 12 - 1
-    note_names = np.array(
-        ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-    )
-    return note_names[midi_number % 12], octave
+    return pitch_class_to_note(midi_number), octave
 
 
 def midi_to_note_name(midi_numbers):
@@ -153,10 +285,7 @@ def midi_to_note_name(midi_numbers):
         midi_names (list[str]): A list of note names corresponding to the MIDI numbers.
     """
     octave = midi_numbers // 12 - 1
-    note_names = np.array(
-        ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-    )
-    return [f"{note}{oct}" for note, oct in zip(note_names[midi_numbers % 12], octave)]
+    return [f"{pitch_class_to_note(n)}{oct}" for n, oct in zip(midi_numbers, octave)]
 
 
 def save_messages_to_json(messages, filename):
@@ -276,29 +405,12 @@ def visualize_midi_plotly(input_midi):
     min_pitch = max(0, min_pitch - 1)
     max_pitch = min(127, max_pitch + 1)
 
-    # Color scheme
-    bg_color = "#1a1a2e"  # Main dark background
-    black_key_color = "#252540"  # Slightly lighter for black key lanes
-    grid_color_bar = "#4a4a6a"  # Bar boundary lines (thicker)
-    grid_color_beat = "#2a2a4a"  # Beat boundary lines (thinner)
-    text_color = "#ffffff"
-
-    # Velocity color gradient: dark purple (#2D1B4E) to bright coral (#FF6B5B)
-    def velocity_to_color(velocity):
-        """Map velocity (0-127) to color gradient from dark purple to bright coral."""
-        t = velocity / 127.0
-        # Dark purple RGB: (45, 27, 78) -> Coral RGB: (255, 107, 91)
-        r = int(45 + t * (255 - 45))
-        g = int(27 + t * (107 - 27))
-        b = int(78 + t * (91 - 78))
-        return f"rgb({r},{g},{b})"
-
-    # Determine which pitches are black keys
-    def is_black_key(midi_pitch):
-        """Check if a MIDI pitch corresponds to a black key."""
-        note_in_octave = midi_pitch % 12
-        # Black keys: C#(1), D#(3), F#(6), G#(8), A#(10)
-        return note_in_octave in [1, 3, 6, 8, 10]
+    # Color scheme (using shared theme constants)
+    bg_color = PLOTLY_BG
+    black_key_color = PLOTLY_BG_ALT
+    grid_color_bar = PLOTLY_GRID_STRONG
+    grid_color_beat = PLOTLY_GRID
+    text_color = PLOTLY_TEXT
 
     # Create figure
     fig = go.Figure()
@@ -388,19 +500,8 @@ def visualize_midi_plotly(input_midi):
         sixteenth_in_beat = int(start % 4) + 1
         duration_sixteenths = end - start
 
-        # Format duration
-        if duration_sixteenths == 16:
-            duration_str = "1 bar"
-        elif duration_sixteenths == 8:
-            duration_str = "1/2"
-        elif duration_sixteenths == 4:
-            duration_str = "1/4"
-        elif duration_sixteenths == 2:
-            duration_str = "1/8"
-        elif duration_sixteenths == 1:
-            duration_str = "1/16"
-        else:
-            duration_str = f"{duration_sixteenths}/16"
+        # Format duration using shared utility
+        duration_str = format_duration_sixteenths(duration_sixteenths)
 
         note_name, octave = midi_number_to_name_and_octave(pitch)
         hover_text.append(
