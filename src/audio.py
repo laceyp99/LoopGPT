@@ -212,7 +212,7 @@ def get_playback_status_message() -> str:
             "  - Download Salamander Grand Piano SoundFont and place in 'soundfonts/' folder"
         )
         instructions.append(
-            "    https://freepats.zenvoid.org/Piano/SalamanderGrandPiano/"
+            "    https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html"
         )
 
     return "\n".join(instructions)
