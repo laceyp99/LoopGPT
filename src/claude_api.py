@@ -125,7 +125,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
     
     # Add thinking parameter if enabled and model supports it
     if use_thinking and model_info["models"]["Anthropic"][model]["extended_thinking"]:
-        if model == "claude-opus-4-6":
+        if model == "claude-opus-4-6" or model == "claude-sonnet-4-6":
             api_params["thinking"] = {"type": "adaptive"}
             api_params["output_config"] = {"effort": effort}
         else:
@@ -198,7 +198,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     if use_thinking and model_info["models"]["Anthropic"][model]["extended_thinking"]:
         # For tool use with thinking, we need to change tool_choice to auto
         api_params["tool_choice"] = {"type": "auto"}
-        if model == "claude-opus-4-6":
+        if model == "claude-opus-4-6" or model == "claude-sonnet-4-6":
             api_params["thinking"] = {"type": "adaptive"}
             api_params["output_config"] = {"effort": effort}
         else:

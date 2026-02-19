@@ -104,7 +104,9 @@ def update_temp_visibility(model_choice, use_thinking):
     elif (
         model_choice == "gemini-3-pro-preview"
         or model_choice == "gemini-3-flash-preview"
+        or model_choice == "gemini-3.1-pro-preview"
         or model_choice == "claude-opus-4-6"
+        or model_choice == "claude-sonnet-4-6"
     ):
         return gr.update(visible=False, value=1.0)
 
@@ -125,12 +127,13 @@ def update_thinking_visibility(model_choice):
     # Show thinking toggle only for models that support it
     anthropic_thinking = (
         model_choice in model_info["models"]["Anthropic"].keys()
-        and model_info["models"]["Anthropic"][model_choice]["extended_thinking"] and model_choice != "claude-opus-4-6"
+        and model_info["models"]["Anthropic"][model_choice]["extended_thinking"] 
+        and model_choice not in ["claude-opus-4-6", "claude-sonnet-4-6"]
     )
     gemini_thinking = (
         model_choice in model_info["models"]["Google"].keys()
         and model_info["models"]["Google"][model_choice]["extended_thinking"]
-        and model_choice not in ["gemini-3-pro-preview", "gemini-3-flash-preview"]
+        and model_choice not in ["gemini-3-pro-preview", "gemini-3-flash-preview", "gemini-3.1-pro-preview"]
     )
 
     if anthropic_thinking or gemini_thinking:

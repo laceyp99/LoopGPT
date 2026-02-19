@@ -51,7 +51,7 @@ def calc_cost(model, usage):
         float: Calculated price for the API call.
     """
     # Gemini 3 and 2.5 Pro has a different cost structure based on token usage
-    if model in ['gemini-2.5-pro', 'gemini-3-pro-preview']:
+    if model in ['gemini-2.5-pro', 'gemini-3-pro-preview', 'gemini-3.1-pro-preview']:
         if usage.prompt_token_count <= 200000:
             input_cost = model_info["models"]["Google"][model]["cost"]["input"]["<=200k"] / 1000000
             output_cost = model_info["models"]["Google"][model]["cost"]["output"]["<=200k"] / 1000000
@@ -119,20 +119,16 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     }
     # Configure the generation parameters based on whether extended thinking is enabled
     model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
-    if model_with_thinking and use_thinking:
+    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview":
+        if effort in model_info["models"]["Google"][model]["effort_options"]:
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
+        else:
+            print("No effort level specified; using default thinking configuration.")
+    elif model_with_thinking and use_thinking:
         config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"], include_thoughts=True)})
     elif model_with_thinking and use_thinking == False:
         config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"], include_thoughts=True)})
-    elif model == "gemini-3-flash-preview":
-        if effort in ["minimal", "low", "medium", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
-        else:
-            print("No effort level specified; using default thinking configuration.")
-    elif model == "gemini-3-pro-preview":
-        if effort in ["low", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
-        else:
-            print("No effort level specified; using default thinking configuration.")
+    
 
     # Make the API call
     response = client.models.generate_content(
@@ -179,20 +175,16 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
         'response_schema': objects.Loop_G,
     }
     model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
-    if model_with_thinking and use_thinking:
+
+    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview":
+        if effort in model_info["models"]["Google"][model]["effort_options"]:
+            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
+        else:
+            print("No effort level specified; using default thinking configuration.")
+    elif model_with_thinking and use_thinking:
         config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"], include_thoughts=True)})
     elif model_with_thinking and use_thinking == False:
         config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"], include_thoughts=True)})
-    elif model == "gemini-3-flash-preview":
-        if effort in ["minimal", "low", "medium", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
-        else:
-            print("No effort level specified; using default thinking configuration.")
-    elif model == "gemini-3-pro-preview":
-        if effort in ["low", "high"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
-        else:
-            print("No effort level specified; using default thinking configuration.")
 
     # Make the API call
     response = client.models.generate_content(

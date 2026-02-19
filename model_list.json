@@ -222,6 +222,23 @@
             }
         },
         "Anthropic": {
+            "claude-sonnet-4-6":{
+                "extended_thinking": true,
+                "effort_options": ["low", "medium", "high"],
+                "max_tokens": 64000,
+                "cost": {
+                    "input": 3.00,
+                    "5m cache input": 6.25,
+                    "1h cache input": 10.00,
+                    "cache hits/refreshes": 0.50,
+                    "output": 15.00
+                },
+                "rate_limits": {
+                    "RPM": 50,
+                    "ITPM": 30000,
+                    "OTPM": 8000
+                }
+            },
             "claude-opus-4-6":{
                 "extended_thinking": true,
                 "effort_options": ["low", "medium", "high", "max"],
@@ -375,6 +392,31 @@
             }
         },
         "Google": {
+            "gemini-3.1-pro-preview": {
+                "extended_thinking": true,
+                "effort_options": ["low", "medium", "high"],
+                "max_tokens": 65536,
+                "cost": {
+                    "input": {
+                        "<=200k": 2.00,
+                        ">200k": 4.00
+                    },
+                    "cache": {
+                        "<=200k": 0.20,
+                        ">200k": 0.40,
+                        "storage hour": 4.50
+                    },
+                    "output": {
+                        "<=200k": 12.00,
+                        ">200k": 18.00
+                    }
+                },
+                "rate_limits": {
+                    "RPM": 5,
+                    "TPM": 250000,
+                    "RPD": 20
+                }
+            },
             "gemini-3-flash-preview": {
                 "extended_thinking": true,
                 "effort_options": ["minimal", "low", "medium", "high"],
