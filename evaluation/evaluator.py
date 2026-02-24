@@ -547,6 +547,15 @@ class Evaluator:
                             "name": f"{effort_options[0]}{translate_suffix}"
                         }
                     )
+                elif effort_options and provider in ["Anthropic", "Google"]:
+                    variations.append(
+                        {
+                            "use_thinking": True,
+                            "effort": effort_options[0],
+                            "translate_prompt": translate,
+                            "name": f"{effort_options[0]}{translate_suffix}"
+                        }
+                    )
                 else:
                     variations.append(
                         {
@@ -1010,9 +1019,9 @@ if __name__ == "__main__":
             "An arpeggiator in only sixteenth notes"
         ],
         roots=["C", "A", "F#", "Eb"], 
-        models="ollama",
-        run_name="arpeggiator_local_pt", 
+        models=[ "gpt-5.2", "gpt-5.1", "gpt-5", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview", "claude-sonnet-4-6", "claude-opus-4-6", "claude-opus-4-5"],
+        run_name="top cloud models", 
         tests=["scale", "duration"], 
-        test_reasoning=False, 
-        test_prompt_translation=True
+        test_reasoning=True, 
+        test_prompt_translation=False
     )

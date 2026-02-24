@@ -96,7 +96,7 @@ def process_streaming_response(completion):
             break
     return output
 
-def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=10000, effort="low"):
+def prompt_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     """
     Generate text content using the specified model and prompt.
 
@@ -105,7 +105,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
         model (str): The model identifier to use.
         temp (float, optional): Temperature for generation. Defaults to 0.0.
         use_thinking (bool, optional): Enable extended thinking for supported models. Defaults to False.
-        thinking_budget (int, optional): Token budget for thinking when enabled. Defaults to 10000.
+        effort (str, optional): Effort level for adaptive reasoning. Defaults to "low".
 
     Returns:
         tuple: (content, messages, cost)
@@ -123,18 +123,21 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=False, thinking_budget=1000
         "stream": True
     }
     
-    # Add thinking parameter if enabled and model supports it
-    if use_thinking and model_info["models"]["Anthropic"][model]["extended_thinking"]:
-        if model == "claude-opus-4-6" or model == "claude-sonnet-4-6":
-            api_params["thinking"] = {"type": "adaptive"}
-            api_params["output_config"] = {"effort": effort}
-        else:
-            api_params["thinking"] = {
-                "type": "enabled",
-                "budget_tokens": model_info["models"]["Anthropic"][model]["max_thinking_budget"]
-            }
-        api_params["temperature"] = 1.0  # Set temperature to 1 for thinking
-    elif use_thinking and not model_info["models"]["Anthropic"][model]["extended_thinking"]:
+    # Add thinking configuration
+    model_config = model_info["models"]["Anthropic"][model]
+    # Auto-enable adaptive thinking for models with effort_options (e.g., 4-6 models)
+    if model_config.get("effort_options"):
+        api_params["thinking"] = {"type": "adaptive"}
+        api_params["output_config"] = {"effort": effort}
+        api_params["temperature"] = 1.0
+    # Legacy extended thinking requires explicit opt-in via use_thinking
+    elif use_thinking and model_config.get("extended_thinking"):
+        api_params["thinking"] = {
+            "type": "enabled",
+            "budget_tokens": model_config["max_thinking_budget"]
+        }
+        api_params["temperature"] = 1.0
+    elif use_thinking and not model_config.get("extended_thinking"):
         logger.warning(f"Extended thinking requested but not supported by model: {model}")
     
     # Make the API call for prompt translation generation
@@ -164,7 +167,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
         model (str): The model identifier to use.
         temp (float, optional): Temperature for generation. Defaults to 0.0.
         use_thinking (bool, optional): Enable extended thinking for supported models. Defaults to False.
-        thinking_budget (int, optional): Token budget for thinking when enabled. Defaults to 10000.
+        effort (str, optional): Effort level for adaptive reasoning. Defaults to "low".
 
     Returns:
         tuple: (midi_loop, messages, cost)
@@ -193,26 +196,31 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
         "stream": True
     }
     
-    # Add thinking parameter if enabled and model supports it
-    # Note: Tool use with thinking only supports "auto" or "none" tool_choice
-    if use_thinking and model_info["models"]["Anthropic"][model]["extended_thinking"]:
-        # For tool use with thinking, we need to change tool_choice to auto
+    # Add thinking configuration
+    model_config = model_info["models"]["Anthropic"][model]
+    # Auto-enable adaptive thinking for models with effort_options (e.g., 4-6 models)
+    # Thinking requires tool_choice "auto" (forced tool use not allowed)
+    if model_config.get("effort_options"):
         api_params["tool_choice"] = {"type": "auto"}
-        if model == "claude-opus-4-6" or model == "claude-sonnet-4-6":
-            api_params["thinking"] = {"type": "adaptive"}
-            api_params["output_config"] = {"effort": effort}
-        else:
-            api_params["thinking"] = {
-                "type": "enabled",
-                "budget_tokens": model_info["models"]["Anthropic"][model]["max_thinking_budget"]
-            }
-        api_params["temperature"] = 1.0  # Set temperature to 1 for thinking
-    elif use_thinking and not model_info["models"]["Anthropic"][model]["extended_thinking"]:
+        api_params["thinking"] = {"type": "adaptive"}
+        api_params["output_config"] = {"effort": effort}
+        api_params["temperature"] = 1.0
+    # Legacy extended thinking requires explicit opt-in and auto tool_choice
+    elif use_thinking and model_config.get("extended_thinking"):
+        api_params["tool_choice"] = {"type": "auto"}
+        api_params["thinking"] = {
+            "type": "enabled",
+            "budget_tokens": model_config["max_thinking_budget"]
+        }
+        api_params["temperature"] = 1.0
+    elif use_thinking and not model_config.get("extended_thinking"):
         logger.warning(f"Extended thinking requested but not supported by model: {model}")
     
     # Make the API call for structured output generation
     completion = client.messages.create(**api_params)
     output = process_streaming_response(completion)
+    if not output["loop"]:
+        raise ValueError(f"Model {model} did not call the build_MIDI_loop tool. Response text: {output['prompt_translation'][:200]}")
     loop = objects.Loop.model_validate_json(output["loop"])
     
     # Create the messages history 

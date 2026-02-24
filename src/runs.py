@@ -37,10 +37,10 @@ def generate_midi(
     if model_choice in ollama_api.model_list:
         if translate_prompt_choice:
             prompt_translated, messages, pt_cost = ollama_api.prompt_gen(
-                prompt, model_choice
+                prompt=prompt, model=model_choice, temp=temp
             )
             loop, messages, loop_cost = ollama_api.loop_gen(
-                prompt_translated, model_choice
+                prompt=prompt_translated, model=model_choice, temp=temp
             )
         else:
             loop, messages, loop_cost = ollama_api.loop_gen(prompt, model_choice)
@@ -48,40 +48,40 @@ def generate_midi(
     elif model_choice in model_info["models"]["OpenAI"]:
         if translate_prompt_choice:
             prompt_translated, messages, pt_cost = openai_api.prompt_gen(
-                prompt, model_choice, temp, effort
+                prompt=prompt, model=model_choice, temp=temp, effort=effort
             )
             loop, messages, loop_cost = openai_api.loop_gen(
-                prompt_translated, model_choice, temp, effort
+                prompt=prompt_translated, model=model_choice, temp=temp, effort=effort
             )
         else:
             loop, messages, loop_cost = openai_api.loop_gen(
-                prompt, model_choice, temp, effort
+                prompt=prompt, model=model_choice, temp=temp, effort=effort
             )
     # Google Gemini
     elif model_choice in model_info["models"]["Google"]:
         if translate_prompt_choice:
             prompt_translated, messages, pt_cost = gemini_api.prompt_gen(
-                prompt, model_choice, temp, use_thinking, effort
+                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
             )
             loop, messages, loop_cost = gemini_api.loop_gen(
-                prompt_translated, model_choice, temp, use_thinking, effort
+                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
             )
         else:
             loop, messages, loop_cost = gemini_api.loop_gen(
-                prompt, model_choice, temp, use_thinking, effort
+                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
             )
     # Anthropic Claude
     elif model_choice in model_info["models"]["Anthropic"]:
         if translate_prompt_choice:
             prompt_translated, messages, pt_cost = claude_api.prompt_gen(
-                prompt, model_choice, temp, use_thinking, effort
+                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
             )
             loop, messages, loop_cost = claude_api.loop_gen(
-                prompt_translated, model_choice, temp, use_thinking, effort
+                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
             )
         else:
             loop, messages, loop_cost = claude_api.loop_gen(
-                prompt, model_choice, temp, use_thinking, effort
+                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
             )
     else:
         raise ValueError("Invalid Model Selected")
