@@ -25,6 +25,90 @@ logger = logging.getLogger(__name__)
 
 MODEL_COLORS = px.colors.qualitative.Set2
 
+# Plotly textposition options mapped to angles (degrees, counter-clockwise from +x axis).
+# The label is placed in the direction of the angle relative to the marker.
+_TEXT_POSITIONS = [
+    (0,   "middle right"),
+    (45,  "top right"),
+    (90,  "top center"),
+    (135, "top left"),
+    (180, "middle left"),
+    (225, "bottom left"),
+    (270, "bottom center"),
+    (315, "bottom right"),
+]
+
+def compute_text_positions(x_vals, y_vals):
+    """Compute per-point textposition strings to minimize label overlap on scatter plots.
+
+    Uses a repulsion-based approach: for each point, computes a net repulsion vector
+    from all other points (weighted by inverse squared distance in normalized space),
+    then places the label in the direction that points away from the densest region.
+
+    Args:
+        x_vals (list | pd.Series): X coordinates of the scatter points.
+        y_vals (list | pd.Series): Y coordinates of the scatter points.
+
+    Returns:
+        list[str]: A list of Plotly textposition strings, one per point.
+    """
+    import math
+
+    xs = list(x_vals)
+    ys = list(y_vals)
+    n = len(xs)
+
+    if n <= 1:
+        return ["top center"] * n
+
+    # Normalize to [0, 1] so x and y distances are comparable
+    x_min, x_max = min(xs), max(xs)
+    y_min, y_max = min(ys), max(ys)
+    x_range = x_max - x_min if x_max != x_min else 1.0
+    y_range = y_max - y_min if y_max != y_min else 1.0
+    xn = [(v - x_min) / x_range for v in xs]
+    yn = [(v - y_min) / y_range for v in ys]
+
+    positions = []
+    for i in range(n):
+        # Sum repulsion vectors from all other points
+        rx, ry = 0.0, 0.0
+        for j in range(n):
+            if i == j:
+                continue
+            dx = xn[i] - xn[j]
+            dy = yn[i] - yn[j]
+            dist_sq = dx * dx + dy * dy
+            if dist_sq < 1e-12:
+                # Near-identical points: push in arbitrary direction
+                rx += 0.0
+                ry += 1.0
+                continue
+            # Inverse-square weighting so nearby points dominate
+            weight = 1.0 / dist_sq
+            rx += dx * weight
+            ry += dy * weight
+
+        if abs(rx) < 1e-9 and abs(ry) < 1e-9:
+            positions.append("top center")
+            continue
+
+        angle = math.degrees(math.atan2(ry, rx)) % 360
+
+        # Find the closest named position
+        best_pos = "top center"
+        best_diff = 360.0
+        for ref_angle, pos_name in _TEXT_POSITIONS:
+            diff = abs(angle - ref_angle)
+            if diff > 180:
+                diff = 360 - diff
+            if diff < best_diff:
+                best_diff = diff
+                best_pos = pos_name
+        positions.append(best_pos)
+
+    return positions
+
 def load_run(run_path):
     """Load all evaluation data from a run directory into a DataFrame.
 
@@ -118,7 +202,7 @@ def load_run(run_path):
     df = pd.DataFrame(rows)
     if not df.empty:
         # Compute derived columns
-        df["has_error"] = df["error"].notna()
+        df["has_error"] = df["error"].apply(lambda x: isinstance(x, str) and len(x) > 0)
         df["scale_accuracy"] = df.apply(
             lambda r: r["scale_correct"] / r["scale_total"] if r["scale_total"] > 0 else None, axis=1
         )
@@ -131,6 +215,33 @@ def load_run(run_path):
         df["duration_pass"] = df.apply(
             lambda r: r["duration_incorrect"] == 0 and r["duration_ran"], axis=1
         )
+
+        # Build model instance names when reasoning is being tested.
+        # This overwrites the "model" column so every existing chart function
+        # automatically renders model+effort instances with zero code changes.
+        df["base_model"] = df["model"].copy()
+        if config.get("test_reasoning", False):
+            def _instance_name(row):
+                if row["effort"] is not None and pd.notna(row["effort"]):
+                    return f"{row['base_model']} ({row['effort']})"
+                elif row["use_thinking"]:
+                    return f"{row['base_model']} (reasoning)"
+                return row["base_model"]
+
+            df["model"] = df.apply(_instance_name, axis=1)
+
+            # For legacy toggle models (no effort, but both thinking=True and
+            # thinking=False rows exist for the same base model), tag the
+            # non-thinking rows as "(standard)" so they are distinguishable.
+            for base in df["base_model"].unique():
+                mask = df["base_model"] == base
+                subset = df.loc[mask]
+                no_effort = subset["effort"].isna().all()
+                has_thinking = subset["use_thinking"].any()
+                has_standard = not subset["use_thinking"].all()
+                if no_effort and has_thinking and has_standard:
+                    std_mask = mask & ~df["use_thinking"]
+                    df.loc[std_mask, "model"] = df.loc[std_mask, "base_model"] + " (standard)"
 
     logger.info("Loaded %d results from %s", len(df), run_path)
     return df, config, summary
@@ -242,7 +353,7 @@ def build_pass_rate_by_model(df):
         orientation="h",
         text=[f"{r}% ({p}/{t})" for r, p, t in zip(stats["pass_rate"], stats["passed"].astype(int), stats["tested"].astype(int))],
         textposition="auto",
-        marker_color=px.colors.qualitative.Set2[:len(stats)],
+        marker_color=[MODEL_COLORS[i % len(MODEL_COLORS)] for i in range(len(stats))],
     ))
     fig.update_layout(
         title="Overall Pass Rate by Model",
@@ -696,13 +807,14 @@ def build_latency_vs_pass(df):
     ).reset_index()
     stats["pass_rate"] = (stats["pass_rate"] * 100).round(1)
 
+    text_positions = compute_text_positions(stats["avg_latency"], stats["pass_rate"])
     fig = go.Figure(go.Scatter(
         x=stats["avg_latency"],
         y=stats["pass_rate"],
         mode="markers+text",
         text=stats["model"],
-        textposition="top center",
-        marker=dict(size=stats["count"] / stats["count"].max() * 30 + 10, color=px.colors.qualitative.Set2[:len(stats)]),
+        textposition=text_positions,
+        marker=dict(size=stats["count"] / stats["count"].max() * 30 + 10, color=[MODEL_COLORS[i % len(MODEL_COLORS)] for i in range(len(stats))]),
     ))
     fig.update_layout(
         title="Latency vs Pass Rate by Model",
@@ -785,13 +897,14 @@ def build_cost_vs_pass(df):
     stats["cost_per_gen"] = stats["total_cost"] / stats["tested"]
     stats["pass_rate"] = (stats["pass_rate"] * 100).round(1)
 
+    text_positions = compute_text_positions(stats["cost_per_gen"], stats["pass_rate"])
     fig = go.Figure(go.Scatter(
         x=stats["cost_per_gen"],
         y=stats["pass_rate"],
         mode="markers+text",
         text=stats["model"],
-        textposition="top center",
-        marker=dict(size=15, color=px.colors.qualitative.Set2[:len(stats)]),
+        textposition=text_positions,
+        marker=dict(size=15, color=[MODEL_COLORS[i % len(MODEL_COLORS)] for i in range(len(stats))]),
     ))
     fig.update_layout(
         title="Cost per Generation vs Pass Rate",
@@ -962,6 +1075,266 @@ def build_duration_errors_by_model(df):
     )
     return apply_plotly_theme(fig)
 
+def build_effort_impact_delta(df):
+    """Build bar chart showing pass rate delta between lowest and highest effort per base model.
+
+    Only includes models that have multiple effort levels in the data.
+    Positive delta = higher effort helped.
+
+    Args:
+        df (pd.DataFrame): Filtered results DataFrame (must contain base_model column).
+
+    Returns:
+        go.Figure: Delta bar chart figure.
+    """
+    if df.empty or "base_model" not in df.columns:
+        return apply_plotly_theme(go.Figure().update_layout(title="No data"))
+
+    # Only rows that have an effort value
+    effort_df = df[df["effort"].notna()].copy()
+    if effort_df.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="No effort-level data in this run", showarrow=False,
+                           font=dict(size=16, color=PLOTLY_TEXT))
+        fig.update_layout(title="Effort Level Impact")
+        return apply_plotly_theme(fig)
+
+    # Define a canonical effort ordering so we can identify "lowest" and "highest"
+    EFFORT_ORDER = ["none", "minimal", "low", "medium", "high", "xhigh", "max"]
+
+    def effort_rank(e):
+        e_lower = str(e).lower()
+        return EFFORT_ORDER.index(e_lower) if e_lower in EFFORT_ORDER else len(EFFORT_ORDER)
+
+    # Per (base_model, effort) pass rate
+    stats = effort_df.groupby(["base_model", "effort"]).agg(
+        pass_rate=("overall_pass", "mean"),
+        count=("overall_pass", "count"),
+    ).reset_index()
+
+    models_with_levels = []
+    for base in stats["base_model"].unique():
+        model_stats = stats[stats["base_model"] == base].copy()
+        if len(model_stats) < 2:
+            continue
+        model_stats["rank"] = model_stats["effort"].apply(effort_rank)
+        model_stats = model_stats.sort_values("rank")
+        lowest = model_stats.iloc[0]
+        highest = model_stats.iloc[-1]
+        delta = (highest["pass_rate"] - lowest["pass_rate"]) * 100
+        models_with_levels.append({
+            "base_model": base,
+            "lowest_effort": lowest["effort"],
+            "highest_effort": highest["effort"],
+            "lowest_rate": round(lowest["pass_rate"] * 100, 1),
+            "highest_rate": round(highest["pass_rate"] * 100, 1),
+            "delta": round(delta, 1),
+        })
+
+    if not models_with_levels:
+        fig = go.Figure()
+        fig.add_annotation(text="No models with multiple effort levels", showarrow=False,
+                           font=dict(size=16, color=PLOTLY_TEXT))
+        fig.update_layout(title="Effort Level Impact")
+        return apply_plotly_theme(fig)
+
+    result = pd.DataFrame(models_with_levels).sort_values("delta", ascending=True)
+    colors = ["#2ecc71" if d >= 0 else "#e74c3c" for d in result["delta"]]
+
+    fig = go.Figure(go.Bar(
+        x=result["delta"],
+        y=result["base_model"],
+        orientation="h",
+        text=[f"{d:+.1f}pp ({lo}% @ {le} -> {hi}% @ {he})"
+              for d, lo, le, hi, he in zip(
+                  result["delta"], result["lowest_rate"], result["lowest_effort"],
+                  result["highest_rate"], result["highest_effort"])],
+        textposition="auto",
+        marker_color=colors,
+    ))
+    fig.update_layout(
+        title="Effort Level Impact (Highest - Lowest Effort)",
+        xaxis_title="Pass Rate Delta (pp)",
+        yaxis_title="",
+    )
+    fig.add_vline(x=0, line_dash="dash", line_color=PLOTLY_TEXT, opacity=0.5)
+    return apply_plotly_theme(fig)
+
+def build_reasoning_toggle_comparison(df):
+    """Build grouped bar chart comparing standard vs reasoning-enabled for legacy toggle models.
+
+    Legacy models are those with use_thinking toggle but no effort levels
+    (e.g. claude-opus-4-5, gemini-2.5-pro).
+
+    Args:
+        df (pd.DataFrame): Filtered results DataFrame (must contain base_model column).
+
+    Returns:
+        go.Figure: Grouped bar chart figure.
+    """
+    if df.empty or "base_model" not in df.columns:
+        return apply_plotly_theme(go.Figure().update_layout(title="No data"))
+
+    # Find legacy toggle models: base_models that have both use_thinking=True and
+    # use_thinking=False rows, but NO effort values
+    toggle_models = []
+    for base in df["base_model"].unique():
+        mask = df["base_model"] == base
+        subset = df.loc[mask]
+        no_effort = subset["effort"].isna().all()
+        has_thinking = subset["use_thinking"].any()
+        has_standard = not subset["use_thinking"].all()
+        if no_effort and has_thinking and has_standard:
+            toggle_models.append(base)
+
+    if not toggle_models:
+        fig = go.Figure()
+        fig.add_annotation(text="No toggle-based reasoning models in this run", showarrow=False,
+                           font=dict(size=16, color=PLOTLY_TEXT))
+        fig.update_layout(title="Standard vs Reasoning Toggle")
+        return apply_plotly_theme(fig)
+
+    toggle_models = sorted(toggle_models)
+    std_rates = []
+    reas_rates = []
+    std_latencies = []
+    reas_latencies = []
+    std_costs = []
+    reas_costs = []
+
+    for base in toggle_models:
+        mask = df["base_model"] == base
+        std = df.loc[mask & ~df["use_thinking"]]
+        reas = df.loc[mask & df["use_thinking"]]
+        std_rates.append(round(std["overall_pass"].mean() * 100, 1) if len(std) > 0 else 0)
+        reas_rates.append(round(reas["overall_pass"].mean() * 100, 1) if len(reas) > 0 else 0)
+        std_latencies.append(round(std["api_latency"].mean(), 1) if len(std) > 0 else 0)
+        reas_latencies.append(round(reas["api_latency"].mean(), 1) if len(reas) > 0 else 0)
+        std_costs.append(round(std["cost"].mean(), 5) if len(std) > 0 else 0)
+        reas_costs.append(round(reas["cost"].mean(), 5) if len(reas) > 0 else 0)
+
+    from plotly.subplots import make_subplots
+    fig = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=["Pass Rate (%)", "Avg Latency (s)", "Avg Cost ($)"],
+        shared_yaxes=True,
+    )
+
+    # Pass Rate
+    fig.add_trace(go.Bar(name="Standard", x=std_rates, y=toggle_models, orientation="h",
+                         text=[f"{v}%" for v in std_rates], textposition="auto",
+                         marker_color="#5dade2", showlegend=True), row=1, col=1)
+    fig.add_trace(go.Bar(name="Reasoning", x=reas_rates, y=toggle_models, orientation="h",
+                         text=[f"{v}%" for v in reas_rates], textposition="auto",
+                         marker_color="#f39c12", showlegend=True), row=1, col=1)
+    # Latency
+    fig.add_trace(go.Bar(x=std_latencies, y=toggle_models, orientation="h",
+                         text=[f"{v}s" for v in std_latencies], textposition="auto",
+                         marker_color="#5dade2", showlegend=False), row=1, col=2)
+    fig.add_trace(go.Bar(x=reas_latencies, y=toggle_models, orientation="h",
+                         text=[f"{v}s" for v in reas_latencies], textposition="auto",
+                         marker_color="#f39c12", showlegend=False), row=1, col=2)
+    # Cost
+    fig.add_trace(go.Bar(x=std_costs, y=toggle_models, orientation="h",
+                         text=[f"${v:.5f}" for v in std_costs], textposition="auto",
+                         marker_color="#5dade2", showlegend=False), row=1, col=3)
+    fig.add_trace(go.Bar(x=reas_costs, y=toggle_models, orientation="h",
+                         text=[f"${v:.5f}" for v in reas_costs], textposition="auto",
+                         marker_color="#f39c12", showlegend=False), row=1, col=3)
+
+    fig.update_layout(
+        title="Standard vs Reasoning Toggle (Legacy Models)",
+        barmode="group",
+        height=max(300, len(toggle_models) * 80 + 150),
+    )
+    return apply_plotly_theme(fig)
+
+def build_reasoning_cost_effectiveness(df):
+    """Build scatter plot of cost per generation vs pass rate with effort trajectory lines.
+
+    Each model+effort instance is a point. Points belonging to the same base model
+    are connected with a line to show the cost/quality tradeoff as effort increases.
+
+    Args:
+        df (pd.DataFrame): Filtered results DataFrame (must contain base_model column).
+
+    Returns:
+        go.Figure: Scatter plot figure.
+    """
+    if df.empty or "base_model" not in df.columns:
+        return apply_plotly_theme(go.Figure().update_layout(title="No data"))
+
+    stats = df.groupby(["model", "base_model"]).agg(
+        total_cost=("cost", "sum"),
+        tested=("cost", "count"),
+        pass_rate=("overall_pass", "mean"),
+        avg_latency=("api_latency", "mean"),
+    ).reset_index()
+
+    if stats["total_cost"].sum() == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="All costs are $0 (local models)", showarrow=False,
+                           font=dict(size=16, color=PLOTLY_TEXT))
+        fig.update_layout(title="Reasoning Cost-Effectiveness")
+        return apply_plotly_theme(fig)
+
+    stats["cost_per_gen"] = stats["total_cost"] / stats["tested"]
+    stats["pass_rate_pct"] = (stats["pass_rate"] * 100).round(1)
+
+    EFFORT_ORDER = ["none", "minimal", "low", "medium", "high", "xhigh", "max"]
+
+    # Assign colors per base_model
+    base_models = sorted(stats["base_model"].unique())
+    color_map = {bm: MODEL_COLORS[i % len(MODEL_COLORS)] for i, bm in enumerate(base_models)}
+
+    fig = go.Figure()
+
+    # Draw trajectory lines connecting effort levels of the same base model
+    for base in base_models:
+        bm_stats = stats[stats["base_model"] == base].copy()
+        if len(bm_stats) > 1:
+            # Extract effort from the instance name and sort by effort order
+            def _effort_from_name(name):
+                if "(" in name and ")" in name:
+                    e = name.split("(")[-1].rstrip(")")
+                    return EFFORT_ORDER.index(e) if e in EFFORT_ORDER else len(EFFORT_ORDER)
+                return -1
+            bm_stats["_rank"] = bm_stats["model"].apply(_effort_from_name)
+            bm_stats = bm_stats.sort_values("_rank")
+            fig.add_trace(go.Scatter(
+                x=bm_stats["cost_per_gen"],
+                y=bm_stats["pass_rate_pct"],
+                mode="lines",
+                line=dict(color=color_map[base], width=1.5, dash="dot"),
+                showlegend=False,
+                hoverinfo="skip",
+            ))
+
+    # Compute text positions across ALL points before splitting into per-model traces
+    all_text_positions = compute_text_positions(stats["cost_per_gen"], stats["pass_rate_pct"])
+    stats["_text_pos"] = all_text_positions
+
+    # Draw scatter points
+    for base in base_models:
+        bm_stats = stats[stats["base_model"] == base]
+        fig.add_trace(go.Scatter(
+            x=bm_stats["cost_per_gen"],
+            y=bm_stats["pass_rate_pct"],
+            mode="markers+text",
+            name=base,
+            text=bm_stats["model"],
+            textposition=list(bm_stats["_text_pos"]),
+            marker=dict(size=12, color=color_map[base]),
+        ))
+
+    fig.update_layout(
+        title="Reasoning Cost-Effectiveness (Cost per Generation vs Pass Rate)",
+        xaxis_title="Cost per Generation ($)",
+        yaxis_title="Pass Rate (%)",
+        yaxis=dict(range=[0, 105]),
+    )
+    return apply_plotly_theme(fig)
+
 def build_failure_rate_by_model(df):
     """Build bar chart of generation failure rate (errors) per model.
 
@@ -1086,6 +1459,9 @@ def build_filter_bar(df):
 def create_app(run_path):
     """Create and configure the Dash application.
 
+    Tabs for Prompt Translation and Reasoning are only included when the
+    run's config has the corresponding feature flag enabled.
+
     Args:
         run_path (str): Path to the evaluation run directory.
 
@@ -1101,6 +1477,8 @@ def create_app(run_path):
     run_name = config.get("run_name", Path(run_path).name)
     timestamp = config.get("timestamp", "")
     totals = summary.get("totals", {})
+    has_reasoning = config.get("test_reasoning", False)
+    has_translation = config.get("test_prompt_translation", False)
 
     app = dash.Dash(
         __name__,
@@ -1108,8 +1486,53 @@ def create_app(run_path):
         title=f"LoopGPT Eval: {run_name}",
     )
 
-    # Store the DataFrame as JSON in a hidden div for callbacks
-    # (Dash requires serializable state)
+    # Build tab list conditionally based on run feature flags
+    tab_list = [
+        # ── Tab 1: Overview ──
+        dbc.Tab(label="Overview", tab_id="tab-overview", children=[
+            html.Div(id="tab-overview-content", className="mt-3"),
+        ]),
+        # ── Tab 2: Model Performance ──
+        dbc.Tab(label="Model Performance", tab_id="tab-model", children=[
+            html.Div(id="tab-model-content", className="mt-3"),
+        ]),
+        # ── Tab 3: Root & Scale ──
+        dbc.Tab(label="Root & Scale", tab_id="tab-root-scale", children=[
+            html.Div(id="tab-root-scale-content", className="mt-3"),
+        ]),
+    ]
+
+    if has_translation:
+        tab_list.append(
+            dbc.Tab(label="Prompt Translation", tab_id="tab-translation", children=[
+                html.Div(id="tab-translation-content", className="mt-3"),
+            ]),
+        )
+
+    tab_list.extend([
+        # ── Latency ──
+        dbc.Tab(label="Latency", tab_id="tab-latency", children=[
+            html.Div(id="tab-latency-content", className="mt-3"),
+        ]),
+        # ── Cost ──
+        dbc.Tab(label="Cost", tab_id="tab-cost", children=[
+            html.Div(id="tab-cost-content", className="mt-3"),
+        ]),
+    ])
+
+    if has_reasoning:
+        tab_list.append(
+            dbc.Tab(label="Reasoning", tab_id="tab-reasoning", children=[
+                html.Div(id="tab-reasoning-content", className="mt-3"),
+            ]),
+        )
+
+    tab_list.append(
+        # ── Error Patterns (always last) ──
+        dbc.Tab(label="Error Patterns", tab_id="tab-errors", children=[
+            html.Div(id="tab-errors-content", className="mt-3"),
+        ]),
+    )
 
     app.layout = dbc.Container([
         # Hidden store for the full data
@@ -1133,37 +1556,8 @@ def create_app(run_path):
         # Export status
         html.Div(id="export-status", className="mb-2"),
 
-        # Tabs
-        dbc.Tabs([
-            # ── Tab 1: Overview ──
-            dbc.Tab(label="Overview", tab_id="tab-overview", children=[
-                html.Div(id="tab-overview-content", className="mt-3"),
-            ]),
-            # ── Tab 2: Model Performance ──
-            dbc.Tab(label="Model Performance", tab_id="tab-model", children=[
-                html.Div(id="tab-model-content", className="mt-3"),
-            ]),
-            # ── Tab 3: Root & Scale ──
-            dbc.Tab(label="Root & Scale", tab_id="tab-root-scale", children=[
-                html.Div(id="tab-root-scale-content", className="mt-3"),
-            ]),
-            # ── Tab 4: Prompt Translation ──
-            dbc.Tab(label="Prompt Translation", tab_id="tab-translation", children=[
-                html.Div(id="tab-translation-content", className="mt-3"),
-            ]),
-            # ── Tab 5: Latency ──
-            dbc.Tab(label="Latency", tab_id="tab-latency", children=[
-                html.Div(id="tab-latency-content", className="mt-3"),
-            ]),
-            # ── Tab 6: Cost ──
-            dbc.Tab(label="Cost", tab_id="tab-cost", children=[
-                html.Div(id="tab-cost-content", className="mt-3"),
-            ]),
-            # ── Tab 7: Error Patterns ──
-            dbc.Tab(label="Error Patterns", tab_id="tab-errors", children=[
-                html.Div(id="tab-errors-content", className="mt-3"),
-            ]),
-        ], id="tabs", active_tab="tab-overview", className="mb-3"),
+        # Tabs (conditionally built)
+        dbc.Tabs(tab_list, id="tabs", active_tab="tab-overview", className="mb-3"),
 
     ], fluid=True, style={"backgroundColor": PLOTLY_BG, "minHeight": "100vh", "padding": "20px"})
 
@@ -1258,29 +1652,31 @@ def create_app(run_path):
             ]),
         ])
 
-    @app.callback(
-        Output("tab-translation-content", "children"),
-        [Input("filter-models", "value"),
-         Input("filter-roots", "value"),
-         Input("filter-scales", "value"),
-         Input("filter-variations", "value")],
-    )
-    def update_translation(models, roots, scales, variations):
-        filtered = apply_filters(df, models, roots, scales, variations)
-        if filtered.empty:
-            return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
+    # ── Prompt Translation callback (only registered when translation was tested) ──
+    if has_translation:
+        @app.callback(
+            Output("tab-translation-content", "children"),
+            [Input("filter-models", "value"),
+             Input("filter-roots", "value"),
+             Input("filter-scales", "value"),
+             Input("filter-variations", "value")],
+        )
+        def update_translation(models, roots, scales, variations):
+            filtered = apply_filters(df, models, roots, scales, variations)
+            if filtered.empty:
+                return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
-        return html.Div([
-            dbc.Row([
-                dbc.Col(dcc.Graph(figure=build_translation_comparison(filtered)), md=12),
-            ], className="mb-3"),
-            dbc.Row([
-                dbc.Col(dcc.Graph(figure=build_translation_delta(filtered)), md=6),
-                dbc.Col(dcc.Graph(figure=build_translation_latency(filtered)), md=6),
-            ]),
-        ])
+            return html.Div([
+                dbc.Row([
+                    dbc.Col(dcc.Graph(figure=build_translation_comparison(filtered)), md=12),
+                ], className="mb-3"),
+                dbc.Row([
+                    dbc.Col(dcc.Graph(figure=build_translation_delta(filtered)), md=6),
+                    dbc.Col(dcc.Graph(figure=build_translation_latency(filtered)), md=6),
+                ]),
+            ])
 
-    @app.callback(
+    @app.callback(  # noqa: E303
         Output("tab-latency-content", "children"),
         [Input("filter-models", "value"),
          Input("filter-roots", "value"),
@@ -1319,6 +1715,61 @@ def create_app(run_path):
                 dbc.Col(dcc.Graph(figure=build_cost_vs_pass(filtered)), md=6),
             ]),
         ])
+
+    # ── Reasoning callback (only registered when reasoning was tested) ──
+    if has_reasoning:
+        @app.callback(
+            Output("tab-reasoning-content", "children"),
+            [Input("filter-models", "value"),
+             Input("filter-roots", "value"),
+             Input("filter-scales", "value"),
+             Input("filter-variations", "value")],
+        )
+        def update_reasoning(models, roots, scales, variations):
+            filtered = apply_filters(df, models, roots, scales, variations)
+            if filtered.empty:
+                return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
+
+            # Summary cards for reasoning impact
+            effort_rows = filtered[filtered["effort"].notna()]
+            toggle_rows = filtered[filtered["effort"].isna() & filtered["base_model"].isin(
+                [bm for bm in filtered["base_model"].unique()
+                 if not filtered.loc[filtered["base_model"] == bm, "use_thinking"].all()
+                 and filtered.loc[filtered["base_model"] == bm, "use_thinking"].any()
+                 and filtered.loc[filtered["base_model"] == bm, "effort"].isna().all()]
+            )]
+            n_effort_models = effort_rows["base_model"].nunique() if not effort_rows.empty else 0
+            n_toggle_models = toggle_rows["base_model"].nunique() if not toggle_rows.empty else 0
+
+            cards = dbc.Row([
+                dbc.Col(make_metric_card("Effort-Based Models", str(n_effort_models),
+                                         "Models with effort level options"), md=3),
+                dbc.Col(make_metric_card("Toggle-Based Models", str(n_toggle_models),
+                                         "Legacy models with on/off reasoning"), md=3),
+                dbc.Col(make_metric_card("Total Instances", str(filtered["model"].nunique()),
+                                         "Unique model + effort combinations"), md=3),
+                dbc.Col(make_metric_card("Avg Pass Rate",
+                                         f"{filtered['overall_pass'].mean() * 100:.1f}%"), md=3),
+            ], className="mb-4 g-2")
+
+            rows = [cards]
+
+            # Effort impact delta chart
+            rows.append(dbc.Row([
+                dbc.Col(dcc.Graph(figure=build_effort_impact_delta(filtered)), md=12),
+            ], className="mb-3"))
+
+            # Toggle comparison chart
+            rows.append(dbc.Row([
+                dbc.Col(dcc.Graph(figure=build_reasoning_toggle_comparison(filtered)), md=12),
+            ], className="mb-3"))
+
+            # Cost-effectiveness scatter
+            rows.append(dbc.Row([
+                dbc.Col(dcc.Graph(figure=build_reasoning_cost_effectiveness(filtered)), md=12),
+            ]))
+
+            return html.Div(rows)
 
     @app.callback(
         Output("tab-errors-content", "children"),
@@ -1367,9 +1818,6 @@ def create_app(run_path):
             "root_pass_rate": build_root_pass_rate(df),
             "root_scale_grouped": build_root_scale_grouped(df),
             "root_scale_heatmap": build_root_scale_heatmap(df),
-            "translation_comparison": build_translation_comparison(df),
-            "translation_delta": build_translation_delta(df),
-            "translation_latency": build_translation_latency(df),
             "latency_box": build_latency_box(df),
             "latency_vs_pass": build_latency_vs_pass(df),
             "cost_by_model": build_cost_by_model(df),
@@ -1379,6 +1827,17 @@ def create_app(run_path):
             "incorrect_intervals": build_incorrect_intervals_by_model(df),
             "duration_errors": build_duration_errors_by_model(df),
         }
+
+        # Conditionally include feature-specific charts
+        if has_translation:
+            figures["translation_comparison"] = build_translation_comparison(df)
+            figures["translation_delta"] = build_translation_delta(df)
+            figures["translation_latency"] = build_translation_latency(df)
+
+        if has_reasoning:
+            figures["effort_impact_delta"] = build_effort_impact_delta(df)
+            figures["reasoning_toggle"] = build_reasoning_toggle_comparison(df)
+            figures["reasoning_cost_effectiveness"] = build_reasoning_cost_effectiveness(df)
 
         # Save individual charts
         for name, fig in figures.items():
