@@ -61,14 +61,14 @@ def generate_midi(
     elif model_choice in model_info["models"]["Google"]:
         if translate_prompt_choice:
             prompt_translated, messages, pt_cost = gemini_api.prompt_gen(
-                prompt, model_choice, temp, use_thinking
+                prompt, model_choice, temp, use_thinking, effort
             )
             loop, messages, loop_cost = gemini_api.loop_gen(
-                prompt_translated, model_choice, temp, use_thinking
+                prompt_translated, model_choice, temp, use_thinking, effort
             )
         else:
             loop, messages, loop_cost = gemini_api.loop_gen(
-                prompt, model_choice, temp, use_thinking
+                prompt, model_choice, temp, use_thinking, effort
             )
     # Anthropic Claude
     elif model_choice in model_info["models"]["Anthropic"]:
