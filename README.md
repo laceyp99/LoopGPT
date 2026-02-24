@@ -65,7 +65,7 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 
 1. **Select your parameters**  
    - Key & scale (Major/minor)  
-   - Text description (e.g. "Daniel Caesar R&B soul piano loop")  
+   - Text description (e.g. "Daniel Caesar R&B soul piano loop with sevenths and ninths interspersed throughout")  
    - Model & temperature  
    - Optional: Prompt Translation (recommended for smaller/less intelligent LLMs)  
    - Optional: Show MIDI visualization  
@@ -107,7 +107,7 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 - `evaluation/`
   - `tests.py`: The midi validation tests for the evaluation
   - `evaluator.py`: The evaluator class with the ability for modular testing
-  - `analysis.py`: The data analysis visualization of the evaluation data
+  - `analysis.py`: The data analysis dashboard; visualizing the evaluation data
   - `README.md`: Further documentation on the evaluation subdirectory
 - `soundfonts/`: Place SoundFont (.sf2) files here for audio playback
 - `requirements.txt`: List of Python dependencies

@@ -567,7 +567,7 @@ with gr.Blocks(
                         model_choice_input = gr.Dropdown(
                             choices=list(model_info["models"]["Google"].keys()),
                             label="Model",
-                            value="gemini-2.5-flash",
+                            value="gemini-3-flash-preview",
                         )
                         temp_input = gr.Slider(
                             0.0, 1.0, step=0.1, value=0.1, label="Temperature"
