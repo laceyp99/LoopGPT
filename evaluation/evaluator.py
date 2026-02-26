@@ -1005,12 +1005,6 @@ class Evaluator:
 
 if __name__ == "__main__":
 
-    # with open('model_list.json', 'r') as f:
-    #     model_info = json.load(f)
-    
-    # model_names = [m for provider in model_info['models'].values() for m in provider.keys()]
-    # print(len(model_names))
-
     eval = Evaluator(output_dir="runs",temperature=0.0)
     eval.evaluate(
         prompts=[

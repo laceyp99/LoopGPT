@@ -85,36 +85,62 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 4. **Inspect JSON logs**  
    - `prompt_translation.json` and `loop.json` record the full message exchange and reasoning  
 
+## Evaluation Framework
+
+The evaluation framework lives in the `evaluation/` directory and is documented separately in [`evaluation/README.md`](evaluation/README.md).
+
 ## Project Structure
 
-- `app.py`: The Gradio UI layout facilitating the generation process.
-- `model_list.json`: The main JSON database for model pricing and other characteristics
-- `Prompts/`
-  - `loop gen.txt`: System prompt for generating the 4-bar loop
-  - `prompt translation.txt`: System prompt for enriching user descriptions
-- `src/`
-  - `.env`: Configuration file
-  - `openai_api.py`: OpenAI Responses endpoints
-  - `gemini_api.py`: Google Gemini endpoints 
-  - `claude_api.py`: Anthropic Claude endpoints
-  - `ollama_api.py`: Ollama API endpoints
-  - `midi_processing.py`: Conversion between `Loop` objects and `mido.MidiFile`
-  - `objects.py`: Pydantic models for notes, bars, loops (with `_G` variants for Gemini)
-  - `utils.py`: MIDI to JSON helpers, visualization, message-logging
-  - `runs.py`: Routes the generation (with prompt translation if directed) to the right API
-  - `audio.py`: MIDI to audio conversion using FluidSynth
-  - `history.py`: Session history management (save/load/delete generations)
-- `evaluation/`
-  - `tests.py`: The midi validation tests for the evaluation
-  - `evaluator.py`: The evaluator class with the ability for modular testing
-  - `analysis.py`: The data analysis dashboard; visualizing the evaluation data
-  - `README.md`: Further documentation on the evaluation subdirectory
-- `soundfonts/`: Place SoundFont (.sf2) files here for audio playback
-- `requirements.txt`: List of Python dependencies
-- `loop.json`: JSON log of the MIDI-generation conversation
-- `prompt_translation.json`: JSON log of the prompt-translation conversation
-- `output.mid`: The most recent generated MIDI file
-- `output.mp3`: The most recent converted audio file
+```
+LoopGPT/
+├── app.py                      # Gradio UI entry point
+├── model_list.json             # Model pricing, rate limits, and capabilities
+├── requirements.txt            # Python dependencies
+├── UI.png                      # Screenshot of the Gradio interface
+│
+├── Prompts/
+│   ├── loop gen.txt            # System prompt for 4-bar loop generation
+│   └── prompt translation.txt  # System prompt for enriching user descriptions
+│
+├── src/
+│   ├── .env                    # API keys (OPENAI, GEMINI, ANTHROPIC, OLLAMA)
+│   ├── openai_api.py           # OpenAI Responses endpoints (GPT + o-series)
+│   ├── gemini_api.py           # Google Gemini endpoints
+│   ├── claude_api.py           # Anthropic Claude endpoints
+│   ├── ollama_api.py           # Local Ollama endpoints
+│   ├── runs.py                 # API routing and prompt translation orchestration
+│   ├── midi_processing.py      # Loop <-> MIDI conversion via mido
+│   ├── objects.py              # Pydantic models (Note, Bar, Loop, _G variants)
+│   ├── utils.py                # MIDI helpers, visualization, message logging
+│   ├── audio.py                # MIDI to audio conversion using FluidSynth
+│   └── history.py              # Session history management (save/load/delete)
+│
+├── evaluation/                 # Standalone evaluation framework (see evaluation/README.md)
+│   ├── evaluator.py            # Evaluator class -- orchestrates model testing
+│   ├── tests.py                # MIDI validation tests (scale, duration)
+│   ├── analysis.py             # Interactive Plotly Dash dashboard
+│   └── README.md               # Full evaluation documentation
+│
+├── generations/                # Session history storage (auto-managed, up to 20)
+│   └── gen_<timestamp>/
+│       ├── loop.mid            # Generated MIDI file
+│       ├── loop.mp3            # Rendered audio (if playback configured)
+│       └── metadata.json       # Generation parameters and info
+│
+├── runs/                       # Evaluation run outputs (created by evaluator)
+│   ├── run.log                 # Evaluation log file
+│   └── <timestamp_run_name>/
+│       ├── config.json         # Full evaluation configuration
+│       ├── summary.json        # Aggregated results and statistics
+│       ├── analysis/           # Exported dashboard charts (HTML)
+│       └── results/            # Per-model, per-prompt, per-key test results
+│
+├── soundfonts/                 # Place SoundFont (.sf2) files here for audio playback
+│
+├── loop.json                   # JSON log of the last MIDI-generation conversation
+├── prompt_translation.json     # JSON log of the last prompt-translation conversation
+└── output.mid                  # The most recently generated MIDI file
+```
 
 ## Limitations
 
