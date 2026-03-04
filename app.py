@@ -102,7 +102,8 @@ def update_temp_visibility(model_choice, use_thinking):
 
     # Hide temperature for Gemini-3-Pro-Preview (Google recommends removing this parameter and using the Gemini 3 default of 1.0)
     elif (
-        model_choice == "gemini-3-pro-preview"
+        model_choice == "gemini-3.1-flash-lite-preview"
+        or model_choice == "gemini-3-pro-preview"
         or model_choice == "gemini-3-flash-preview"
         or model_choice == "gemini-3.1-pro-preview"
         or model_choice == "claude-opus-4-6"
@@ -133,7 +134,7 @@ def update_thinking_visibility(model_choice):
     gemini_thinking = (
         model_choice in model_info["models"]["Google"].keys()
         and model_info["models"]["Google"][model_choice]["extended_thinking"]
-        and model_choice not in ["gemini-3-pro-preview", "gemini-3-flash-preview", "gemini-3.1-pro-preview"]
+        and model_choice not in ["gemini-3-pro-preview", "gemini-3-flash-preview", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview"]
     )
 
     if anthropic_thinking or gemini_thinking:
@@ -567,7 +568,7 @@ with gr.Blocks(
                         model_choice_input = gr.Dropdown(
                             choices=list(model_info["models"]["Google"].keys()),
                             label="Model",
-                            value="gemini-3-flash-preview",
+                            value="gemini-3.1-flash-lite-preview",
                         )
                         temp_input = gr.Slider(
                             0.0, 1.0, step=0.1, value=0.1, label="Temperature"

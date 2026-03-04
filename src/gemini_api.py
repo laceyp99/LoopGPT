@@ -119,7 +119,7 @@ def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     }
     # Configure the generation parameters based on whether extended thinking is enabled
     model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
-    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview":
+    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview" or model == "gemini-3.1-flash-lite-preview":
         if effort in model_info["models"]["Google"][model]["effort_options"]:
             config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
         else:
@@ -176,7 +176,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     }
     model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
 
-    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview":
+    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview" or model == "gemini-3.1-flash-lite-preview":
         if effort in model_info["models"]["Google"][model]["effort_options"]:
             config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
         else:

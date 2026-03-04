@@ -392,6 +392,24 @@
             }
         },
         "Google": {
+            "gemini-3.1-flash-lite-preview": {
+                "extended_thinking": true,
+                "effort_options": ["minimal", "low", "medium", "high"],
+                "max_tokens": 65536,
+                "cost": {
+                    "input": 0.25,
+                    "cache": {
+                        "text": 0.025,
+                        "storage hour": 1.00
+                    },
+                    "output": 1.50
+                },
+                "rate_limits": {
+                    "RPM": 5,
+                    "TPM": 250000,
+                    "RPD": 20
+                }
+            },
             "gemini-3.1-pro-preview": {
                 "extended_thinking": true,
                 "effort_options": ["low", "medium", "high"],
@@ -420,8 +438,6 @@
             "gemini-3-flash-preview": {
                 "extended_thinking": true,
                 "effort_options": ["minimal", "low", "medium", "high"],
-                "min_thinking_budget": 128,
-                "max_thinking_budget": 24576,
                 "max_tokens": 64000,
                 "cost": {
                     "input": 0.50,
@@ -440,8 +456,6 @@
             "gemini-3-pro-preview": {
                 "extended_thinking": true,
                 "effort_options": ["low", "high"],
-                "min_thinking_budget": 128,
-                "max_thinking_budget": 24576,
                 "max_tokens": 64000,
                 "cost": {
                     "input": {
