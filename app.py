@@ -571,16 +571,16 @@ with gr.Blocks(
                             value="gemini-3.1-flash-lite-preview",
                         )
                         temp_input = gr.Slider(
-                            0.0, 1.0, step=0.1, value=0.1, label="Temperature"
+                            0.0, 1.0, step=0.1, value=0.1, label="Temperature", visible=False
                         )
                         thinking_checkbox = gr.Checkbox(
-                            label="Extended Thinking", value=False, visible=True
+                            label="Reasoning", value=False, visible=False
                         )
                         effort_input = gr.Dropdown(
                             choices=["minimal", "low", "medium", "high"],
                             label="Reasoning Effort",
-                            value="medium",
-                            visible=False,
+                            value="minimal",
+                            visible=True,
                         )
                         prompt_translate_checkbox = gr.Checkbox(
                             label="Prompt Translation", value=False
