@@ -57,9 +57,9 @@ def calc_price(model, response):
         float: Calculated price for the API call.
     """
     usage = response.usage
-    input_cost = model_info["models"]["OpenAI"][model]["cost"]["input"] / 1000000
-    output_cost = model_info["models"]["OpenAI"][model]["cost"]["output"] / 1000000
-    cached_input_cost = model_info["models"]["OpenAI"][model]["cost"]["cached input"] / 1000000
+    input_cost = model_info["models"]["OpenAI"][model]["cost"].get("input", 0) / 1000000
+    output_cost = model_info["models"]["OpenAI"][model]["cost"].get("output", 0) / 1000000
+    cached_input_cost = model_info["models"]["OpenAI"][model]["cost"].get("cached input", 0) / 1000000
 
     # Determine cached tokens if available (Responses API structure)
     if (hasattr(usage, "input_tokens_details") and usage.input_tokens_details and hasattr(usage.input_tokens_details, "cached_tokens")):
