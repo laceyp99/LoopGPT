@@ -67,8 +67,8 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
    - Key & scale (Major/minor)  
    - Text description (e.g. "Daniel Caesar R&B soul piano loop with sevenths and ninths interspersed throughout")  
    - Model & temperature  
+   - Show MIDI visualization  
    - Optional: Prompt Translation (recommended for smaller/less intelligent LLMs)  
-   - Optional: Show MIDI visualization  
    - Optional: Edit the System Prompts in the Prompt Editor tab
 
 2. **Generate & Download**  
