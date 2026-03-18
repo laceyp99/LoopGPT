@@ -85,12 +85,12 @@ def update_temp_visibility(model_choice, use_thinking):
     Returns:
         gr.update(): A Gradio update object to set the visibility of the temperature slider.
     """
-    # Hide temperature for o1 models (they don't support temperature)
+    # Hide temperature for models that don't support temperature
     if (
         model_choice in model_info["models"]["OpenAI"].keys()
         and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]
     ):
-        return gr.update(visible=False)
+        return gr.update(visible=False, value=1.0)
 
     # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
     elif (
@@ -585,9 +585,6 @@ with gr.Blocks(
                         prompt_translate_checkbox = gr.Checkbox(
                             label="Prompt Translation", value=False
                         )
-                        visualize_checkbox = gr.Checkbox(
-                            label="Show MIDI Visualization", value=True
-                        )
                 with gr.Row():
                     prog_button = gr.Button("Generate Loop", variant="primary")
                     cancel_button = gr.Button("Cancel", variant="stop", visible=False)
@@ -649,7 +646,7 @@ with gr.Blocks(
                         thinking_checkbox,
                         effort_input,
                         prompt_translate_checkbox,
-                        visualize_checkbox,
+                        True,  # always show visual
                         openai_key_input,
                         gemini_key_input,
                         claude_key_input,
