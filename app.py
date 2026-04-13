@@ -209,7 +209,6 @@ def run_loop(
     use_thinking,
     effort,
     translate_prompt_choice,
-    show_visual,
     openai_key,
     gemini_key,
     claude_key,
@@ -229,7 +228,6 @@ def run_loop(
         use_thinking (bool): Whether to enable extended thinking for supported Claude and Gemini models.
         effort (str): The reasoning effort level for supported OpenAI models.
         translate_prompt_choice (bool): Whether to translate the prompt or not during the generation process.
-        show_visual (bool): Whether to show the MIDI visualization or not in the UI as a result.
         openai_key (str): The OpenAI API key that the user inputs in the text box.
         gemini_key (str): The Gemini API key that the user inputs in the text box.
         claude_key (str): The Claude API key that the user inputs in the text box.
@@ -287,14 +285,10 @@ def run_loop(
         output_path = "output.mid"
         midi.save(output_path)
 
-        # Render audio from MIDI
+        # Render audio and visualization from MIDI
         yield None, None, None, "Rendering Audio...", gr.update(visible=True)
         audio_path = midi_to_mp3(output_path)
-
-        # If the user wants to visualize the MIDI file, generate the visualization
-        visualization = None
-        if show_visual:
-            visualization = visualize_midi_plotly(midi)
+        visualization = visualize_midi_plotly(midi)
 
         # Determine provider for history
         provider = get_provider_for_model(model_choice, model_info)
@@ -646,7 +640,6 @@ with gr.Blocks(
                         thinking_checkbox,
                         effort_input,
                         prompt_translate_checkbox,
-                        True,  # always show visual
                         openai_key_input,
                         gemini_key_input,
                         claude_key_input,
