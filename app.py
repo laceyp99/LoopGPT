@@ -106,6 +106,7 @@ def update_temp_visibility(model_choice, use_thinking):
         or model_choice == "gemini-3-pro-preview"
         or model_choice == "gemini-3-flash-preview"
         or model_choice == "gemini-3.1-pro-preview"
+        or model_choice == "claude-opus-4-7"
         or model_choice == "claude-opus-4-6"
         or model_choice == "claude-sonnet-4-6"
     ):
@@ -129,7 +130,7 @@ def update_thinking_visibility(model_choice):
     anthropic_thinking = (
         model_choice in model_info["models"]["Anthropic"].keys()
         and model_info["models"]["Anthropic"][model_choice]["extended_thinking"] 
-        and model_choice not in ["claude-opus-4-6", "claude-sonnet-4-6"]
+        and model_choice not in ["claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6"]
     )
     gemini_thinking = (
         model_choice in model_info["models"]["Google"].keys()
