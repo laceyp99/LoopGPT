@@ -8,7 +8,6 @@ import sys
 from mido import MidiTrack, Message, MidiFile, merge_tracks, MetaMessage
 import src.objects as objects
 import src.utils as utils
-# import objects, utils
 import math
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -155,9 +154,6 @@ def midi_to_loop(midi_filename, times_as_string=True):
     # Create empty bars for the first four bars.
     bars = {0: [], 1: [], 2: [], 3: []}
     
-    # Mapping sixteenth note positions from integer to string.
-    int_to_str = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen", 16: "sixteen"}
-    
     # Process each note event and assign it to the appropriate bar.
     for note_number, start_tick, end_tick, velocity in note_events:
         # Determine the sixteenth-note position (1-based indexing).
@@ -178,8 +174,8 @@ def midi_to_loop(midi_filename, times_as_string=True):
         # Create the note objects with time information.
         if times_as_string:
             time_info = objects.TimeInformation_G(
-                start_beat=objects.SixteenthNote_G(utils.convert_sixteenth(relative_start)),
-                duration=objects.SixteenthNote_G(utils.convert_sixteenth(duration_sixteenth))
+                start_beat=utils.int_to_sixteenth_g(relative_start),
+                duration=utils.int_to_sixteenth_g(duration_sixteenth)
             )
             note_obj = objects.Note_G(
                 pitch=pitch_name,

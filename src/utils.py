@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import numpy as np
 import json
 import mido
+import src.objects as objects
 
 # Flat list of chromatic note names (pitch class 0-11, sharps only)
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -312,25 +313,12 @@ def convert_sixteenth(sixteenth_g):
     Returns:
         int: The integer corresponding to the sixteenth note (1-16).
     """
-    mapping = {
-        "one": 1,
-        "two": 2,
-        "three": 3,
-        "four": 4,
-        "five": 5,
-        "six": 6,
-        "seven": 7,
-        "eight": 8,
-        "nine": 9,
-        "ten": 10,
-        "eleven": 11,
-        "twelve": 12,
-        "thirteen": 13,
-        "fourteen": 14,
-        "fifteen": 15,
-        "sixteen": 16,
-    }
-    return mapping[sixteenth_g.value.lower()]
+    return objects.SIXTEENTH_NOTE_G_TO_INT[sixteenth_g.value.lower()]
+
+
+def int_to_sixteenth_g(sixteenth):
+    """Convert an integer sixteenth-note position into a SixteenthNote_G enum."""
+    return objects.SixteenthNote_G.from_int(sixteenth)
 
 
 def visualize_midi_plotly(input_midi):
