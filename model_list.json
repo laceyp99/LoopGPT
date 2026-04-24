@@ -1,6 +1,16 @@
 {
     "models": {
         "OpenAI": {
+            "gpt-5.5": {
+                "extended_thinking": true,
+                "effort_options": ["none", "low", "medium", "high", "xhigh"],
+                "max_tokens": 128000,
+                "cost": {
+                    "input": 5.00,
+                    "cached input": 0.50,
+                    "output": 30.00
+                }
+            },
             "gpt-5.4-nano": {
                 "extended_thinking": true,
                 "effort_options": ["none", "low", "medium", "high", "xhigh"],
