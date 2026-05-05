@@ -33,8 +33,11 @@ def generate_midi(
     Returns:
         tuple: (midi_loop, messages, total_cost)
     """
+    ollama_status = ollama_api.get_ollama_status(force_refresh=True)
+    ollama_models = ollama_status["models"]
+
     # Ollama models
-    if model_choice in ollama_api.model_list:
+    if model_choice in ollama_models:
         if translate_prompt_choice:
             prompt_translated, messages, pt_cost = ollama_api.prompt_gen(
                 prompt=prompt, model=model_choice, temp=temp
@@ -84,6 +87,10 @@ def generate_midi(
                 prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
             )
     else:
+        if not ollama_status["available"]:
+            raise ValueError(
+                "Invalid Model Selected. If you intended to use Ollama, it is currently unavailable."
+            )
         raise ValueError("Invalid Model Selected")
 
     # Calculate total cost

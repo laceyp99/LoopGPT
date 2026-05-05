@@ -40,7 +40,7 @@ def get_providers():
         list: List of provider names.
     """
     providers = list(model_info["models"].keys())
-    if ollama_api.model_list:
+    if ollama_api.get_ollama_status()["available"]:
         providers.append("Ollama")
     return providers
 
@@ -55,7 +55,7 @@ def get_models_for_provider(provider):
         list: List of model names for the provider.
     """
     if provider == "Ollama":
-        return ollama_api.model_list
+        return ollama_api.get_model_list()
     elif provider in model_info["models"]:
         return list(model_info["models"][provider].keys())
     return []
