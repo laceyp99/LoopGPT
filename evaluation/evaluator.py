@@ -287,7 +287,7 @@ class Evaluator:
                             resolved.append((provider, model))
                 # All Ollama models
                 try:
-                    for model in ollama_api.model_list:
+                    for model in ollama_api.get_model_list():
                         resolved.append(("Ollama", model))
                 except Exception:
                     logger.warning("Could not load Ollama models")
@@ -306,7 +306,7 @@ class Evaluator:
 
             elif models_lower == "ollama":
                 try:
-                    for model in ollama_api.model_list:
+                    for model in ollama_api.get_model_list():
                         resolved.append(("Ollama", model))
                 except Exception:
                     logger.warning("Could not load Ollama models")
@@ -347,7 +347,7 @@ class Evaluator:
 
         # Check Ollama
         try:
-            if model in ollama_api.model_list:
+            if model in ollama_api.get_model_list():
                 return "Ollama"
         except Exception:
             pass
