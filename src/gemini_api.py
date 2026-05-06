@@ -48,6 +48,8 @@ def calc_cost(model, usage):
     Returns:
         float: Calculated price for the API call.
     """
+    cached = usage.cached_content_token_count or 0
+
     # Gemini 3 and 2.5 Pro has a different cost structure based on token usage
     if model in ['gemini-2.5-pro', 'gemini-3-pro-preview', 'gemini-3.1-pro-preview']:
         if usage.prompt_token_count <= 200000:
@@ -59,26 +61,24 @@ def calc_cost(model, usage):
             output_cost = model_info["models"]["Google"][model]["cost"]["output"][">200k"] / 1000000
             cache_cost = model_info["models"]["Google"][model]["cost"]["cache"][">200k"] / 1000000
         # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
-        storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1
+        storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1 if cached else 0
     else:
         # For other models, use the default cost structure
         input_cost = model_info["models"]["Google"][model]["cost"]["input"] / 1000000
         output_cost = model_info["models"]["Google"][model]["cost"]["output"] / 1000000
         # Check if cache cost is defined for the model
-        if hasattr(model_info["models"]["Google"][model]["cost"], "cache"):
+        if "cache" in model_info["models"]["Google"][model]["cost"]:
             cache_cost = model_info["models"]["Google"][model]["cost"]["cache"]["text"] / 1000000
             # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
-            storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1
+            storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1 if cached else 0
         else:
             cache_cost = 0
             storage_cost = 0
     # Gemini doesn't subtract cached tokens from prompt tokens, so we need to do that here
-    if usage.cached_content_token_count:
-        new_input_tokens = usage.prompt_token_count - usage.cached_content_token_count
-        cached = usage.cached_content_token_count
+    if cached:
+        new_input_tokens = usage.prompt_token_count - cached
     else:
         new_input_tokens = usage.prompt_token_count
-        cached = 0
     # Calculate total cost
     return (new_input_tokens * input_cost) + (usage.candidates_token_count * output_cost) + (cached * cache_cost) + storage_cost
 
