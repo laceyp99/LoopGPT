@@ -10,11 +10,9 @@ import os
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load prompt files
+# Load prompt file
 with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
     loop_prompt = f.read()
-with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
-    pt_prompt = f.read()
 
 # Load model list and pricing details from a JSON file
 with open('model_list.json', 'r') as f:
@@ -60,10 +58,10 @@ def calc_price(model, output):
         return total_price
 
 def process_streaming_response(completion):
-    # Extract the generated prompt translation content
+    # Extract text, tool JSON, and token usage from the streaming response.
     output = {
         "loop": "",
-        "prompt_translation": "",
+        "text": "",
         "thinking_content": "",
         "input_tokens": 0,
         "output_tokens": 0,
@@ -83,7 +81,7 @@ def process_streaming_response(completion):
             if hasattr(chunk.delta, "thinking"):
                 output["thinking_content"] += chunk.delta.thinking
             elif hasattr(chunk.delta, "text"):
-                output["prompt_translation"] += chunk.delta.text
+                output["text"] += chunk.delta.text
             elif hasattr(chunk.delta, "partial_json"):
                 output["loop"] += chunk.delta.partial_json
         elif chunk.type == 'message_delta':
@@ -96,67 +94,6 @@ def process_streaming_response(completion):
             break
     return output
 
-def prompt_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
-    """
-    Generate text content using the specified model and prompt.
-
-    Args:
-        prompt (str): The user prompt to generate text.
-        model (str): The model identifier to use.
-        temp (float, optional): Temperature for generation. Defaults to 0.0.
-        use_thinking (bool, optional): Enable extended thinking for supported models. Defaults to False.
-        effort (str, optional): Effort level for adaptive reasoning. Defaults to "low".
-
-    Returns:
-        tuple: (content, messages, cost)
-    """
-    # Initialize Anthropic client and make the API call
-    client = initialize_anthropic_client()
-    
-    # Prepare API call parameters
-    api_params = {
-        "model": model,
-        "max_tokens": model_info["models"]["Anthropic"][model]["max_tokens"],
-        "system": [{"type": "text", "text": pt_prompt, "cache_control": {"type": "ephemeral"}}],
-        "temperature": temp,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": True
-    }
-    
-    # Add thinking configuration
-    model_config = model_info["models"]["Anthropic"][model]
-    # Auto-enable adaptive thinking for models with effort_options (e.g., 4-6 models)
-    if model_config.get("effort_options"):
-        api_params["thinking"] = {"type": "adaptive"}
-        api_params["output_config"] = {"effort": effort}
-        api_params["temperature"] = 1.0
-    # Legacy extended thinking requires explicit opt-in via use_thinking
-    elif use_thinking and model_config.get("extended_thinking"):
-        api_params["thinking"] = {
-            "type": "enabled",
-            "budget_tokens": model_config["max_thinking_budget"]
-        }
-        api_params["temperature"] = 1.0
-    elif use_thinking and not model_config.get("extended_thinking"):
-        logger.warning(f"Extended thinking requested but not supported by model: {model}")
-    
-    # Make the API call for prompt translation generation
-    completion = client.messages.create(**api_params)
-    output = process_streaming_response(completion)
-    
-    # Extract the generated content and format it into a message history
-    messages = [
-        {"role": "system", "content": pt_prompt},
-        {"role": "user", "content": prompt},
-    ]
-    if output["thinking_content"]:
-        messages.append({"role": "assistant", "content": output["thinking_content"]})
-    messages.append({"role": "assistant", "content": output["prompt_translation"]})
-
-    cost = calc_price(model, output)
-    # Save messages for debugging/training purposes
-    utils.save_messages_to_json(messages, filename="prompt_translation")
-    return output["prompt_translation"], messages, cost
 
 def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     """
@@ -220,7 +157,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     completion = client.messages.create(**api_params)
     output = process_streaming_response(completion)
     if not output["loop"]:
-        raise ValueError(f"Model {model} did not call the build_MIDI_loop tool. Response text: {output['prompt_translation'][:200]}")
+        raise ValueError(f"Model {model} did not call the build_MIDI_loop tool. Response text: {output['text'][:200]}")
     loop = objects.Loop.model_validate_json(output["loop"])
     
     # Create the messages history 

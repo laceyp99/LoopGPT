@@ -13,17 +13,15 @@ def generate_midi(
     model_choice,
     prompt,
     temp=0.0,
-    translate_prompt_choice=False,
     use_thinking=False,
     effort="low",
 ):
-    """Generate MIDI loops based on user prompts using the specified model. This function mainly handles routing to the appropriate APIs and then managing the prompt translation step if needed.
+    """Generate MIDI loops based on user prompts using the specified model.
 
     Args:
         model_choice (str): The model to use for generation.
         prompt (str): The user prompt to generate MIDI data.
         temp (float, optional): The temperature for generation. Defaults to 0.0.
-        translate_prompt_choice (bool, optional): Whether to translate the prompt. Defaults to False.
         use_thinking (bool, optional): Whether to use extended thinking. Defaults to False.
         effort (str, optional): Reasoning effort level. Defaults to "low".
 
@@ -38,54 +36,22 @@ def generate_midi(
 
     # Ollama models
     if model_choice in ollama_models:
-        if translate_prompt_choice:
-            prompt_translated, messages, pt_cost = ollama_api.prompt_gen(
-                prompt=prompt, model=model_choice, temp=temp
-            )
-            loop, messages, loop_cost = ollama_api.loop_gen(
-                prompt=prompt_translated, model=model_choice, temp=temp
-            )
-        else:
-            loop, messages, loop_cost = ollama_api.loop_gen(prompt, model_choice)
+        loop, messages, loop_cost = ollama_api.loop_gen(prompt, model_choice)
     # OpenAI (unified - handles both standard and reasoning models)
     elif model_choice in model_info["models"]["OpenAI"]:
-        if translate_prompt_choice:
-            prompt_translated, messages, pt_cost = openai_api.prompt_gen(
-                prompt=prompt, model=model_choice, temp=temp, effort=effort
-            )
-            loop, messages, loop_cost = openai_api.loop_gen(
-                prompt=prompt_translated, model=model_choice, temp=temp, effort=effort
-            )
-        else:
-            loop, messages, loop_cost = openai_api.loop_gen(
-                prompt=prompt, model=model_choice, temp=temp, effort=effort
-            )
+        loop, messages, loop_cost = openai_api.loop_gen(
+            prompt=prompt, model=model_choice, temp=temp, effort=effort
+        )
     # Google Gemini
     elif model_choice in model_info["models"]["Google"]:
-        if translate_prompt_choice:
-            prompt_translated, messages, pt_cost = gemini_api.prompt_gen(
-                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
-            )
-            loop, messages, loop_cost = gemini_api.loop_gen(
-                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
-            )
-        else:
-            loop, messages, loop_cost = gemini_api.loop_gen(
-                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
-            )
+        loop, messages, loop_cost = gemini_api.loop_gen(
+            prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
+        )
     # Anthropic Claude
     elif model_choice in model_info["models"]["Anthropic"]:
-        if translate_prompt_choice:
-            prompt_translated, messages, pt_cost = claude_api.prompt_gen(
-                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
-            )
-            loop, messages, loop_cost = claude_api.loop_gen(
-                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
-            )
-        else:
-            loop, messages, loop_cost = claude_api.loop_gen(
-                prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
-            )
+        loop, messages, loop_cost = claude_api.loop_gen(
+            prompt=prompt, model=model_choice, temp=temp, use_thinking=use_thinking, effort=effort
+        )
     else:
         if not ollama_status["available"]:
             raise ValueError(
@@ -93,6 +59,4 @@ def generate_midi(
             )
         raise ValueError("Invalid Model Selected")
 
-    # Calculate total cost
-    total_cost = pt_cost + loop_cost if translate_prompt_choice else loop_cost
-    return loop, messages, total_cost
+    return loop, messages, loop_cost

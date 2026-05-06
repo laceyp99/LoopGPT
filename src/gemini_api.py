@@ -12,11 +12,9 @@ import json
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load prompt files
+# Load prompt file
 with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
     loop_prompt = f.read()
-with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
-    pt_prompt = f.read()
 
 # Load model list and pricing details from a JSON file
 with open('model_list.json', 'r') as f:
@@ -96,60 +94,6 @@ def process_output(response):
             final_result += part.text
     return final_result, thinking_content
 
-
-def prompt_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
-    """
-    Generate text content using the specified model and prompt.
-
-    Args:
-        prompt (str): The user prompt to generate text.
-        model (str): The model identifier to use.
-        temp (float, optional): Temperature for generation. Defaults to 0.0.
-        use_thinking (bool, optional): Whether to enable extended thinking. Defaults to None.
-        effort (str, optional): Reasoning effort level (not used in Gemini). Defaults to None.
-    Returns:
-        tuple: (content, messages, cost)
-    """
-    client = initialize_gemini_client()
-
-    config = {
-        "system_instruction": pt_prompt,
-        "temperature": temp,
-        "response_mime_type": 'text/plain',
-    }
-    # Configure the generation parameters based on whether extended thinking is enabled
-    model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
-    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview" or model == "gemini-3.1-flash-lite-preview":
-        if effort in model_info["models"]["Google"][model]["effort_options"]:
-            config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
-        else:
-            print("No effort level specified; using default thinking configuration.")
-    elif model_with_thinking and use_thinking:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"], include_thoughts=True)})
-    elif model_with_thinking and use_thinking == False:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"], include_thoughts=True)})
-    
-
-    # Make the API call
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=config
-    )
-    # Format into a message history for training and debugging purposes
-    content, thinking_content = process_output(response)
-    messages = [
-        {"role": "system", "content": pt_prompt},
-        {"role": "user", "content": prompt},
-        {"role": "assistant", "content": content}
-    ]
-    if thinking_content:
-        messages.insert(2, {"role": "assistant", "content": thinking_content})
-    # Calculate the cost of the generation
-    cost = calc_cost(model, response.usage_metadata)
-    # Save the messages to a JSON file for debugging and training purposes
-    utils.save_messages_to_json(messages, filename="prompt_translation")
-    return content, messages, cost
 
 def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     """

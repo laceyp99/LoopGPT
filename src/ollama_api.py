@@ -11,11 +11,9 @@ logger = logging.getLogger(__name__)
 
 _ollama_status_cache = None
 
-# Load prompt files
+# Load prompt file
 with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
     loop_prompt = f.read()
-with open(os.path.join('Prompts', 'prompt translation.txt'), 'r') as f:
-    pt_prompt = f.read()
 
 def initialize_ollama_client(host_address="http://localhost:11434"):
     """Initializes and returns an Ollama client.
@@ -83,40 +81,6 @@ def get_model_list(force_refresh=False):
     """
     return get_ollama_status(force_refresh=force_refresh)["models"]
 
-def prompt_gen(prompt, model, temp=0.0):
-    """
-    Generate text content using the specified model and prompt.
-
-    Args:
-        prompt (str): The user prompt to generate text.
-        model (str): The model identifier to use.
-        temp (float, optional): Temperature for generation. Defaults to 0.0.
-
-    Returns:
-        tuple: (content, messages, cost=0 for Ollama)
-    """
-    # Initialize Ollama client and build messages for the API call
-    client = initialize_ollama_client()
-    messages = [
-        {"role": "system", "content": pt_prompt},
-        {"role": "user", "content": prompt},
-    ]
-    # Make the API call for chat completion
-    completion = client.chat(
-        model=model,
-        messages=messages,
-        options={
-            "temperature": temp
-        }
-    )
-    # Extract the generated content
-    content = completion.message.content
-    if completion.message.thinking:
-        messages.append({"role": "assistant", "content": completion.message.thinking})
-    messages.append({"role": "assistant", "content": content})
-    # Save messages for debugging/training purposes
-    utils.save_messages_to_json(messages, filename="prompt_translation")
-    return content, messages, 0
 
 def loop_gen(prompt, model, temp=0.0):
     """

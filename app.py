@@ -180,20 +180,17 @@ def update_effort_visibility(model_choice):
         return gr.update(value="low", visible=False)
 
 
-def save_prompts(loop_gen_text, pt_text):
-    """This function saves any changes to the loop generation and prompt translation prompts to the text files.
+def save_prompts(loop_gen_text):
+    """This function saves any changes to the loop generation prompt to the text file.
 
     Args:
         loop_gen_text (str): The loop generation prompt text.
-        pt_text (str): The prompt translation text.
 
     Returns:
         str: A message indicating the status of the save operation.
     """
     with open("Prompts/loop gen.txt", "w") as f:
         f.write(loop_gen_text)
-    with open("Prompts/prompt translation.txt", "w") as f:
-        f.write(pt_text)
     return (
         "Prompts saved successfully at "
         + datetime.now().strftime("%I:%M:%S %p on %B %d, %Y")
@@ -209,7 +206,6 @@ def run_loop(
     model_choice,
     use_thinking,
     effort,
-    translate_prompt_choice,
     openai_key,
     gemini_key,
     claude_key,
@@ -228,7 +224,6 @@ def run_loop(
         model_choice (str): The model that the user selects from the dropdown.
         use_thinking (bool): Whether to enable extended thinking for supported Claude and Gemini models.
         effort (str): The reasoning effort level for supported OpenAI models.
-        translate_prompt_choice (bool): Whether to translate the prompt or not during the generation process.
         openai_key (str): The OpenAI API key that the user inputs in the text box.
         gemini_key (str): The Gemini API key that the user inputs in the text box.
         claude_key (str): The Claude API key that the user inputs in the text box.
@@ -260,7 +255,6 @@ def run_loop(
                 model_choice=model_choice,
                 prompt=prompt,
                 temp=temp,
-                translate_prompt_choice=translate_prompt_choice,
                 use_thinking=use_thinking,
                 effort=effort,
             )
@@ -577,9 +571,6 @@ with gr.Blocks(
                             value="minimal",
                             visible=True,
                         )
-                        prompt_translate_checkbox = gr.Checkbox(
-                            label="Prompt Translation", value=False
-                        )
                 with gr.Row():
                     prog_button = gr.Button("Generate Loop", variant="primary")
                     cancel_button = gr.Button("Cancel", variant="stop", visible=False)
@@ -640,7 +631,6 @@ with gr.Blocks(
                         model_choice_input,
                         thinking_checkbox,
                         effort_input,
-                        prompt_translate_checkbox,
                         openai_key_input,
                         gemini_key_input,
                         claude_key_input,
@@ -674,7 +664,7 @@ with gr.Blocks(
 
             # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
             with gr.Tab(label="Prompt Editor"):
-                gr.Markdown("## Edit System Prompts")
+                gr.Markdown("## Edit System Prompt")
                 ## Load the existing prompts from the text files in the Prompts folder
                 # If the files do not exist, set the text to an empty string
                 try:
@@ -682,28 +672,18 @@ with gr.Blocks(
                         loop_gen_text = lg.read()
                 except Exception:
                     loop_gen_text = ""
-                try:
-                    with open("Prompts/prompt translation.txt", "r") as pt:
-                        pt_text = pt.read()
-                except Exception:
-                    pt_text = ""
                 # Create text boxes for the user to edit the prompts
                 gr.Markdown("### Loop Generation Prompt")
                 gr.Markdown(
                     "This prompt is used to generate the loop based on the description."
                 )
                 loop_gen_input = gr.Textbox(lines=20, value=loop_gen_text)
-                gr.Markdown("### Prompt Translation Prompt")
-                gr.Markdown(
-                    "This prompt is used to translate the description into a more detailed prompt for the model."
-                )
-                pt_input = gr.Textbox(lines=20, value=pt_text)
-                save_button = gr.Button("Save Prompts")
+                save_button = gr.Button("Save Prompt")
                 save_status = gr.Textbox(label="Status", interactive=False)
                 # When the user clicks the save button, save the current prompts in the textboxes to the text files
                 save_button.click(
                     save_prompts,
-                    inputs=[loop_gen_input, pt_input],
+                    inputs=[loop_gen_input],
                     outputs=[save_status],
                 )
 

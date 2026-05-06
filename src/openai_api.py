@@ -20,11 +20,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load prompt files
+# Load prompt file
 with open(os.path.join("Prompts", "loop gen.txt"), "r") as f:
     loop_prompt = f.read()
-with open(os.path.join("Prompts", "prompt translation.txt"), "r") as f:
-    pt_prompt = f.read()
 
 # Load model list and pricing details from a JSON file
 with open("model_list.json", "r") as f:
@@ -79,64 +77,6 @@ def extract_reasoning(response):
             for s in item.summary:
                 reasoning += s.text + "\n"
     return reasoning
-
-def prompt_gen(prompt, model, temp=0.0, effort=None):
-    """
-    Generate text content using the specified model and prompt.
-
-    Args:
-        prompt (str): The user prompt to generate text.
-        model (str): The model identifier to use.
-        temp (float, optional): Temperature for generation. Defaults to 0.0.
-        effort (str, optional): Reasoning effort level for reasoning models. Defaults to None.
-
-    Returns:
-        tuple: (content, messages, cost)
-    """
-    client = initialize_openai_client()
-    messages = [
-        {"role": "system", "content": pt_prompt},
-        {"role": "user", "content": prompt},
-    ]
-
-    # Build request parameters
-    request_params = {
-        "model": model,
-        "instructions": pt_prompt,
-        "input": prompt,
-        "store": False,
-    }
-
-    # Add temperature for non-reasoning models, reasoning effort for reasoning models
-    model_config = model_info["models"]["OpenAI"][model]
-    if model_config.get("extended_thinking") and effort:
-        request_params["reasoning"] = {"effort": effort, "summary": "auto"}
-    else:
-        request_params["temperature"] = temp
-
-    try:
-        response = client.responses.create(**request_params)
-    except AuthenticationError as e:
-        logger.error(f"Authentication failed: {e}")
-        raise ValueError("Invalid OpenAI API key")
-    except RateLimitError as e:
-        logger.error(f"Rate limit exceeded: {e}")
-        raise
-    except APIConnectionError as e:
-        logger.error(f"Connection error: {e}")
-        raise
-    except APIError as e:
-        logger.error(f"OpenAI API error: {e}")
-        raise
-
-    reasoning = extract_reasoning(response)
-    if reasoning:
-        messages.append({"role": "assistant", "content": reasoning})
-    messages.append({"role": "assistant", "content": response.output_text})
-    cost = calc_price(model, response)
-    utils.save_messages_to_json(messages, filename="prompt_translation")
-    return response.output_text, messages, cost
-
 
 def loop_gen(prompt, model, temp=0.0, effort=None):
     """
