@@ -33,6 +33,52 @@ with open("model_list.json", "r") as f:
     model_info = json.load(f)
 
 
+def format_price_summary(price_value):
+    """Format scalar or tiered pricing for dropdown labels."""
+    if isinstance(price_value, (int, float)):
+        return f"${price_value:.2f}"
+
+    if isinstance(price_value, dict):
+        numeric_values = [value for value in price_value.values() if isinstance(value, (int, float))]
+        if not numeric_values:
+            return None
+
+        min_price = min(numeric_values)
+        max_price = max(numeric_values)
+        if min_price == max_price:
+            return f"${min_price:.2f}"
+        return f"${min_price:.2f}-${max_price:.2f}"
+
+    return None
+
+
+def format_model_label(provider, model_name):
+    """Build the model dropdown label with pricing when available."""
+    if provider == "Ollama":
+        return model_name
+
+    provider_models = model_info["models"].get(provider, {})
+    model_data = provider_models.get(model_name, {})
+    cost = model_data.get("cost")
+
+    if not cost or "input" not in cost or "output" not in cost:
+        return model_name
+
+    input_price = format_price_summary(cost["input"])
+    output_price = format_price_summary(cost["output"])
+
+    if not input_price or not output_price:
+        return model_name
+
+    return f"{model_name} ({input_price} in / {output_price} out per 1M tokens)"
+
+
+def get_model_dropdown_choices(provider):
+    """Get dropdown choices as (label, value) tuples for a provider."""
+    models = get_models_for_provider(provider)
+    return [(format_model_label(provider, model_name), model_name) for model_name in models]
+
+
 def get_providers():
     """Get list of available providers including Ollama if models are available.
 
@@ -70,9 +116,9 @@ def update_model_choices(provider):
     Returns:
         gr.update(): A Gradio update object with new choices and default value.
     """
-    models = get_models_for_provider(provider)
-    default_value = models[0] if models else None
-    return gr.update(choices=models, value=default_value)
+    choices = get_model_dropdown_choices(provider)
+    default_value = choices[0][1] if choices else None
+    return gr.update(choices=choices, value=default_value)
 
 
 def update_temp_visibility(model_choice, use_thinking):
@@ -555,7 +601,7 @@ with gr.Blocks(
                             choices=get_providers(), label="Provider", value="Google"
                         )
                         model_choice_input = gr.Dropdown(
-                            choices=list(model_info["models"]["Google"].keys()),
+                            choices=get_model_dropdown_choices("Google"),
                             label="Model",
                             value="gemini-3.1-flash-lite-preview",
                         )
