@@ -12,7 +12,6 @@ This project is a music generation tool that enables users to create 4 bar loops
 - Manage your last 20 generations from the history sidebar
 - View/Edit the system prompts that instruct the model through the generation process
 - Generate 4-bar loops with customizable parameters
-- Optional prompt translation for guided reasoning when using language models
 - Support for sixteenth note resolution
 - Save full API message history to JSON files for training examples
 
@@ -68,7 +67,6 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
    - Text description (e.g. "Daniel Caesar R&B soul piano loop with sevenths and ninths interspersed throughout")  
    - Model & temperature  
    - Show MIDI visualization  
-   - Optional: Prompt Translation (recommended for smaller/less intelligent LLMs)  
    - Optional: Edit the System Prompts in the Prompt Editor tab
 
 2. **Generate & Download**  
@@ -83,7 +81,7 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
    - Click **Load** to view/play it, or **Delete** to remove it
 
 4. **Inspect JSON logs**  
-   - `prompt_translation.json` and `loop.json` record the full message exchange and reasoning  
+   - `loop.json` records the full message exchange and reasoning  
 
 ## Evaluation Framework
 
@@ -99,8 +97,7 @@ LoopGPT/
 ├── UI.png                      # Screenshot of the Gradio interface
 │
 ├── Prompts/
-│   ├── loop gen.txt            # System prompt for 4-bar loop generation
-│   └── prompt translation.txt  # System prompt for enriching user descriptions
+│   └── loop gen.txt            # System prompt for 4-bar loop generation
 │
 ├── src/
 │   ├── .env                    # API keys (OPENAI, GEMINI, ANTHROPIC, OLLAMA)
@@ -108,7 +105,7 @@ LoopGPT/
 │   ├── gemini_api.py           # Google Gemini endpoints
 │   ├── claude_api.py           # Anthropic Claude endpoints
 │   ├── ollama_api.py           # Local Ollama endpoints
-│   ├── runs.py                 # API routing and prompt translation orchestration
+│   ├── runs.py                 # API routing across supported providers
 │   ├── midi_processing.py      # Loop <-> MIDI conversion via mido
 │   ├── objects.py              # Pydantic models (Note, Bar, Loop, _G variants)
 │   ├── utils.py                # MIDI helpers, visualization, message logging
@@ -138,7 +135,6 @@ LoopGPT/
 ├── soundfonts/                 # Place SoundFont (.sf2) files here for audio playback
 │
 ├── loop.json                   # JSON log of the last MIDI-generation conversation
-├── prompt_translation.json     # JSON log of the last prompt-translation conversation
 └── output.mid                  # The most recently generated MIDI file
 ```
 

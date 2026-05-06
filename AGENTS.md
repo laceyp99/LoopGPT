@@ -54,7 +54,6 @@ The evaluation directory no longer uses separate runner scripts. The current pat
 
 - `evaluation/evaluator.py` exposes an `Evaluator` class that handles generation, test execution, result saving, and async versus sync provider routing.
 - `test_reasoning=True` expands compatible models across thinking and effort variations.
-- `test_prompt_translation=True` runs translated and non-translated variants.
 - Validation tests are selected by name through the `tests` argument and executed via `Evaluator.run_tests(...)`.
 - Duration expectations are auto-detected from prompt text using shared keywords from `src/utils.py`.
 

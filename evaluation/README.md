@@ -123,22 +123,6 @@ results = evaluator.evaluate(
 | Google | gemini 2.5+ | thinking off/on, only effort levels for gemini 3 family |
 | Ollama | All | only thinking on if the model supports it |
 
-### Testing Prompt Translation
-
-When `test_prompt_translation=True`, each combination runs twice -- with and without the prompt translation feature (which enriches the user prompt via an extra API call before generation):
-
-```python
-results = evaluator.evaluate(
-    prompts="jazzy walking bass",
-    roots=["E", "A"],
-    models="ollama",
-    run_name="translation_comparison",
-    test_prompt_translation=True
-)
-```
-
-This roughly doubles the number of generations and, for translated runs, approximately doubles latency per generation due to the extra API call.
-
 ### Configuring Tests
 
 The `tests` parameter controls which validation tests run on generated MIDI:
@@ -183,19 +167,9 @@ runs/
                         └── ...
 ```
 
-When using `test_reasoning` or `test_prompt_translation`, variation subfolders are created:
+When using `test_reasoning`, variation subfolders are created:
 
 ```
-# With test_prompt_translation=True
-C_major/
-├── output.mid              # Standard variation (no subfolder)
-├── messages.json
-├── test_results.json
-└── standard_translated/    # Translated variation
-    ├── output.mid
-    ├── messages.json
-    └── test_results.json
-
 # With test_reasoning=True (effort levels as subfolders)
 C_major/
 ├── none/                   # No reasoning effort
@@ -222,7 +196,6 @@ Stores the full configuration used for the run:
     "models": [["OpenAI", "gpt-4o-mini"]],
     "tests": ["scale", "duration"],
     "test_reasoning": false,
-    "test_prompt_translation": false,
     "temperature": 0.0
 }
 ```
@@ -273,7 +246,6 @@ Individual results for each generation:
     "config": {
         "use_thinking": false,
         "effort": null,
-        "translate_prompt": false,
         "temperature": 0.0
     },
     "metrics": {
@@ -312,7 +284,7 @@ A filter bar at the top of every page lets you narrow results by:
 - **Models** -- Select which models to include
 - **Root Notes** -- Filter by root note (e.g. C, F#, Eb)
 - **Scale Type** -- Major, minor, or both
-- **Variation** -- Standard, translated, reasoning effort levels
+- **Variation** -- Standard and reasoning effort levels
 
 All charts update in real time when filters change.
 
@@ -333,25 +305,20 @@ All charts update in real time when filters change.
 - Major vs minor pass rate per root note
 - Full model x root+scale heatmap
 
-#### Tab 4: Prompt Translation *(only shown when `test_prompt_translation=True`)*
-- Side-by-side pass rate comparison: standard vs translated
-- Translation impact delta (positive = translation helped)
-- Latency comparison: standard vs translated
-
-#### Tab 5: Latency
-- Latency distribution box plots per model (split by standard/translated when applicable)
+#### Tab 4: Latency
+- Latency distribution box plots per model
 - Latency vs pass rate scatter plot
 
-#### Tab 6: Cost
+#### Tab 5: Cost
 - Total cost by model
 - Cost per generation vs pass rate scatter plot
 
-#### Tab 7: Reasoning *(only shown when `test_reasoning=True`)*
+#### Tab 6: Reasoning *(only shown when `test_reasoning=True`)*
 - Effort impact delta: pass rate change across effort levels per model
 - Reasoning toggle comparison: pass rate with thinking on vs off for toggle-based models
 - Reasoning cost-effectiveness: cost vs pass rate scatter colored by effort level
 
-#### Tab 8: Error Patterns
+#### Tab 7: Error Patterns
 - Generation failure rate (API/conversion errors) per model
 - Most common incorrect pitch classes by model (as note names)
 - Incorrect intervals relative to prompted root per model (e.g. m3, P5 -- helps identify systematic confusions)
@@ -359,7 +326,7 @@ All charts update in real time when filters change.
 
 ### Exporting
 
-Click the **Export Dashboard** button to save all charts as individual HTML files plus a combined `dashboard.html` to `runs/<run>/analysis/`. The number of exported charts depends on the run's features (16 base charts, plus 3 for prompt translation and 3 for reasoning when applicable):
+Click the **Export Dashboard** button to save all charts as individual HTML files plus a combined `dashboard.html` to `runs/<run>/analysis/`. The number of exported charts depends on the run's features (16 base charts, plus 3 for reasoning when applicable):
 
 ```
 runs/20260210_224954_arpeggiator_local_pt/
@@ -368,9 +335,8 @@ runs/20260210_224954_arpeggiator_local_pt/
     ├── pass_rate_by_model.html
     ├── per_test_breakdown.html
     ├── incorrect_intervals.html
-    ├── translation_comparison.html # Only if test_prompt_translation was used
     ├── effort_impact_delta.html    # Only if test_reasoning was used
-    └── ... (up to 22 chart files total)
+    └── ... (up to 19 chart files total)
 ```
 
 The exported HTML files are self-contained and can be shared without a running server.

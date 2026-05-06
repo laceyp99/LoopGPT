@@ -1,7 +1,6 @@
 venv/
 src/.env
 loop.json
-prompt_translation.json
 evaluation_log.json
 output.mid
 output.mp3
