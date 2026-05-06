@@ -16,7 +16,8 @@ def scale_test(midi, root, scale):
         scale (str): The scale mode ("Major" or "minor").
 
     Returns:
-        bool: True if all note events are within the allowed pitch classes of the scale; False otherwise.
+        dict: A dictionary containing the total number of notes, number of correct notes,
+              number of incorrect notes, and lists of correct and incorrect pitch classes.
 
     Raises:
         ValueError: If the provided root note or scale mode is invalid.
@@ -71,7 +72,8 @@ def duration_test(midi, duration):
         duration (str): The expected duration of each note event.
 
     Returns:
-        bool: True if all note events have the specified duration; False otherwise.
+        dict: A dictionary containing the total number of notes, number of correct notes,
+              number of incorrect notes, and a dictionary of incorrect note lengths.
     """
     if duration not in DURATION_BEATS:
         raise ValueError(f"Invalid duration: {duration}")

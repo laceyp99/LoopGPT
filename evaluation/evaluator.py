@@ -92,7 +92,7 @@ class Evaluator:
         root_logger.addHandler(file_handler)
 
     def evaluate(self, prompts: Union[str, list[str]], roots: list[str], models: Union[str, list[str]] = "all", run_name: str = None,
-        tests: list[str] = ["scale", "duration"], test_reasoning: bool = False, test_prompt_translation: bool = False) -> dict:
+        tests: list[str] = ["scale", "duration"], test_reasoning: bool = False) -> dict:
         """
         Run evaluation across all specified combinations.
 
@@ -104,7 +104,6 @@ class Evaluator:
             tests: List of test names to run (default: ["scale", "duration"]).
                    "scale" always runs. Others auto-detect params from prompt.
             test_reasoning: If True, test all thinking modes and effort levels for compatible models.
-            test_prompt_translation: If True, test both with and without prompt translation.
 
         Returns:
             dict: Summary of evaluation results.
@@ -137,7 +136,6 @@ class Evaluator:
             "models": [(p, m) for p, m in resolved_models],
             "tests": tests,
             "test_reasoning": test_reasoning,
-            "test_prompt_translation": test_prompt_translation,
             "temperature": self.temperature,
         }
         with open(run_path / "config.json", "w", encoding="utf-8") as f:
@@ -150,7 +148,6 @@ class Evaluator:
             resolved_models=resolved_models,
             tests=tests,
             test_reasoning=test_reasoning,
-            test_prompt_translation=test_prompt_translation,
         )
         logger = logging.getLogger(__name__)
         logger.info(f"Starting evaluation '{run_name}' with {len(tasks)} total tasks")
@@ -407,7 +404,7 @@ class Evaluator:
         return {}
 
     def _generate_tasks(self, prompts: list[str], roots: list[str], resolved_models: list[tuple[str, str]], tests: list[str],
-        test_reasoning: bool, test_prompt_translation: bool) -> list[dict]:
+        test_reasoning: bool) -> list[dict]:
         """
         Generate all task combinations to run.
 
@@ -417,7 +414,6 @@ class Evaluator:
             resolved_models: List of (provider, model) tuples
             tests: List of test names
             test_reasoning: Whether to test reasoning variations
-            test_prompt_translation: Whether to test translation variations
 
         Returns:
             list: List of task dictionaries
@@ -434,7 +430,6 @@ class Evaluator:
                             model=model,
                             provider=provider,
                             test_reasoning=test_reasoning,
-                            test_prompt_translation=test_prompt_translation,
                         )
 
                         for variation in variations:
@@ -448,14 +443,13 @@ class Evaluator:
                                     "scale": scale,
                                     "use_thinking": variation["use_thinking"],
                                     "effort": variation["effort"],
-                                    "translate_prompt": variation["translate_prompt"],
                                     "variation_name": variation["name"],
                                 }
                             )
 
         return tasks
 
-    def _generate_variations(self, model: str, provider: str, test_reasoning: bool, test_prompt_translation: bool) -> list[dict]:
+    def _generate_variations(self, model: str, provider: str, test_reasoning: bool) -> list[dict]:
         """
         Generate all config variations to test for a model.
 
@@ -463,7 +457,6 @@ class Evaluator:
             model: Model name
             provider: Provider name
             test_reasoning: Whether to test reasoning variations
-            test_prompt_translation: Whether to test translation variations
 
         Returns:
             list: List of variation config dictionaries
@@ -473,98 +466,77 @@ class Evaluator:
         supports_thinking = capabilities.get("extended_thinking", False)
         effort_options = capabilities.get("effort_options", [])
 
-        # Base translation options
-        translation_options = [False]
-        if test_prompt_translation:
-            translation_options = [False, True]
-
-        for translate in translation_options:
-            translate_suffix = "_translated" if translate else ""
-
-            if test_reasoning and supports_thinking:
-                # For OpenAI reasoning models (o-series), only effort levels matter
-                if provider == "OpenAI" and supports_thinking:
-                    for effort in effort_options:
-                        variations.append(
-                            {
-                                "use_thinking": True,  # Always on for o-series
-                                "effort": effort,
-                                "translate_prompt": translate,
-                                "name": f"{effort}{translate_suffix}",
-                            }
-                        )
-                # For Anthropic/Google, test thinking with effort levels
-                elif provider in ["Anthropic", "Google"] and effort_options:
-                    # With thinking + effort levels
-                    for effort in effort_options:
-                        variations.append(
-                            {
-                                "use_thinking": True,
-                                "effort": effort,
-                                "translate_prompt": translate,
-                                "name": f"{effort}{translate_suffix}",
-                            }
-                        )
-                # For Anthropic/Google with thinking but no effort options
-                elif provider in ["Anthropic", "Google"]:
-                    # Without thinking
-                    variations.append(
-                        {
-                            "use_thinking": False,
-                            "effort": None,
-                            "translate_prompt": translate,
-                            "name": f"standard{translate_suffix}",
-                        }
-                    )
-                    # With thinking, no effort specification
+        if test_reasoning and supports_thinking:
+            # For OpenAI reasoning models (o-series), only effort levels matter.
+            if provider == "OpenAI" and supports_thinking:
+                for effort in effort_options:
                     variations.append(
                         {
                             "use_thinking": True,
-                            "effort": None,
-                            "translate_prompt": translate,
-                            "name": f"w_reasoning{translate_suffix}",
+                            "effort": effort,
+                            "name": effort,
                         }
                     )
-                else:
-                    # Ollama or unknown - just basic variation
+            # For Anthropic/Google, test thinking with effort levels when supported.
+            elif provider in ["Anthropic", "Google"] and effort_options:
+                for effort in effort_options:
                     variations.append(
                         {
-                            "use_thinking": False,
-                            "effort": None,
-                            "translate_prompt": translate,
-                            "name": f"standard{translate_suffix}"
+                            "use_thinking": True,
+                            "effort": effort,
+                            "name": effort,
                         }
                     )
+            # For Anthropic/Google with a reasoning toggle but no effort options.
+            elif provider in ["Anthropic", "Google"]:
+                variations.append(
+                    {
+                        "use_thinking": False,
+                        "effort": None,
+                        "name": "standard",
+                    }
+                )
+                variations.append(
+                    {
+                        "use_thinking": True,
+                        "effort": None,
+                        "name": "w_reasoning",
+                    }
+                )
             else:
-                # No reasoning testing - just basic run
-                # For models with extended_thinking, default to least effort
-                if supports_thinking and provider == "OpenAI":
-                    variations.append(
-                        {
-                            "use_thinking": True,
-                            "effort": effort_options[0],
-                            "translate_prompt": translate,
-                            "name": f"{effort_options[0]}{translate_suffix}"
-                        }
-                    )
-                elif effort_options and provider in ["Anthropic", "Google"]:
-                    variations.append(
-                        {
-                            "use_thinking": True,
-                            "effort": effort_options[0],
-                            "translate_prompt": translate,
-                            "name": f"{effort_options[0]}{translate_suffix}"
-                        }
-                    )
-                else:
-                    variations.append(
-                        {
-                            "use_thinking": False,
-                            "effort": None,
-                            "translate_prompt": translate,
-                            "name": f"standard{translate_suffix}"
-                        }
-                    )
+                variations.append(
+                    {
+                        "use_thinking": False,
+                        "effort": None,
+                        "name": "standard",
+                    }
+                )
+        else:
+            # No reasoning testing: use the default effort for effort-based models.
+            if supports_thinking and provider == "OpenAI":
+                variations.append(
+                    {
+                        "use_thinking": True,
+                        "effort": effort_options[0],
+                        "name": effort_options[0],
+                    }
+                )
+            elif effort_options and provider in ["Anthropic", "Google"]:
+                variations.append(
+                    {
+                        "use_thinking": True,
+                        "effort": effort_options[0],
+                        "name": effort_options[0],
+                    }
+                )
+            else:
+                variations.append(
+                    {
+                        "use_thinking": False,
+                        "effort": None,
+                        "name": "standard",
+                    }
+                )
 
         return variations
 
@@ -760,7 +732,6 @@ class Evaluator:
         scale = task["scale"]
         use_thinking = task["use_thinking"]
         effort = task["effort"]
-        translate_prompt = task["translate_prompt"]
         variation_name = task["variation_name"]
 
         # Build result structure
@@ -774,7 +745,6 @@ class Evaluator:
             "config": {
                 "use_thinking": use_thinking,
                 "effort": effort,
-                "translate_prompt": translate_prompt,
                 "temperature": self.temperature,
             },
             "metrics": {
@@ -792,7 +762,6 @@ class Evaluator:
                 model_choice=model,
                 prompt=full_prompt,
                 temp=self.temperature,
-                translate_prompt_choice=translate_prompt,
                 use_thinking=use_thinking,
                 effort=effort if effort else "low",
             )
@@ -1016,6 +985,5 @@ if __name__ == "__main__":
         models=[ "gpt-5.2", "gpt-5.1", "gpt-5", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview", "claude-sonnet-4-6", "claude-opus-4-6", "claude-opus-4-5"],
         run_name="top cloud models", 
         tests=["scale", "duration"], 
-        test_reasoning=True, 
-        test_prompt_translation=False
+        test_reasoning=True,
     )

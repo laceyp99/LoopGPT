@@ -148,10 +148,10 @@ def load_run(run_path):
 
         # Determine variation from directory structure
         rel = tr_path.relative_to(results_dir)
-        parts = rel.parts  # e.g. ("Ollama", "model", "prompt_slug", "C_major", "standard_translated", "test_results.json")
+        parts = rel.parts  # e.g. ("Ollama", "model", "prompt_slug", "C_major", "low", "test_results.json")
         # If there's a subfolder beyond root_scale (5+ parts before the filename), it's a variation
         if len(parts) > 5:
-            variation = parts[-2]  # e.g. "standard_translated"
+            variation = parts[-2]
         else:
             variation = "standard"
 
@@ -174,7 +174,6 @@ def load_run(run_path):
             # Config
             "use_thinking": cfg.get("use_thinking", False),
             "effort": cfg.get("effort"),
-            "translate_prompt": cfg.get("translate_prompt", False),
             "temperature": cfg.get("temperature", 0.0),
             # Metrics
             "api_latency": metrics.get("api_latency", 0.0),
@@ -614,141 +613,6 @@ def build_root_scale_heatmap(df):
     )
     return apply_plotly_theme(fig)
 
-def build_translation_comparison(df):
-    """Build side-by-side pass rate comparison: standard vs translated.
-
-    Args:
-        df (pd.DataFrame): Filtered results DataFrame.
-
-    Returns:
-        go.Figure: Grouped bar chart figure.
-    """
-    if df.empty:
-        return apply_plotly_theme(go.Figure().update_layout(title="No data"))
-
-    has_translated = df["translate_prompt"].any()
-    if not has_translated:
-        fig = go.Figure()
-        fig.add_annotation(text="No prompt translation data in this run", showarrow=False,
-                           font=dict(size=16, color=PLOTLY_TEXT))
-        return apply_plotly_theme(fig)
-
-    models = sorted(df["model"].unique())
-    std_rates = []
-    trans_rates = []
-
-    for model in models:
-        mdf = df[df["model"] == model]
-        std = mdf[~mdf["translate_prompt"]]
-        trans = mdf[mdf["translate_prompt"]]
-        std_rates.append(round(std["overall_pass"].mean() * 100, 1) if len(std) > 0 else 0)
-        trans_rates.append(round(trans["overall_pass"].mean() * 100, 1) if len(trans) > 0 else 0)
-
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name="Standard", x=models, y=std_rates, text=std_rates, textposition="auto",
-                         marker_color="#5dade2"))
-    fig.add_trace(go.Bar(name="Translated", x=models, y=trans_rates, text=trans_rates, textposition="auto",
-                         marker_color="#f39c12"))
-    fig.update_layout(
-        barmode="group",
-        title="Pass Rate: Standard vs Prompt Translation",
-        xaxis_title="Model",
-        yaxis_title="Pass Rate (%)",
-        yaxis=dict(range=[0, 105]),
-    )
-    return apply_plotly_theme(fig)
-
-def build_translation_delta(df):
-    """Build bar chart showing the pass rate delta from prompt translation.
-
-    Positive = translation helped, negative = translation hurt.
-
-    Args:
-        df (pd.DataFrame): Filtered results DataFrame.
-
-    Returns:
-        go.Figure: Delta bar chart figure.
-    """
-    if df.empty:
-        return apply_plotly_theme(go.Figure().update_layout(title="No data"))
-
-    has_translated = df["translate_prompt"].any()
-    if not has_translated:
-        fig = go.Figure()
-        fig.add_annotation(text="No prompt translation data in this run", showarrow=False,
-                           font=dict(size=16, color=PLOTLY_TEXT))
-        return apply_plotly_theme(fig)
-
-    models = sorted(df["model"].unique())
-    deltas = []
-
-    for model in models:
-        mdf = df[df["model"] == model]
-        std = mdf[~mdf["translate_prompt"]]
-        trans = mdf[mdf["translate_prompt"]]
-        std_rate = std["overall_pass"].mean() * 100 if len(std) > 0 else 0
-        trans_rate = trans["overall_pass"].mean() * 100 if len(trans) > 0 else 0
-        deltas.append(round(trans_rate - std_rate, 1))
-
-    colors = ["#2ecc71" if d >= 0 else "#e74c3c" for d in deltas]
-
-    fig = go.Figure(go.Bar(
-        x=models, y=deltas, text=deltas, textposition="auto",
-        marker_color=colors,
-    ))
-    fig.update_layout(
-        title="Prompt Translation Impact (Translated - Standard)",
-        xaxis_title="Model",
-        yaxis_title="Pass Rate Delta (pp)",
-    )
-    fig.add_hline(y=0, line_dash="dash", line_color=PLOTLY_TEXT, opacity=0.5)
-    return apply_plotly_theme(fig)
-
-def build_translation_latency(df):
-    """Build grouped bar chart comparing latency: standard vs translated.
-
-    Args:
-        df (pd.DataFrame): Filtered results DataFrame.
-
-    Returns:
-        go.Figure: Grouped bar chart figure.
-    """
-    if df.empty:
-        return apply_plotly_theme(go.Figure().update_layout(title="No data"))
-
-    has_translated = df["translate_prompt"].any()
-    if not has_translated:
-        fig = go.Figure()
-        fig.add_annotation(text="No prompt translation data in this run", showarrow=False,
-                           font=dict(size=16, color=PLOTLY_TEXT))
-        return apply_plotly_theme(fig)
-
-    models = sorted(df["model"].unique())
-    std_latencies = []
-    trans_latencies = []
-
-    for model in models:
-        mdf = df[df["model"] == model]
-        std = mdf[~mdf["translate_prompt"]]
-        trans = mdf[mdf["translate_prompt"]]
-        std_latencies.append(round(std["api_latency"].mean(), 1) if len(std) > 0 else 0)
-        trans_latencies.append(round(trans["api_latency"].mean(), 1) if len(trans) > 0 else 0)
-
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name="Standard", x=models, y=std_latencies,
-                         text=[f"{v:.1f}s" for v in std_latencies], textposition="auto",
-                         marker_color="#5dade2"))
-    fig.add_trace(go.Bar(name="Translated", x=models, y=trans_latencies,
-                         text=[f"{v:.1f}s" for v in trans_latencies], textposition="auto",
-                         marker_color="#f39c12"))
-    fig.update_layout(
-        barmode="group",
-        title="Average Latency: Standard vs Translated",
-        xaxis_title="Model",
-        yaxis_title="Avg Latency (seconds)",
-    )
-    return apply_plotly_theme(fig)
-
 def build_latency_box(df):
     """Build box plot of API latency per model, split by variation.
 
@@ -761,25 +625,12 @@ def build_latency_box(df):
     if df.empty:
         return apply_plotly_theme(go.Figure().update_layout(title="No data"))
 
-    # Separate standard vs translated for clearer comparison
-    has_translated = df["translate_prompt"].any()
-
     fig = go.Figure()
     models = sorted(df["model"].unique())
 
-    if has_translated:
-        for model in models:
-            mdf = df[df["model"] == model]
-            std = mdf[~mdf["translate_prompt"]]["api_latency"]
-            trans = mdf[mdf["translate_prompt"]]["api_latency"]
-            if len(std) > 0:
-                fig.add_trace(go.Box(y=std, name=f"{model}\n(standard)", boxmean=True))
-            if len(trans) > 0:
-                fig.add_trace(go.Box(y=trans, name=f"{model}\n(translated)", boxmean=True))
-    else:
-        for model in models:
-            mdf = df[df["model"] == model]
-            fig.add_trace(go.Box(y=mdf["api_latency"], name=model, boxmean=True))
+    for model in models:
+        mdf = df[df["model"] == model]
+        fig.add_trace(go.Box(y=mdf["api_latency"], name=model, boxmean=True))
 
     fig.update_layout(
         title="API Latency Distribution by Model",
@@ -1459,8 +1310,7 @@ def build_filter_bar(df):
 def create_app(run_path):
     """Create and configure the Dash application.
 
-    Tabs for Prompt Translation and Reasoning are only included when the
-    run's config has the corresponding feature flag enabled.
+    The Reasoning tab is only included when the run's config enables it.
 
     Args:
         run_path (str): Path to the evaluation run directory.
@@ -1478,7 +1328,6 @@ def create_app(run_path):
     timestamp = config.get("timestamp", "")
     totals = summary.get("totals", {})
     has_reasoning = config.get("test_reasoning", False)
-    has_translation = config.get("test_prompt_translation", False)
 
     app = dash.Dash(
         __name__,
@@ -1501,13 +1350,6 @@ def create_app(run_path):
             html.Div(id="tab-root-scale-content", className="mt-3"),
         ]),
     ]
-
-    if has_translation:
-        tab_list.append(
-            dbc.Tab(label="Prompt Translation", tab_id="tab-translation", children=[
-                html.Div(id="tab-translation-content", className="mt-3"),
-            ]),
-        )
 
     tab_list.extend([
         # ── Latency ──
@@ -1651,30 +1493,6 @@ def create_app(run_path):
                 dbc.Col(dcc.Graph(figure=build_root_scale_heatmap(filtered)), md=12),
             ]),
         ])
-
-    # ── Prompt Translation callback (only registered when translation was tested) ──
-    if has_translation:
-        @app.callback(
-            Output("tab-translation-content", "children"),
-            [Input("filter-models", "value"),
-             Input("filter-roots", "value"),
-             Input("filter-scales", "value"),
-             Input("filter-variations", "value")],
-        )
-        def update_translation(models, roots, scales, variations):
-            filtered = apply_filters(df, models, roots, scales, variations)
-            if filtered.empty:
-                return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
-
-            return html.Div([
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=build_translation_comparison(filtered)), md=12),
-                ], className="mb-3"),
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=build_translation_delta(filtered)), md=6),
-                    dbc.Col(dcc.Graph(figure=build_translation_latency(filtered)), md=6),
-                ]),
-            ])
 
     @app.callback(  # noqa: E303
         Output("tab-latency-content", "children"),
@@ -1827,12 +1645,6 @@ def create_app(run_path):
             "incorrect_intervals": build_incorrect_intervals_by_model(df),
             "duration_errors": build_duration_errors_by_model(df),
         }
-
-        # Conditionally include feature-specific charts
-        if has_translation:
-            figures["translation_comparison"] = build_translation_comparison(df)
-            figures["translation_delta"] = build_translation_delta(df)
-            figures["translation_latency"] = build_translation_latency(df)
 
         if has_reasoning:
             figures["effort_impact_delta"] = build_effort_impact_delta(df)
