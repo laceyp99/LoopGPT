@@ -20,10 +20,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load prompt file
-with open(os.path.join("Prompts", "loop gen.txt"), "r") as f:
-    loop_prompt = f.read()
-
 # Load model list and pricing details from a JSON file
 with open("model_list.json", "r") as f:
     model_info = json.load(f)
@@ -92,6 +88,7 @@ def loop_gen(prompt, model, temp=0.0, effort=None):
         tuple: (midi_loop, messages, cost)
     """
     client = initialize_openai_client()
+    loop_prompt = utils.get_loop_prompt()
     messages = [
         {"role": "system", "content": loop_prompt},
         {"role": "user", "content": prompt},

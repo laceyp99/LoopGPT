@@ -11,10 +11,6 @@ logger = logging.getLogger(__name__)
 
 _ollama_status_cache = None
 
-# Load prompt file
-with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
-    loop_prompt = f.read()
-
 def initialize_ollama_client(host_address="http://localhost:11434"):
     """Initializes and returns an Ollama client.
 
@@ -96,6 +92,7 @@ def loop_gen(prompt, model, temp=0.0):
     """
     # Initialize Ollama client and build messages for the API call
     client = initialize_ollama_client()
+    loop_prompt = utils.get_loop_prompt()
     messages = [
         {"role": "system", "content": loop_prompt},
         {"role": "user", "content": prompt},

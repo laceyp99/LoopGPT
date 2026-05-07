@@ -10,10 +10,6 @@ import os
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load prompt file
-with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
-    loop_prompt = f.read()
-
 # Load model list and pricing details from a JSON file
 with open('model_list.json', 'r') as f:
     model_info = json.load(f)
@@ -111,6 +107,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     """
     # Initialize Anthropic client and make the API call
     client = initialize_anthropic_client()
+    loop_prompt = utils.get_loop_prompt()
     # Define the tool schema for the loop generation
     loop_schema = objects.Loop.model_json_schema()
     tools = [

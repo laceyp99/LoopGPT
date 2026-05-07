@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import numpy as np
 import json
 import mido
+import os
 import src.objects as objects
 
 # Flat list of chromatic note names (pitch class 0-11, sharps only)
@@ -83,6 +84,12 @@ PLOTLY_GRID_STRONG = "#4a4a6a"  # Bar boundaries
 PLOTLY_TEXT = "#e0e0e0"
 PLOTLY_ACCENT = "#0f3460"
 PLOTLY_CARD_BG = "#16213e"
+
+
+def get_loop_prompt():
+    """Load the current loop generation prompt from disk."""
+    with open(os.path.join("Prompts", "loop gen.txt"), "r") as prompt_file:
+        return prompt_file.read()
 
 def pitch_class_to_note(pc):
     """Convert a pitch class integer (0-11) to a note name.

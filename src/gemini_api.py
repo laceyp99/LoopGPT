@@ -12,10 +12,6 @@ import json
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load prompt file
-with open(os.path.join('Prompts', 'loop gen.txt'), 'r') as f:
-    loop_prompt = f.read()
-
 # Load model list and pricing details from a JSON file
 with open('model_list.json', 'r') as f:
     model_info = json.load(f)
@@ -110,6 +106,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
         tuple: (midi_loop, messages, cost)
     """
     client = initialize_gemini_client()
+    loop_prompt = utils.get_loop_prompt()
 
     # Configure the generation parameters based on whether extended thinking is enabled
     config = {
