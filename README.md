@@ -1,7 +1,5 @@
 # LoopGPT: AI-Powered Music Generation
 
-![LoopGPT UI](UI2.png)
-
 This project is a music generation tool that enables users to create 4 bar loops using an intuitive Gradio web interface. By leveraging AI model APIs from multiple providers, the application generates MIDI compositions based on user-defined parameters, making it a great resource for musicians, producers, and AI music enthusiasts.
 
 ## Features
