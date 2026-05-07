@@ -724,7 +724,7 @@ with gr.Blocks(
                 gr.Markdown(
                     "This prompt is used to generate the loop based on the description."
                 )
-                loop_gen_input = gr.Textbox(lines=20, value=loop_gen_text)
+                loop_gen_input = gr.Textbox(lines=30, value=loop_gen_text)
                 save_button = gr.Button("Save Prompt")
                 save_status = gr.Textbox(label="Status", interactive=False)
                 # When the user clicks the save button, save the current prompts in the textboxes to the text files

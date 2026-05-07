@@ -1,18 +1,16 @@
 # LoopGPT: AI-Powered Music Generation
 
-![LoopGPT Main UI](UI.png)
+![LoopGPT UI](UI2.png)
 
 This project is a music generation tool that enables users to create 4 bar loops using an intuitive Gradio web interface. By leveraging AI model APIs from multiple providers, the application generates MIDI compositions based on user-defined parameters, making it a great resource for musicians, producers, and AI music enthusiasts.
 
 ## Features
 
 - Interact with a sleek Gradio interface for an inviting user experience
-- Visualize MIDI output using piano roll display
 - Audio playback to listen to generated MIDI inside the browser
+- Visualize MIDI output using piano roll display
 - Manage your last 20 generations from the history sidebar
-- View/Edit the system prompts that instruct the model through the generation process
-- Generate 4-bar loops with customizable parameters
-- Support for sixteenth note resolution
+- View/Edit the system prompt that instruct the model through the generation process
 - Save full API message history to JSON files for training examples
 
 ## Quick Start
@@ -24,6 +22,8 @@ cd LoopGPT
 ```
 Install required dependencies:
 ```sh
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
@@ -46,7 +46,7 @@ To enable audio playback of generated MIDI loops, you'll need:
 
 *Note: Audio playback is optional. The app will still generate and download MIDI files without these dependencies.*
 
-Set up your API keys in `src/.env` or via the Gradio "API Keys" panel:
+Set up your API keys by copying `src/.env.example` to `src/.env`, or enter them via the Gradio "API Keys" panel:
 ```ini
 OPENAI_API_KEY="your-openai-api-key-here"
 GEMINI_API_KEY="your-gemini-api-key-here"
@@ -65,15 +65,14 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 1. **Select your parameters**  
    - Key & scale (Major/minor)  
    - Text description (e.g. "Daniel Caesar R&B soul piano loop with sevenths and ninths interspersed throughout")  
-   - Model & temperature  
-   - Show MIDI visualization  
+   - Provider, Model, and model specific generation parameters (temperature, reasoning, etc.)
    - Optional: Edit the System Prompts in the Prompt Editor tab
 
 2. **Generate & Download**  
    - Click **Generate Loop**  
    - Download the MIDI file via the "Download Generated MIDI" widget  
    - Listen to the audio preview (if playback is configured)
-   - View the piano-roll image (if enabled)
+   - View the piano-roll image
 
 3. **Browse History**
    - Click **History** to open the sidebar
@@ -81,7 +80,7 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
    - Click **Load** to view/play it, or **Delete** to remove it
 
 4. **Inspect JSON logs**  
-   - `loop.json` records the full message exchange and reasoning  
+   - `loop.json` records the full message exchange and reasoning
 
 ## Evaluation Framework
 

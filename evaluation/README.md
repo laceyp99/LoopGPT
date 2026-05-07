@@ -44,7 +44,9 @@ The dashboard opens at `http://127.0.0.1:8050/`.
 
 All dependencies are in `requirements.txt`:
 
-```bash
+```sh
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
@@ -118,10 +120,10 @@ results = evaluator.evaluate(
 
 | Provider | Model Type | Variations |
 |----------|------------|------------|
-| OpenAI | gpt 5+ and o-series | various effort levels (none, minimal, low, medium, high, xhigh) |
-| Anthropic | claude 4+ | thinking off/on, only effort levels for claude-opus-4-6 |
-| Google | gemini 2.5+ | thinking off/on, only effort levels for gemini 3 family |
-| Ollama | All | only thinking on if the model supports it |
+| OpenAI | `gpt-5.x` and `o`-series reasoning models | effort levels only; current families use `none` to `xhigh`, `minimal` to `high`, or `low` to `high` depending on model |
+| Anthropic | Claude 4.x reasoning models | either effort levels only for `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-4-6`, or `standard` / `w_reasoning` toggle for other reasoning-capable Claude 4.x models |
+| Google | Gemini 3.x and 2.5 reasoning models | Gemini 3.x uses effort levels; Gemini 2.5 models use `standard` / `w_reasoning` toggle |
+| Ollama | All | standard only in the evaluator |
 
 ### Configuring Tests
 
