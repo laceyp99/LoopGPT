@@ -107,123 +107,97 @@ def get_models_for_provider(provider):
     return []
 
 
-def update_model_choices(provider):
-    """Update the model dropdown choices based on the selected provider.
+def get_selected_model(provider, model_choice):
+    """Normalize the selected model for a provider."""
+    models = get_models_for_provider(provider)
+    if model_choice in models:
+        return model_choice
+    return models[0] if models else None
 
-    Args:
-        provider (str): The selected provider.
 
-    Returns:
-        gr.update(): A Gradio update object with new choices and default value.
-    """
+def get_model_settings(provider, model_choice, use_thinking=False):
+    """Resolve the provider/model UI settings for dependent controls."""
+    selected_model = get_selected_model(provider, model_choice)
+    if not selected_model or provider == "Ollama":
+        return {
+            "selected_model": selected_model,
+            "show_temperature": True,
+            "temperature_value": 0.1,
+            "show_thinking": False,
+            "thinking_value": False,
+            "effort_options": [],
+            "effort_value": "low",
+            "show_effort": False,
+        }
+
+    model_config = model_info["models"][provider][selected_model]
+    effort_options = model_config.get("effort_options", [])
+    supports_toggle_reasoning = (
+        provider in {"Anthropic", "Google"}
+        and model_config.get("extended_thinking", False)
+        and not effort_options
+    )
+    show_temperature = True
+    temperature_value = 0.1
+
+    if provider == "OpenAI" and model_config.get("extended_thinking", False):
+        show_temperature = False
+        temperature_value = 1.0
+    elif provider in {"Anthropic", "Google"} and (effort_options or (supports_toggle_reasoning and use_thinking)):
+        show_temperature = False
+        temperature_value = 1.0
+
+    thinking_value = bool(use_thinking) if supports_toggle_reasoning else False
+    effort_value = effort_options[0] if effort_options else "low"
+
+    return {
+        "selected_model": selected_model,
+        "show_temperature": show_temperature,
+        "temperature_value": temperature_value,
+        "show_thinking": supports_toggle_reasoning,
+        "thinking_value": thinking_value,
+        "effort_options": effort_options,
+        "effort_value": effort_value,
+        "show_effort": bool(effort_options),
+    }
+
+
+def sync_model_capabilities(provider, model_choice, use_thinking=False):
+    """Synchronize model selection and dependent controls from one explicit code path."""
     choices = get_model_dropdown_choices(provider)
-    default_value = choices[0][1] if choices else None
-    return gr.update(choices=choices, value=default_value)
+    settings = get_model_settings(provider, model_choice, use_thinking)
 
-
-def update_temp_visibility(model_choice, use_thinking):
-    """This function updates the visibility of the temperature slider based on the selected model and thinking option.
-
-    Args:
-        model_choice (str): The selected model choice.
-        use_thinking (bool): Whether extended thinking is enabled.
-
-    Returns:
-        gr.update(): A Gradio update object to set the visibility of the temperature slider.
-    """
-    # Hide temperature for models that don't support temperature
-    if (
-        model_choice in model_info["models"]["OpenAI"].keys()
-        and model_info["models"]["OpenAI"][model_choice]["extended_thinking"]
-    ):
-        return gr.update(visible=False, value=1.0)
-
-    # Hide temperature for Claude models when thinking is enabled (temperature must be 1.0)
-    elif (
-        model_choice in model_info["models"]["Anthropic"].keys()
-        and use_thinking
-        and model_info["models"]["Anthropic"][model_choice]["extended_thinking"]
-    ):
-        return gr.update(visible=False, value=1.0)
-
-    # Hide temperature for Gemini-3-Pro-Preview (Google recommends removing this parameter and using the Gemini 3 default of 1.0)
-    elif (
-        model_choice == "gemini-3.1-flash-lite-preview"
-        or model_choice == "gemini-3-pro-preview"
-        or model_choice == "gemini-3-flash-preview"
-        or model_choice == "gemini-3.1-pro-preview"
-        or model_choice == "claude-opus-4-7"
-        or model_choice == "claude-opus-4-6"
-        or model_choice == "claude-sonnet-4-6"
-    ):
-        return gr.update(visible=False, value=1.0)
-
-    # Show temperature for all other cases
-    return gr.update(visible=True, value=0.1)
-
-
-def update_thinking_visibility(model_choice):
-    """This function updates the visibility of the thinking checkbox based on the selected model.
-    Only Claude and Gemini models that support thinking will show the checkbox.
-
-    Args:
-        model_choice (str): The selected model choice.
-
-    Returns:
-        gr.update(): A Gradio update object to set the visibility of the thinking checkbox.
-    """
-    # Show thinking toggle only for models that support it
-    anthropic_thinking = (
-        model_choice in model_info["models"]["Anthropic"].keys()
-        and model_info["models"]["Anthropic"][model_choice]["extended_thinking"] 
-        and model_choice not in ["claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6"]
-    )
-    gemini_thinking = (
-        model_choice in model_info["models"]["Google"].keys()
-        and model_info["models"]["Google"][model_choice]["extended_thinking"]
-        and model_choice not in ["gemini-3-pro-preview", "gemini-3-flash-preview", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview"]
+    return (
+        gr.update(choices=choices, value=settings["selected_model"]),
+        gr.update(
+            visible=settings["show_temperature"],
+            value=settings["temperature_value"],
+        ),
+        gr.update(
+            visible=settings["show_thinking"],
+            value=settings["thinking_value"],
+        ),
+        gr.update(
+            choices=settings["effort_options"] or None,
+            value=settings["effort_value"],
+            visible=settings["show_effort"],
+        ),
     )
 
-    if anthropic_thinking or gemini_thinking:
-        return gr.update(visible=True)
-    else:
-        return gr.update(value=False, visible=False)
+
+def sync_controls_for_provider(provider):
+    """Reset dependent controls when the provider changes."""
+    return sync_model_capabilities(provider, None, False)
 
 
-def update_effort_visibility(model_choice):
-    """This function updates the visibility of the reasoning effort based on the selected model.
-    Only OpenAI models that support thinking will show the dropdown that determines the effort.
+def sync_controls_for_model(provider, model_choice):
+    """Reset dependent controls when the selected model changes."""
+    return sync_model_capabilities(provider, model_choice, False)
 
-    Args:
-        model_choice (str): The selected model choice.
 
-    Returns:
-        gr.update(): A Gradio update object to set the choices, selected value, and visibility of the effort dropdown.
-    """
-    openai_effort = [model for model, data in model_info["models"]["OpenAI"].items() if "effort_options" in data]
-    google_effort = [model for model, data in model_info["models"]["Google"].items() if "effort_options" in data]
-    anthropic_effort = [model for model, data in model_info["models"]["Anthropic"].items() if "effort_options" in data]
-
-    if model_choice in openai_effort:
-        return gr.update(
-            choices=model_info["models"]["OpenAI"][model_choice]["effort_options"],
-            value=model_info["models"]["OpenAI"][model_choice]["effort_options"][0],
-            visible=True
-        )
-    elif model_choice in google_effort:
-        return gr.update(
-            choices=model_info["models"]["Google"][model_choice]["effort_options"],
-            value=model_info["models"]["Google"][model_choice]["effort_options"][0],
-            visible=True
-        )
-    elif model_choice in anthropic_effort:
-        return gr.update(
-            choices=model_info["models"]["Anthropic"][model_choice]["effort_options"],
-            value=model_info["models"]["Anthropic"][model_choice]["effort_options"][0],
-            visible=True
-        )
-    else:
-        return gr.update(value="low", visible=False)
+def sync_controls_for_thinking(provider, model_choice, use_thinking):
+    """Refresh dependent controls when the reasoning toggle changes."""
+    return sync_model_capabilities(provider, model_choice, use_thinking)
 
 
 def save_prompts(loop_gen_text):
@@ -597,25 +571,37 @@ with gr.Blocks(
                         )
                     with gr.Column():
                         gr.Markdown("## Generation Parameters")
+                        default_provider = "Google"
+                        default_model = "gemini-3.1-flash-lite-preview"
+                        default_settings = get_model_settings(
+                            default_provider, default_model, False
+                        )
                         provider_input = gr.Dropdown(
-                            choices=get_providers(), label="Provider", value="Google"
+                            choices=get_providers(), label="Provider", value=default_provider
                         )
                         model_choice_input = gr.Dropdown(
-                            choices=get_model_dropdown_choices("Google"),
+                            choices=get_model_dropdown_choices(default_provider),
                             label="Model",
-                            value="gemini-3.1-flash-lite-preview",
+                            value=default_settings["selected_model"],
                         )
                         temp_input = gr.Slider(
-                            0.0, 1.0, step=0.1, value=0.1, label="Temperature", visible=False
+                            0.0,
+                            1.0,
+                            step=0.1,
+                            value=default_settings["temperature_value"],
+                            label="Temperature",
+                            visible=default_settings["show_temperature"],
                         )
                         thinking_checkbox = gr.Checkbox(
-                            label="Reasoning", value=False, visible=False
+                            label="Reasoning",
+                            value=default_settings["thinking_value"],
+                            visible=default_settings["show_thinking"],
                         )
                         effort_input = gr.Dropdown(
-                            choices=["minimal", "low", "medium", "high"],
+                            choices=default_settings["effort_options"],
                             label="Reasoning Effort",
-                            value="minimal",
-                            visible=True,
+                            value=default_settings["effort_value"],
+                            visible=default_settings["show_effort"],
                         )
                 with gr.Row():
                     prog_button = gr.Button("Generate Loop", variant="primary")
@@ -639,31 +625,34 @@ with gr.Blocks(
 
                 # Update model choices when provider changes
                 provider_input.change(
-                    update_model_choices,
+                    sync_controls_for_provider,
                     inputs=provider_input,
-                    outputs=model_choice_input,
-                )
-                # Set visibility of temperature slider and thinking checkbox based on model selection
-                model_choice_input.change(
-                    update_temp_visibility,
-                    inputs=[model_choice_input, thinking_checkbox],
-                    outputs=temp_input,
-                )
-                model_choice_input.change(
-                    update_thinking_visibility,
-                    inputs=model_choice_input,
-                    outputs=thinking_checkbox,
+                    outputs=[
+                        model_choice_input,
+                        temp_input,
+                        thinking_checkbox,
+                        effort_input,
+                    ],
                 )
                 model_choice_input.change(
-                    update_effort_visibility,
-                    inputs=model_choice_input,
-                    outputs=effort_input,
+                    sync_controls_for_model,
+                    inputs=[provider_input, model_choice_input],
+                    outputs=[
+                        model_choice_input,
+                        temp_input,
+                        thinking_checkbox,
+                        effort_input,
+                    ],
                 )
-                # Also update temperature visibility when thinking checkbox changes
                 thinking_checkbox.change(
-                    update_temp_visibility,
-                    inputs=[model_choice_input, thinking_checkbox],
-                    outputs=temp_input,
+                    sync_controls_for_thinking,
+                    inputs=[provider_input, model_choice_input, thinking_checkbox],
+                    outputs=[
+                        model_choice_input,
+                        temp_input,
+                        thinking_checkbox,
+                        effort_input,
+                    ],
                 )
                 # When the user clicks the button, run the loop generation function based on the current inputs
                 # Capture the event so we can cancel it with the cancel button
