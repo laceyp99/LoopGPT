@@ -502,6 +502,16 @@ if not playback_available:
 with gr.Blocks(
     css="""
     .center-title { text-align: center; font-size: 3em; }
+    .app-header {
+        position: relative;
+    }
+    .app-header .history-toggle {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1;
+    }
     .history-sidebar {
         background: #1a1a1a;
         border-left: 1px solid #333;
@@ -517,12 +527,14 @@ with gr.Blocks(
     # State for sidebar visibility
     sidebar_visible = gr.State(value=False)
 
-    # Header with title and history toggle
-    with gr.Row():
-        with gr.Column(scale=20):
-            gr.Markdown("<h1 class='center-title'>LoopGPT</h1>")
-        with gr.Column(scale=1, min_width=100):
-            history_toggle_btn = gr.Button("History", size="sm")
+    # Header with title centered on the original full-width layout
+    with gr.Row(elem_classes=["app-header"]):
+        gr.Markdown("<h1 class='center-title'>LoopGPT</h1>")
+        history_toggle_btn = gr.Button(
+            "History",
+            size="sm",
+            elem_classes=["history-toggle"],
+        )
 
     # Main content area with sidebar
     with gr.Row():
