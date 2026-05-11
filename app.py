@@ -9,7 +9,7 @@ Features:
 """
 
 from src.midi_processing import loop_to_midi
-from src.utils import visualize_midi_plotly
+from src.utils import visualize_midi_plotly, get_model_info
 from src.audio import midi_to_mp3, is_playback_available, get_playback_status_message
 from src.history import (
     save_generation,
@@ -26,11 +26,6 @@ from mido import MidiFile
 import gradio as gr
 import time
 import os
-import json
-
-# Load model list and pricing details from a JSON file
-with open("model_list.json", "r") as f:
-    model_info = json.load(f)
 
 
 def format_price_summary(price_value):
@@ -57,6 +52,7 @@ def format_model_label(provider, model_name):
     if provider == "Ollama":
         return model_name
 
+    model_info = get_model_info()
     provider_models = model_info["models"].get(provider, {})
     model_data = provider_models.get(model_name, {})
     cost = model_data.get("cost")
@@ -85,6 +81,7 @@ def get_providers():
     Returns:
         list: List of provider names.
     """
+    model_info = get_model_info()
     providers = list(model_info["models"].keys())
     if ollama_api.get_ollama_status()["available"]:
         providers.append("Ollama")
@@ -102,7 +99,8 @@ def get_models_for_provider(provider):
     """
     if provider == "Ollama":
         return ollama_api.get_model_list()
-    elif provider in model_info["models"]:
+    model_info = get_model_info()
+    if provider in model_info["models"]:
         return list(model_info["models"][provider].keys())
     return []
 
@@ -130,6 +128,7 @@ def get_model_settings(provider, model_choice, use_thinking=False):
             "show_effort": False,
         }
 
+    model_info = get_model_info()
     model_config = model_info["models"][provider][selected_model]
     effort_options = model_config.get("effort_options", [])
     supports_toggle_reasoning = (
@@ -292,6 +291,7 @@ def run_loop(
         yield None, None, None, "Processing MIDI...", gr.update(visible=True)
         # Convert the generated loop into a MIDI file
         midi = MidiFile()
+        model_info = get_model_info()
         loop_to_midi(
             midi,
             loop,

@@ -85,6 +85,19 @@ PLOTLY_TEXT = "#e0e0e0"
 PLOTLY_ACCENT = "#0f3460"
 PLOTLY_CARD_BG = "#16213e"
 
+_model_info_cache = None
+
+
+def get_model_info():
+    """Load model metadata from disk once and reuse it."""
+    global _model_info_cache
+
+    if _model_info_cache is None:
+        with open("model_list.json", "r") as model_file:
+            _model_info_cache = json.load(model_file)
+
+    return _model_info_cache
+
 
 def get_loop_prompt():
     """Load the current loop generation prompt from disk."""

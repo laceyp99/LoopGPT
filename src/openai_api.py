@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 import src.utils as utils
 import src.objects as objects
 import logging
-import json
 import sys
 import os
 
@@ -19,10 +18,6 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-# Load model list and pricing details from a JSON file
-with open("model_list.json", "r") as f:
-    model_info = json.load(f)
 
 
 def initialize_openai_client():
@@ -50,6 +45,7 @@ def calc_price(model, response):
     Returns:
         float: Calculated price for the API call.
     """
+    model_info = utils.get_model_info()
     usage = response.usage
     input_cost = model_info["models"]["OpenAI"][model]["cost"].get("input", 0) / 1000000
     output_cost = model_info["models"]["OpenAI"][model]["cost"].get("output", 0) / 1000000
@@ -95,6 +91,7 @@ def loop_gen(prompt, model, temp=0.0, effort=None):
     ]
 
     # Build request parameters
+    model_info = utils.get_model_info()
     request_params = {
         "model": model,
         "instructions": loop_prompt,

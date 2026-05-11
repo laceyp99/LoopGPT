@@ -3,16 +3,11 @@ from dotenv import load_dotenv
 import src.objects as objects
 import src.utils as utils
 import logging
-import json
 import sys
 import os
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# Load model list and pricing details from a JSON file
-with open('model_list.json', 'r') as f:
-    model_info = json.load(f)
 
 def initialize_anthropic_client():
     """
@@ -39,6 +34,7 @@ def calc_price(model, output):
     Returns:
         float: Calculated price for the API call.
     """
+    model_info = utils.get_model_info()
     if model not in model_info["models"]["Anthropic"].keys():
         logger.warning(f"Model {model} not found in model info.")
         return False
@@ -119,6 +115,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     ]    
     
     # Prepare API call parameters
+    model_info = utils.get_model_info()
     api_params = {
         "model": model,
         "max_tokens": model_info["models"]["Anthropic"][model]["max_tokens"],
