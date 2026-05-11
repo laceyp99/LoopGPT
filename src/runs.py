@@ -1,12 +1,8 @@
-import json
 import src.ollama_api as ollama_api
 import src.gemini_api as gemini_api
 import src.claude_api as claude_api
 import src.openai_api as openai_api
-
-# Load model list and pricing details from a JSON file
-with open("model_list.json", "r") as f:
-    model_info = json.load(f)
+from src.utils import get_model_info
 
 
 def generate_midi(
@@ -31,6 +27,7 @@ def generate_midi(
     Returns:
         tuple: (midi_loop, messages, total_cost)
     """
+    model_info = get_model_info()
     ollama_status = ollama_api.get_ollama_status(force_refresh=True)
     ollama_models = ollama_status["models"]
 

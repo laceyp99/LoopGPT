@@ -7,14 +7,9 @@ import src.objects as objects
 import logging
 import os
 import sys
-import json
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# Load model list and pricing details from a JSON file
-with open('model_list.json', 'r') as f:
-    model_info = json.load(f)
 
 def initialize_gemini_client():
     """Initializes and returns a Gemini client using API key from the .env file or the default key.
@@ -44,6 +39,7 @@ def calc_cost(model, usage):
     Returns:
         float: Calculated price for the API call.
     """
+    model_info = utils.get_model_info()
     cached = usage.cached_content_token_count or 0
 
     # Gemini 3 and 2.5 Pro has a different cost structure based on token usage
@@ -109,6 +105,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
     loop_prompt = utils.get_loop_prompt()
 
     # Configure the generation parameters based on whether extended thinking is enabled
+    model_info = utils.get_model_info()
     config = {
         'system_instruction': loop_prompt,
         'temperature': temp,

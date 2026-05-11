@@ -9,7 +9,7 @@ Features:
 """
 
 from src.midi_processing import loop_to_midi
-from src.utils import visualize_midi_plotly
+from src.utils import visualize_midi_plotly, get_model_info
 from src.audio import midi_to_mp3, is_playback_available, get_playback_status_message
 from src.history import (
     save_generation,
@@ -26,11 +26,6 @@ from mido import MidiFile
 import gradio as gr
 import time
 import os
-import json
-
-# Load model list and pricing details from a JSON file
-with open("model_list.json", "r") as f:
-    model_info = json.load(f)
 
 
 def format_price_summary(price_value):
@@ -57,6 +52,7 @@ def format_model_label(provider, model_name):
     if provider == "Ollama":
         return model_name
 
+    model_info = get_model_info()
     provider_models = model_info["models"].get(provider, {})
     model_data = provider_models.get(model_name, {})
     cost = model_data.get("cost")
@@ -85,6 +81,7 @@ def get_providers():
     Returns:
         list: List of provider names.
     """
+    model_info = get_model_info()
     providers = list(model_info["models"].keys())
     if ollama_api.get_ollama_status()["available"]:
         providers.append("Ollama")
@@ -102,7 +99,8 @@ def get_models_for_provider(provider):
     """
     if provider == "Ollama":
         return ollama_api.get_model_list()
-    elif provider in model_info["models"]:
+    model_info = get_model_info()
+    if provider in model_info["models"]:
         return list(model_info["models"][provider].keys())
     return []
 
@@ -130,6 +128,7 @@ def get_model_settings(provider, model_choice, use_thinking=False):
             "show_effort": False,
         }
 
+    model_info = get_model_info()
     model_config = model_info["models"][provider][selected_model]
     effort_options = model_config.get("effort_options", [])
     supports_toggle_reasoning = (
@@ -292,6 +291,7 @@ def run_loop(
         yield None, None, None, "Processing MIDI...", gr.update(visible=True)
         # Convert the generated loop into a MIDI file
         midi = MidiFile()
+        model_info = get_model_info()
         loop_to_midi(
             midi,
             loop,
@@ -493,317 +493,332 @@ def refresh_history():
     return gr.update(choices=choices, value=None), render_history_html()
 
 
-# Check playback availability on startup
-playback_available, playback_error = is_playback_available()
-if not playback_available:
-    print(f"Warning: {get_playback_status_message()}")
+def create_demo(playback_status=None):
+    """Build and return the Gradio demo."""
+    if playback_status is None:
+        playback_status = is_playback_available()
 
-# Gradio interface
-with gr.Blocks(
-    css="""
-    .center-title { text-align: center; font-size: 3em; }
-    .app-header {
-        position: relative;
-    }
-    .app-header .history-toggle {
-        position: absolute;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 1;
-    }
-    .history-sidebar {
-        background: #1a1a1a;
-        border-left: 1px solid #333;
-        height: 100%;
-        overflow-y: auto;
-    }
-    .history-item:hover {
-        border-color: #666 !important;
-        cursor: pointer;
-    }
-    """
-) as demo:
-    # State for sidebar visibility
-    sidebar_visible = gr.State(value=False)
+    playback_available, playback_error = playback_status
 
-    # Header with title centered on the original full-width layout
-    with gr.Row(elem_classes=["app-header"]):
-        gr.Markdown("<h1 class='center-title'>LoopGPT</h1>")
-        history_toggle_btn = gr.Button(
-            "History",
-            size="sm",
-            elem_classes=["history-toggle"],
+    with gr.Blocks(
+        css="""
+        .center-title { text-align: center; font-size: 3em; }
+        .app-header {
+            position: relative;
+        }
+        .app-header .history-toggle {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        .history-sidebar {
+            background: #1a1a1a;
+            border-left: 1px solid #333;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .history-item:hover {
+            border-color: #666 !important;
+            cursor: pointer;
+        }
+        """
+    ) as demo:
+        # State for sidebar visibility
+        sidebar_visible = gr.State(value=False)
+
+        # Header with title centered on the original full-width layout
+        with gr.Row(elem_classes=["app-header"]):
+            gr.Markdown("<h1 class='center-title'>LoopGPT</h1>")
+            history_toggle_btn = gr.Button(
+                "History",
+                size="sm",
+                elem_classes=["history-toggle"],
+            )
+
+        # Main content area with sidebar
+        with gr.Row():
+            # Main content column
+            with gr.Column(scale=3):
+                # Text to MIDI Tab for generating loops based on user input
+                with gr.Tab(label="Text to MIDI"):
+                    gr.Markdown("Generate a loop based on your description.")
+                    with gr.Row():
+                        with gr.Accordion("API Keys", open=False):
+                            openai_key_input = gr.Textbox(
+                                lines=1, type="password", label="OpenAI API Key", value=""
+                            )
+                            gemini_key_input = gr.Textbox(
+                                lines=1, type="password", label="Gemini API Key", value=""
+                            )
+                            claude_key_input = gr.Textbox(
+                                lines=1, type="password", label="Claude API Key", value=""
+                            )
+                    with gr.Row():
+                        with gr.Column():
+                            gr.Markdown("## Loop Parameters")
+                            key_input = gr.Dropdown(
+                                choices=[
+                                    "C",
+                                    "C#/Db",
+                                    "D",
+                                    "D#/Eb",
+                                    "E",
+                                    "F",
+                                    "F#/Gb",
+                                    "G",
+                                    "G#/Ab",
+                                    "A",
+                                    "A#/Bb",
+                                    "B",
+                                ],
+                                label="Key",
+                                value="C",
+                            )
+                            mode_input = gr.Dropdown(
+                                choices=["Major", "minor"], label="Scale", value="Major"
+                            )
+                            description_input = gr.Textbox(
+                                label="Description", value="A rhythmic sad pop song"
+                            )
+                        with gr.Column():
+                            gr.Markdown("## Generation Parameters")
+                            default_provider = "Google"
+                            default_model = "gemini-3.1-flash-lite-preview"
+                            default_settings = get_model_settings(
+                                default_provider, default_model, False
+                            )
+                            provider_input = gr.Dropdown(
+                                choices=get_providers(), label="Provider", value=default_provider
+                            )
+                            model_choice_input = gr.Dropdown(
+                                choices=get_model_dropdown_choices(default_provider),
+                                label="Model",
+                                value=default_settings["selected_model"],
+                            )
+                            temp_input = gr.Slider(
+                                0.0,
+                                1.0,
+                                step=0.1,
+                                value=default_settings["temperature_value"],
+                                label="Temperature",
+                                visible=default_settings["show_temperature"],
+                            )
+                            thinking_checkbox = gr.Checkbox(
+                                label="Reasoning",
+                                value=default_settings["thinking_value"],
+                                visible=default_settings["show_thinking"],
+                            )
+                            effort_input = gr.Dropdown(
+                                choices=default_settings["effort_options"],
+                                label="Reasoning Effort",
+                                value=default_settings["effort_value"],
+                                visible=default_settings["show_effort"],
+                            )
+                    with gr.Row():
+                        prog_button = gr.Button("Generate Loop", variant="primary")
+                        cancel_button = gr.Button("Cancel", variant="stop", visible=False)
+
+                    # Output section
+                    with gr.Row():
+                        with gr.Column():
+                            prog_output = gr.File(label="Download Generated MIDI")
+                            # Audio playback component
+                            audio_output = gr.Audio(label="Playback", type="filepath", interactive=False)
+                            # Show playback status if not available
+                            if not playback_available:
+                                gr.Markdown(
+                                    f"*Audio playback unavailable. {playback_error}*",
+                                    elem_classes=["warning-text"],
+                                )
+
+                    vis_output = gr.Plot(label="MIDI Visualization")
+                    error_message = gr.Textbox(label="Error Message", interactive=False)
+
+                    # Update model choices when provider changes
+                    provider_input.change(
+                        sync_controls_for_provider,
+                        inputs=provider_input,
+                        outputs=[
+                            model_choice_input,
+                            temp_input,
+                            thinking_checkbox,
+                            effort_input,
+                        ],
+                    )
+                    model_choice_input.change(
+                        sync_controls_for_model,
+                        inputs=[provider_input, model_choice_input],
+                        outputs=[
+                            model_choice_input,
+                            temp_input,
+                            thinking_checkbox,
+                            effort_input,
+                        ],
+                    )
+                    thinking_checkbox.change(
+                        sync_controls_for_thinking,
+                        inputs=[provider_input, model_choice_input, thinking_checkbox],
+                        outputs=[
+                            model_choice_input,
+                            temp_input,
+                            thinking_checkbox,
+                            effort_input,
+                        ],
+                    )
+                    # When the user clicks the button, run the loop generation function based on the current inputs
+                    # Capture the event so we can cancel it with the cancel button
+                    gen_event = prog_button.click(
+                        run_loop,
+                        inputs=[
+                            key_input,
+                            mode_input,
+                            description_input,
+                            temp_input,
+                            model_choice_input,
+                            thinking_checkbox,
+                            effort_input,
+                            openai_key_input,
+                            gemini_key_input,
+                            claude_key_input,
+                        ],
+                        outputs=[
+                            prog_output,
+                            audio_output,
+                            vis_output,
+                            error_message,
+                            cancel_button,
+                        ],
+                    )
+                    # Cancel button stops waiting for the API response and hides itself
+                    cancel_button.click(
+                        fn=lambda: (
+                            None,
+                            None,
+                            None,
+                            "Generation cancelled.",
+                            gr.update(visible=False),
+                        ),
+                        outputs=[
+                            prog_output,
+                            audio_output,
+                            vis_output,
+                            error_message,
+                            cancel_button,
+                        ],
+                        cancels=[gen_event],
+                    )
+
+                # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
+                with gr.Tab(label="Prompt Editor"):
+                    gr.Markdown("## Edit System Prompt")
+                    ## Load the existing prompts from the text files in the Prompts folder
+                    # If the files do not exist, set the text to an empty string
+                    try:
+                        with open("Prompts/loop gen.txt", "r") as lg:
+                            loop_gen_text = lg.read()
+                    except Exception:
+                        loop_gen_text = ""
+                    # Create text boxes for the user to edit the prompts
+                    gr.Markdown("### Loop Generation Prompt")
+                    gr.Markdown(
+                        "This prompt is used to generate the loop based on the description."
+                    )
+                    loop_gen_input = gr.Textbox(lines=30, value=loop_gen_text)
+                    save_button = gr.Button("Save Prompt")
+                    save_status = gr.Textbox(label="Status", interactive=False)
+                    # When the user clicks the save button, save the current prompts in the textboxes to the text files
+                    save_button.click(
+                        save_prompts,
+                        inputs=[loop_gen_input],
+                        outputs=[save_status],
+                    )
+
+            # History sidebar (initially hidden)
+            with gr.Column(
+                scale=1, visible=False, elem_classes=["history-sidebar"]
+            ) as history_sidebar:
+                gr.Markdown("## History")
+
+                # Dropdown to select a generation
+                history_dropdown = gr.Dropdown(
+                    label="Select Generation",
+                    choices=get_history_choices(),
+                    interactive=True,
+                )
+
+                with gr.Row():
+                    load_btn = gr.Button("Load", size="sm", variant="primary")
+                    delete_btn = gr.Button("Delete", size="sm", variant="stop")
+                    refresh_btn = gr.Button("Refresh", size="sm")
+
+                # History items display
+                history_html = gr.HTML(
+                    value=render_history_html(),
+                    label="Recent Generations",
+                )
+
+                # Status message for history operations
+                history_status = gr.Textbox(
+                    label="Status",
+                    interactive=False,
+                    visible=False,
+                )
+
+        # History sidebar toggle
+        history_toggle_btn.click(
+            toggle_history_sidebar,
+            inputs=[sidebar_visible],
+            outputs=[
+                sidebar_visible,
+                history_toggle_btn,
+                history_sidebar,
+                history_html,
+                history_dropdown,
+            ],
         )
 
-    # Main content area with sidebar
-    with gr.Row():
-        # Main content column
-        with gr.Column(scale=3):
-            # Text to MIDI Tab for generating loops based on user input
-            with gr.Tab(label="Text to MIDI"):
-                gr.Markdown("Generate a loop based on your description.")
-                with gr.Row():
-                    with gr.Accordion("API Keys", open=False):
-                        openai_key_input = gr.Textbox(
-                            lines=1, type="password", label="OpenAI API Key", value=""
-                        )
-                        gemini_key_input = gr.Textbox(
-                            lines=1, type="password", label="Gemini API Key", value=""
-                        )
-                        claude_key_input = gr.Textbox(
-                            lines=1, type="password", label="Claude API Key", value=""
-                        )
-                with gr.Row():
-                    with gr.Column():
-                        gr.Markdown("## Loop Parameters")
-                        key_input = gr.Dropdown(
-                            choices=[
-                                "C",
-                                "C#/Db",
-                                "D",
-                                "D#/Eb",
-                                "E",
-                                "F",
-                                "F#/Gb",
-                                "G",
-                                "G#/Ab",
-                                "A",
-                                "A#/Bb",
-                                "B",
-                            ],
-                            label="Key",
-                            value="C",
-                        )
-                        mode_input = gr.Dropdown(
-                            choices=["Major", "minor"], label="Scale", value="Major"
-                        )
-                        description_input = gr.Textbox(
-                            label="Description", value="A rhythmic sad pop song"
-                        )
-                    with gr.Column():
-                        gr.Markdown("## Generation Parameters")
-                        default_provider = "Google"
-                        default_model = "gemini-3.1-flash-lite-preview"
-                        default_settings = get_model_settings(
-                            default_provider, default_model, False
-                        )
-                        provider_input = gr.Dropdown(
-                            choices=get_providers(), label="Provider", value=default_provider
-                        )
-                        model_choice_input = gr.Dropdown(
-                            choices=get_model_dropdown_choices(default_provider),
-                            label="Model",
-                            value=default_settings["selected_model"],
-                        )
-                        temp_input = gr.Slider(
-                            0.0,
-                            1.0,
-                            step=0.1,
-                            value=default_settings["temperature_value"],
-                            label="Temperature",
-                            visible=default_settings["show_temperature"],
-                        )
-                        thinking_checkbox = gr.Checkbox(
-                            label="Reasoning",
-                            value=default_settings["thinking_value"],
-                            visible=default_settings["show_thinking"],
-                        )
-                        effort_input = gr.Dropdown(
-                            choices=default_settings["effort_options"],
-                            label="Reasoning Effort",
-                            value=default_settings["effort_value"],
-                            visible=default_settings["show_effort"],
-                        )
-                with gr.Row():
-                    prog_button = gr.Button("Generate Loop", variant="primary")
-                    cancel_button = gr.Button("Cancel", variant="stop", visible=False)
+        # Load history item into main view
+        load_btn.click(
+            load_history_item,
+            inputs=[history_dropdown],
+            outputs=[prog_output, audio_output, vis_output, error_message],
+        )
 
-                # Output section
-                with gr.Row():
-                    with gr.Column():
-                        prog_output = gr.File(label="Download Generated MIDI")
-                        # Audio playback component
-                        audio_output = gr.Audio(label="Playback",type="filepath", interactive=False)
-                        # Show playback status if not available
-                        if not playback_available:
-                            gr.Markdown(
-                                f"*Audio playback unavailable. {playback_error}*",
-                                elem_classes=["warning-text"],
-                            )
+        # Delete history item
+        delete_btn.click(
+            delete_history_item,
+            inputs=[history_dropdown],
+            outputs=[history_dropdown, history_status, history_html],
+        )
 
-                vis_output = gr.Plot(label="MIDI Visualization")
-                error_message = gr.Textbox(label="Error Message", interactive=False)
+        # Refresh history
+        refresh_btn.click(
+            refresh_history,
+            outputs=[history_dropdown, history_html],
+        )
 
-                # Update model choices when provider changes
-                provider_input.change(
-                    sync_controls_for_provider,
-                    inputs=provider_input,
-                    outputs=[
-                        model_choice_input,
-                        temp_input,
-                        thinking_checkbox,
-                        effort_input,
-                    ],
-                )
-                model_choice_input.change(
-                    sync_controls_for_model,
-                    inputs=[provider_input, model_choice_input],
-                    outputs=[
-                        model_choice_input,
-                        temp_input,
-                        thinking_checkbox,
-                        effort_input,
-                    ],
-                )
-                thinking_checkbox.change(
-                    sync_controls_for_thinking,
-                    inputs=[provider_input, model_choice_input, thinking_checkbox],
-                    outputs=[
-                        model_choice_input,
-                        temp_input,
-                        thinking_checkbox,
-                        effort_input,
-                    ],
-                )
-                # When the user clicks the button, run the loop generation function based on the current inputs
-                # Capture the event so we can cancel it with the cancel button
-                gen_event = prog_button.click(
-                    run_loop,
-                    inputs=[
-                        key_input,
-                        mode_input,
-                        description_input,
-                        temp_input,
-                        model_choice_input,
-                        thinking_checkbox,
-                        effort_input,
-                        openai_key_input,
-                        gemini_key_input,
-                        claude_key_input,
-                    ],
-                    outputs=[
-                        prog_output,
-                        audio_output,
-                        vis_output,
-                        error_message,
-                        cancel_button,
-                    ],
-                )
-                # Cancel button stops waiting for the API response and hides itself
-                cancel_button.click(
-                    fn=lambda: (
-                        None,
-                        None,
-                        None,
-                        "Generation cancelled.",
-                        gr.update(visible=False),
-                    ),
-                    outputs=[
-                        prog_output,
-                        audio_output,
-                        vis_output,
-                        error_message,
-                        cancel_button,
-                    ],
-                    cancels=[gen_event],
-                )
+        # Also refresh history after generation completes (when cancel button becomes hidden)
+        # We do this by having the generation flow trigger a refresh
+        gen_event.then(
+            refresh_history,
+            outputs=[history_dropdown, history_html],
+        )
 
-            # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
-            with gr.Tab(label="Prompt Editor"):
-                gr.Markdown("## Edit System Prompt")
-                ## Load the existing prompts from the text files in the Prompts folder
-                # If the files do not exist, set the text to an empty string
-                try:
-                    with open("Prompts/loop gen.txt", "r") as lg:
-                        loop_gen_text = lg.read()
-                except Exception:
-                    loop_gen_text = ""
-                # Create text boxes for the user to edit the prompts
-                gr.Markdown("### Loop Generation Prompt")
-                gr.Markdown(
-                    "This prompt is used to generate the loop based on the description."
-                )
-                loop_gen_input = gr.Textbox(lines=30, value=loop_gen_text)
-                save_button = gr.Button("Save Prompt")
-                save_status = gr.Textbox(label="Status", interactive=False)
-                # When the user clicks the save button, save the current prompts in the textboxes to the text files
-                save_button.click(
-                    save_prompts,
-                    inputs=[loop_gen_input],
-                    outputs=[save_status],
-                )
+    return demo
 
-        # History sidebar (initially hidden)
-        with gr.Column(
-            scale=1, visible=False, elem_classes=["history-sidebar"]
-        ) as history_sidebar:
-            gr.Markdown("## History")
 
-            # Dropdown to select a generation
-            history_dropdown = gr.Dropdown(
-                label="Select Generation",
-                choices=get_history_choices(),
-                interactive=True,
-            )
+def main():
+    """Run the Gradio app."""
+    playback_status = is_playback_available()
+    playback_available, _ = playback_status
+    if not playback_available:
+        print(f"Warning: {get_playback_status_message()}")
 
-            with gr.Row():
-                load_btn = gr.Button("Load", size="sm", variant="primary")
-                delete_btn = gr.Button("Delete", size="sm", variant="stop")
-                refresh_btn = gr.Button("Refresh", size="sm")
+    demo = create_demo(playback_status=playback_status)
+    demo.launch()
 
-            # History items display
-            history_html = gr.HTML(
-                value=render_history_html(),
-                label="Recent Generations",
-            )
 
-            # Status message for history operations
-            history_status = gr.Textbox(
-                label="Status",
-                interactive=False,
-                visible=False,
-            )
-
-    # History sidebar toggle
-    history_toggle_btn.click(
-        toggle_history_sidebar,
-        inputs=[sidebar_visible],
-        outputs=[
-            sidebar_visible,
-            history_toggle_btn,
-            history_sidebar,
-            history_html,
-            history_dropdown,
-        ],
-    )
-
-    # Load history item into main view
-    load_btn.click(
-        load_history_item,
-        inputs=[history_dropdown],
-        outputs=[prog_output, audio_output, vis_output, error_message],
-    )
-
-    # Delete history item
-    delete_btn.click(
-        delete_history_item,
-        inputs=[history_dropdown],
-        outputs=[history_dropdown, history_status, history_html],
-    )
-
-    # Refresh history
-    refresh_btn.click(
-        refresh_history,
-        outputs=[history_dropdown, history_html],
-    )
-
-    # Also refresh history after generation completes (when cancel button becomes hidden)
-    # We do this by having the generation flow trigger a refresh
-    gen_event.then(
-        refresh_history,
-        outputs=[history_dropdown, history_html],
-    )
-
-# Launch the demo
-demo.launch()
+if __name__ == "__main__":
+    main()
