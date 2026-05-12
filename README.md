@@ -22,7 +22,7 @@ Install required dependencies:
 ```sh
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Audio Playback Setup (Optional)
@@ -90,7 +90,7 @@ The evaluation framework lives in the `evaluation/` directory and is documented 
 LoopGPT/
 ├── app.py                      # Gradio UI entry point
 ├── model_list.json             # Model pricing, rate limits, and capabilities
-├── requirements.txt            # Python dependencies
+├── pyproject.toml              # Python project metadata 
 ├── UI.png                      # Screenshot of the Gradio interface
 │
 ├── Prompts/
