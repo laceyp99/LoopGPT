@@ -4,7 +4,6 @@ loop.json
 evaluation_log.json
 output.mid
 output.mp3
-evaluation/helper.py
 evaluation/Results/
 evaluation/Datasets/
 soundfonts/*.sf2
@@ -12,3 +11,4 @@ generations/
 __pycache__/
 MIDI/
 runs/
+**/*.egg-info/
