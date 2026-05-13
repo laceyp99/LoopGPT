@@ -125,7 +125,7 @@ def test_scale_rejects_invalid_root_and_mode():
         ("C", 4, 60),
         ("F♯", 3, 54),
         ("A♭", 4, 68),
-        ("C♯!", 4, 61),
+        ("C♯", 4, 61),
     ],
 )
 def test_calculate_midi_number_normalizes_pitch_names(
