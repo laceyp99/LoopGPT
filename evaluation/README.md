@@ -2,6 +2,8 @@
 
 A unified evaluation framework for testing MIDI loop generation across multiple AI models, with an interactive Plotly Dash dashboard for analyzing results.
 
+This framework is not a replacement for the pytest suite in `tests/`. Use pytest for fast local checks of deterministic code paths such as utility functions, MIDI conversion, history persistence, and provider routing. Use the evaluator when you want to measure prompt-to-model behavior, musical validity, latency, cost, or reasoning-mode differences across real models.
+
 ## File Reference
 
 | File | Description |
@@ -42,12 +44,18 @@ The dashboard opens at `http://127.0.0.1:8050/`.
 
 ## Installation
 
-All dependencies are in `requirements.txt`:
+Install the project first:
 
 ```sh
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -e .
+```
+
+If you also want to run the local pytest suite while working on evaluator code, install the development extra:
+
+```sh
+pip install -e ".[dev]"
 ```
 
 Key packages: `dash`, `dash-bootstrap-components`, `pandas`, `plotly`, `mido`, `rich`.
