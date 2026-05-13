@@ -273,7 +273,7 @@ def calculate_midi_number(note):
     Returns:
         int: A MIDI number that corresponds to the note.
     """
-    cleaned_pitch = note.pitch.strip().replace("♯", "#").replace("𝄪", "##")
+    cleaned_pitch = note.pitch.strip().replace("♯", "#").replace("♭", "b").replace("𝄪", "##")
     for char in cleaned_pitch:
         if not char.isalpha() and char != "#":
             cleaned_pitch = cleaned_pitch.replace(char, "")
