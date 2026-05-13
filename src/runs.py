@@ -33,7 +33,7 @@ def generate_midi(
 
     # Ollama models
     if model_choice in ollama_models:
-        loop, messages, loop_cost = ollama_api.loop_gen(prompt, model_choice)
+        loop, messages, loop_cost = ollama_api.loop_gen(prompt, model_choice, temp=temp)
     # OpenAI (unified - handles both standard and reasoning models)
     elif model_choice in model_info["models"]["OpenAI"]:
         loop, messages, loop_cost = openai_api.loop_gen(
