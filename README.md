@@ -58,6 +58,33 @@ python app.py
 ```
 Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 
+## Testing
+
+LoopGPT now has a local pytest suite for deterministic regression coverage. Use it for fast feedback on core music logic, MIDI conversion, history persistence, and provider routing without making live API calls.
+
+Install the development extra if you want to run the tests:
+```sh
+pip install -e ".[dev]"
+```
+
+Run the full suite:
+```sh
+pytest
+```
+
+Run a focused file during development:
+```sh
+pytest tests/test_utils.py
+pytest tests/test_midi_processing.py
+pytest tests/test_runs.py
+```
+
+The pytest suite is intentionally local and hermetic:
+
+- `tests/` covers deterministic behavior in `src/`
+- generated test files use pytest temporary directories instead of writing into repo folders like `generations/`
+- live provider calls, Gradio UI behavior, and optional audio-toolchain behavior are not part of the default pytest suite
+
 ## Usage
 
 1. **Select your parameters**  
@@ -83,6 +110,8 @@ Then visit [localhost](http://127.0.0.1:7860/) to access the UI.
 ## Evaluation Framework
 
 The evaluation framework lives in the `evaluation/` directory and is documented separately in [`evaluation/README.md`](evaluation/README.md).
+
+Use pytest for fast local regression tests, and use the evaluation framework for slower prompt-to-model quality checks across providers. The two workflows are complementary rather than interchangeable.
 
 ## Project Structure
 

@@ -30,6 +30,11 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/laceyp99/LoopGPT"
 
+[project.optional-dependencies]
+dev = [
+	"pytest>=8.3,<9",
+]
+
 [tool.setuptools]
 include-package-data = true
 py-modules = ["app"]
@@ -38,3 +43,12 @@ py-modules = ["app"]
 where = ["."]
 include = ["src*", "evaluation*"]
 namespaces = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+markers = [
+	"slow: marks slower-running tests",
+	"external: marks tests that require external services or binaries",
+]
