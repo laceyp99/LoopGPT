@@ -464,7 +464,25 @@
             }
         },
         "Google": {
-            "gemini-3.1-flash-lite-preview": {
+            "gemini-3.5-flash": {
+                "extended_thinking": true,
+                "effort_options": ["minimal", "low", "medium", "high"],
+                "max_tokens": 65536,
+                "cost": {
+                    "input": 1.50,
+                    "cache": {
+                        "text": 0.15,
+                        "storage hour": 1.00
+                    },
+                    "output": 9.00
+                },
+                "rate_limits": {
+                    "RPM": 5,
+                    "TPM": 250000,
+                    "RPD": 20
+                }
+            },
+            "gemini-3.1-flash-lite": {
                 "extended_thinking": true,
                 "effort_options": ["minimal", "low", "medium", "high"],
                 "max_tokens": 65536,
@@ -477,9 +495,9 @@
                     "output": 1.50
                 },
                 "rate_limits": {
-                    "RPM": 5,
+                    "RPM": 15,
                     "TPM": 250000,
-                    "RPD": 20
+                    "RPD": 500
                 }
             },
             "gemini-3.1-pro-preview": {
@@ -502,15 +520,15 @@
                     }
                 },
                 "rate_limits": {
-                    "RPM": 5,
-                    "TPM": 250000,
-                    "RPD": 20
+                    "RPM": 25,
+                    "TPM": 2000000,
+                    "RPD": 250
                 }
             },
             "gemini-3-flash-preview": {
                 "extended_thinking": true,
                 "effort_options": ["minimal", "low", "medium", "high"],
-                "max_tokens": 64000,
+                "max_tokens": 65536,
                 "cost": {
                     "input": 0.50,
                     "cache": {
@@ -523,31 +541,6 @@
                     "RPM": 5,
                     "TPM": 250000,
                     "RPD": 20
-                }
-            },
-            "gemini-3-pro-preview": {
-                "extended_thinking": true,
-                "effort_options": ["low", "high"],
-                "max_tokens": 64000,
-                "cost": {
-                    "input": {
-                        "<=200k": 2.00,
-                        ">200k": 4.00
-                    },
-                    "cache": {
-                        "<=200k": 0.20,
-                        ">200k": 0.40,
-                        "storage hour": 4.50
-                    },
-                    "output": {
-                        "<=200k": 12.00,
-                        ">200k": 18.00
-                    }
-                },
-                "rate_limits": {
-                    "RPM": 50,
-                    "TPM": 1000000,
-                    "RPD": 1000
                 }
             },
             "gemini-2.5-pro": {
@@ -573,7 +566,7 @@
                 "rate_limits": {
                     "RPM": 150,
                     "TPM": 2000000,
-                    "RPD": 10000
+                    "RPD": 1000
                 }
             },
             "gemini-2.5-flash": {
@@ -590,9 +583,9 @@
                     "output": 2.50
                 },
                 "rate_limits": {
-                    "RPM": 1000,
-                    "TPM": 1000000,
-                    "RPD": 10000
+                    "RPM": 5,
+                    "TPM": 250000,
+                    "RPD": 20
                 }
             },
             "gemini-2.5-flash-lite": {
@@ -609,8 +602,9 @@
                     "output": 0.40
                 },
                 "rate_limits": {
-                    "RPM": 4000,
-                    "TPM": 4000000
+                    "RPM": 10,
+                    "TPM": 250000,
+                    "RPD": 20
                 }
             },
             "gemini-2.0-flash": {

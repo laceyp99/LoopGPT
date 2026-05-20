@@ -165,10 +165,10 @@ def test_get_provider_for_model_returns_matching_provider_or_ollama_default():
     model_info = {
         "models": {
             "OpenAI": {"gpt-5-mini": {}},
-            "Google": {"gemini-3-flash-preview": {}},
+            "Google": {"gemini-3.5-flash": {}},
         }
     }
 
     assert history.get_provider_for_model("gpt-5-mini", model_info) == "OpenAI"
-    assert history.get_provider_for_model("gemini-3-flash-preview", model_info) == "Google"
+    assert history.get_provider_for_model("gemini-3.5-flash", model_info) == "Google"
     assert history.get_provider_for_model("llama3.2:1b", model_info) == "Ollama"
