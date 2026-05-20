@@ -40,29 +40,30 @@ def calc_cost(model, usage):
         float: Calculated price for the API call.
     """
     model_info = utils.get_model_info()
+    model_cost = model_info["models"]["Google"][model]["cost"]
     cached = usage.cached_content_token_count or 0
 
-    # Gemini 3 and 2.5 Pro has a different cost structure based on token usage
-    if model in ['gemini-2.5-pro', 'gemini-3-pro-preview', 'gemini-3.1-pro-preview']:
+    # Models with tiered pricing switch rates once the prompt exceeds 200k tokens.
+    if isinstance(model_cost["input"], dict):
         if usage.prompt_token_count <= 200000:
-            input_cost = model_info["models"]["Google"][model]["cost"]["input"]["<=200k"] / 1000000
-            output_cost = model_info["models"]["Google"][model]["cost"]["output"]["<=200k"] / 1000000
-            cache_cost = model_info["models"]["Google"][model]["cost"]["cache"]["<=200k"] / 1000000
+            input_cost = model_cost["input"]["<=200k"] / 1000000
+            output_cost = model_cost["output"]["<=200k"] / 1000000
+            cache_cost = model_cost["cache"]["<=200k"] / 1000000
         else:
-            input_cost = model_info["models"]["Google"][model]["cost"]["input"][">200k"] / 1000000
-            output_cost = model_info["models"]["Google"][model]["cost"]["output"][">200k"] / 1000000
-            cache_cost = model_info["models"]["Google"][model]["cost"]["cache"][">200k"] / 1000000
+            input_cost = model_cost["input"][">200k"] / 1000000
+            output_cost = model_cost["output"][">200k"] / 1000000
+            cache_cost = model_cost["cache"][">200k"] / 1000000
         # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
-        storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1 if cached else 0
+        storage_cost = model_cost["cache"]["storage hour"] * 0.1 if cached else 0
     else:
         # For other models, use the default cost structure
-        input_cost = model_info["models"]["Google"][model]["cost"]["input"] / 1000000
-        output_cost = model_info["models"]["Google"][model]["cost"]["output"] / 1000000
+        input_cost = model_cost["input"] / 1000000
+        output_cost = model_cost["output"] / 1000000
         # Check if cache cost is defined for the model
-        if "cache" in model_info["models"]["Google"][model]["cost"]:
-            cache_cost = model_info["models"]["Google"][model]["cost"]["cache"]["text"] / 1000000
+        if "cache" in model_cost:
+            cache_cost = model_cost["cache"]["text"] / 1000000
             # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
-            storage_cost = model_info["models"]["Google"][model]["cost"]["cache"]["storage hour"] * 0.1 if cached else 0
+            storage_cost = model_cost["cache"]["storage hour"] * 0.1 if cached else 0
         else:
             cache_cost = 0
             storage_cost = 0
@@ -112,17 +113,19 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
         'response_mime_type': 'application/json',
         'response_schema': objects.Loop_G,
     }
-    model_with_thinking = model_info["models"]["Google"][model]["extended_thinking"]
+    model_config = model_info["models"]["Google"][model]
+    model_with_thinking = model_config["extended_thinking"]
+    effort_options = model_config.get("effort_options", [])
 
-    if model == "gemini-3-flash-preview" or model == "gemini-3-pro-preview" or model == "gemini-3.1-pro-preview" or model == "gemini-3.1-flash-lite-preview":
-        if effort in model_info["models"]["Google"][model]["effort_options"]:
+    if effort_options:
+        if effort in effort_options:
             config.update({"thinking_config": types.ThinkingConfig(thinking_level=effort, include_thoughts=True)})
         else:
             print("No effort level specified; using default thinking configuration.")
     elif model_with_thinking and use_thinking:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["max_thinking_budget"], include_thoughts=True)})
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_config["max_thinking_budget"], include_thoughts=True)})
     elif model_with_thinking and use_thinking == False:
-        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_info["models"]["Google"][model]["min_thinking_budget"], include_thoughts=True)})
+        config.update({"thinking_config": types.ThinkingConfig(thinking_budget=model_config["min_thinking_budget"], include_thoughts=True)})
 
     # Make the API call
     response = client.models.generate_content(
