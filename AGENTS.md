@@ -1,41 +1,29 @@
-# AGENTS.md - LoopGPT Codebase Guide
+# AGENTS.md - LoopGPT Agent Guide
 
-This file gives AI coding agents the minimum project context needed to work safely in this repository.
+This document provides the essential context an AI coding agent needs to work safely and productively in this repository.
 
 ## Start Here
 
-- Read [README.md](README.md) for product-level usage and environment setup.
-- Read [evaluation/README.md](evaluation/README.md) before changing anything under `evaluation/`.
-- Do not run broad evaluations unless the user explicitly asks. They create many model calls and can be slow or expensive.
+- **Read**: [README.md](README.md) for product-level usage and quick setup.
+- **Evaluation notes**: See [evaluation/README.md](evaluation/README.md) before changing anything under `evaluation/`.
+- **Don't run broad evaluation jobs** unless the user explicitly requests them — they consume many model calls.
 
-## Project Snapshot
+## Quick Start (safe commands)
 
-LoopGPT generates 4-bar MIDI loops from natural-language prompts through a Gradio app in `app.py`.
-
-Current major areas:
-
-- `app.py`: Gradio UI and callback wiring.
-- `src/runs.py`: Main generation router across providers.
-- `src/openai_api.py`, `src/claude_api.py`, `src/gemini_api.py`, `src/ollama_api.py`: Provider-specific generation and prompt-translation logic.
-- `src/midi_processing.py`: Loop object to MIDI conversion.
-- `src/objects.py`: Pydantic models for loop structure.
-- `src/utils.py`: Shared MIDI helpers, duration keyword detection, visualization helpers, and logging utilities.
-- `src/audio.py`: Optional MIDI to audio rendering using FluidSynth and FFmpeg.
-- `src/history.py`: Saves and loads recent generations in `generations/`.
-- `evaluation/evaluator.py`: Unified evaluation runner.
-- `evaluation/tests.py`: MIDI validation helpers such as scale and duration checks.
-- `evaluation/analysis.py`: Dash dashboard for exploring evaluation runs.
-
-## Safe Commands
-
-Setup and app run:
+Install dependencies and run the app locally:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 python app.py
 ```
 
-Safe evaluation-adjacent commands:
+If you need to run tests while working on code changes, install the dev extra first:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Useful evaluation/debug commands:
 
 ```bash
 python evaluation/analysis.py
@@ -43,80 +31,72 @@ python evaluation/analysis.py <path-to-run-directory>
 python -c "from evaluation.tests import scale_test, duration_test; from mido import MidiFile; midi = MidiFile('output.mid'); print(scale_test(midi, 'C', 'major')); print(duration_test(midi, 'quarter'))"
 ```
 
-Avoid by default:
+Avoid launching large automated evaluation runs or broad multi-model fan-outs without approval.
 
-- Large evaluation runs through `Evaluator.evaluate(...)` unless the user explicitly asks.
-- Any command that would fan out across many cloud models.
+## Project Snapshot
+
+LoopGPT generates 4-bar MIDI loops from natural-language prompts via a Gradio UI.
+
+- **App entry**: [app.py](app.py) — Gradio UI and callback wiring (starts the app at import time).
+- **Generation router**: [src/runs.py](src/runs.py) — core routing and orchestration across providers.
+- **Provider modules**: [src/openai_api.py](src/openai_api.py), [src/claude_api.py](src/claude_api.py), [src/gemini_api.py](src/gemini_api.py), [src/ollama_api.py](src/ollama_api.py) — provider-specific prompt translation and API calls.
+- **Loop data & MIDI**: [src/objects.py](src/objects.py) (Pydantic loop models), [src/midi_processing.py](src/midi_processing.py) (loop→MIDI conversion).
+- **Audio (optional)**: [src/audio.py](src/audio.py) — MIDI→audio rendering (requires FluidSynth/FFmpeg and a soundfont in [soundfonts/](soundfonts/)).
+- **History & UI data**: [src/history.py](src/history.py) and `generations/` — recent outputs and metadata.
+- **Utilities**: [src/utils.py](src/utils.py) — shared helpers (duration keywords, visualization, logging helpers).
+- **Evaluation**: [evaluation/evaluator.py](evaluation/evaluator.py), [evaluation/tests.py](evaluation/tests.py), [evaluation/analysis.py](evaluation/analysis.py).
+- **Tests**: See the test suite under [tests/](tests/).
 
 ## Evaluation Conventions
 
-The evaluation directory no longer uses separate runner scripts. The current pattern is:
-
-- `evaluation/evaluator.py` exposes an `Evaluator` class that handles generation, test execution, result saving, and async versus sync provider routing.
-- `test_reasoning=True` expands compatible models across thinking and effort variations.
-- Validation tests are selected by name through the `tests` argument and executed via `Evaluator.run_tests(...)`.
-- Duration expectations are auto-detected from prompt text using shared keywords from `src/utils.py`.
-
-Important detail:
-
-- `Evaluator` defaults `output_dir` to `evaluations`, while examples in docs may pass `output_dir="runs"`. Check the caller before assuming output paths.
+- **Evaluator**: [evaluation/evaluator.py](evaluation/evaluator.py) orchestrates generation, tests, result saving, and provider routing.
+- **Tests selection**: Tests are selected by name and executed via `Evaluator.run_tests(...)`.
+- **Auto-detection**: Duration expectations are auto-detected using keywords from [src/utils.py](src/utils.py).
+- **Default outputs**: The `Evaluator` defaults `output_dir` to `evaluations`. Documentation examples may use `runs` — check callers.
 
 ## Project Conventions
 
-### Imports
+- **Imports**: Follow local ordering: third-party, stdlib, then local modules.
+- **Logging**: Use Python's `logging` library; evaluation code writes logs to `<output_dir>/run.log`.
+- **Errors**: Raise `ValueError` for invalid user-facing configuration; prefer graceful fallbacks for optional dependencies.
+- **Provider resilience**: Provider modules (especially Ollama) must not fail at import time if services are unavailable.
 
-Follow the local style already used in the file you are editing. This repo often groups imports as:
+## Data and Outputs
 
-1. Third-party packages
-2. Standard library modules
-3. Local `src` or `evaluation` imports
+- **Model list**: [model_list.json](model_list.json) is the source of truth for provider metadata.
+- **Latest session**: [loop.json](loop.json) stores the latest loop-generation message history.
+- **Generations**: `generations/` contains recent UI outputs with `loop.mid` and `metadata.json`.
 
-Preserve existing style when touching older files rather than reformatting unrelated imports.
+Evaluation runs produce a structured directory with `config.json`, `summary.json`, generated MIDI files, message logs, and per-run test results.
 
-### Logging
+## Known Pitfalls (pay attention to these)
 
-- Use `logging` for backend and evaluation code.
-- Evaluation code configures root logging in `Evaluator._setup_logging()` and writes to `<output_dir>/run.log`.
+- **Import-time side effects**: [app.py](app.py) launches the Gradio app on import — avoid importing it during non-UI tasks.
+- **Ollama availability**: [src/ollama_api.py](src/ollama_api.py) should use lazy checks; don't assume a running local Ollama service.
+- **Audio dependencies**: Audio rendering requires external tools and a soundfont in [soundfonts/](soundfonts/); treat it as optional.
+- **Generated artifacts**: The repo contains generated MIDI files and prior runs under `generations/`; do not treat them as source-of-truth.
 
-### Data and Outputs
+## Common Change Paths (how to make common edits)
 
-- `model_list.json` is the source of truth for provider model metadata.
-- `loop.json` stores the latest loop-generation message history.
-- `generations/` stores recent UI generations and metadata.
-- Evaluation runs create structured directories with `config.json`, `summary.json`, generated MIDI, message logs, and per-run test results.
+- **Add or change a model/provider**:
+	1. Update [model_list.json](model_list.json).
+	2. Implement or update the provider module under `src/`.
+	3. Adjust routing in [src/runs.py](src/runs.py) if the provider contract changed.
+	4. Update UI controls in [app.py](app.py) only if the change affects user-facing options.
 
-### Error Handling
+- **Change loop structure or MIDI semantics**:
+	1. Update [src/objects.py](src/objects.py) (Pydantic models).
+	2. Update [src/midi_processing.py](src/midi_processing.py) for conversion logic.
+	3. Update any provider parsing logic that constructs `Loop` objects.
+	4. Re-run evaluation tests and re-check prompt files in [Prompts/](Prompts/).
 
-- Raise `ValueError` for invalid user-facing configuration.
-- Prefer graceful fallbacks for unavailable optional dependencies or services.
-- Preserve the current Ollama behavior: avoid import-time hard failures when the local host is unavailable.
+- **Change evaluation behavior**:
+	1. Update [evaluation/evaluator.py](evaluation/evaluator.py).
+	2. Add or update checks in [evaluation/tests.py](evaluation/tests.py).
+	3. Update [evaluation/README.md](evaluation/README.md) and ensure [evaluation/analysis.py](evaluation/analysis.py) expectations match.
 
-## Known Pitfalls
+## How agents should work (brief guidelines)
 
-- `app.py` starts the Gradio app at import time, so imports used during startup must stay safe.
-- `src/ollama_api.py` should not rely on import-time network success; prefer lazy or cached status checks.
-- Audio playback is optional and depends on external tools plus a SoundFont in `soundfonts/`.
-- The repo contains generated artifacts such as MIDI files and prior run outputs; do not treat them as source-of-truth code.
-
-## Common Change Paths
-
-Adding or changing model support:
-
-1. Update `model_list.json`.
-2. Update the relevant provider module in `src/`.
-3. Adjust `src/runs.py` routing if the provider contract changed.
-4. Update `app.py` controls only if the user-facing options changed.
-
-Changing loop structure or MIDI semantics:
-
-1. Update `src/objects.py`.
-2. Update `src/midi_processing.py`.
-3. Update any affected provider parsing logic.
-4. Re-check prompt files in `Prompts/`.
-
-Changing evaluation behavior:
-
-1. Start with `evaluation/evaluator.py`.
-2. Update or add checks in `evaluation/tests.py`.
-3. Update [evaluation/README.md](evaluation/README.md) if behavior or output shape changes.
-4. Keep dashboard assumptions in `evaluation/analysis.py` in sync with result schema changes.
+- **Discover before editing**: Read [README.md](README.md) and this file before making changes.
+- **Run a minimal test**: After edits, add or update focused tests under [tests/](tests/) when the change affects behavior, then run the most relevant unit test or a focused `python -c` check for the touched slice.
+- **Avoid heavy operations**: Ask for permission before running resource-heavy evaluation runs or multi-provider calls.
