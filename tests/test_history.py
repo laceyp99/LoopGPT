@@ -91,6 +91,44 @@ def test_save_generation_copies_files_and_persists_metadata(isolated_history_dir
     assert metadata.soundfont == "FM-Piano1 20190916.sf2"
 
 
+def test_update_generation_audio_copies_audio_and_updates_soundfont(
+    isolated_history_dir, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
+
+    midi_source = _write_binary_file(tmp_path / "source.mid")
+    original_audio = _write_binary_file(tmp_path / "source.mp3", b"old-audio")
+    updated_audio = _write_binary_file(tmp_path / "updated.mp3", b"new-audio")
+
+    gen_id = history.save_generation(
+        midi_path=str(midi_source),
+        prompt="warm rhodes loop",
+        key="D",
+        scale="minor",
+        model="gpt-4o-mini",
+        provider="OpenAI",
+        temperature=0.3,
+        cost=1.5,
+        audio_path=str(original_audio),
+        soundfont="old.sf2",
+    )
+
+    updated = history.update_generation_audio(
+        gen_id,
+        str(updated_audio),
+        soundfont="new.sf2",
+    )
+    metadata = history.get_generation(gen_id)
+    gen_dir = isolated_history_dir / "gen_fixed_id"
+
+    assert updated is not None
+    assert updated.audio_path == str(gen_dir / "loop.mp3")
+    assert updated.soundfont == "new.sf2"
+    assert (gen_dir / "loop.mp3").read_bytes() == b"new-audio"
+    assert metadata is not None
+    assert metadata.soundfont == "new.sf2"
+
+
 def test_load_history_allows_older_entries_without_soundfont(isolated_history_dir):
     now = datetime.now()
     _write_generation_metadata(

@@ -189,6 +189,45 @@ def save_generation(
     return gen_id
 
 
+def update_generation_audio(
+    gen_id: str,
+    audio_path: Optional[str],
+    soundfont: Optional[str] = None,
+) -> Optional[GenerationMetadata]:
+    """Update the stored audio path and SoundFont for an existing generation.
+
+    Args:
+        gen_id: The generation ID.
+        audio_path: Path to the rendered audio file.
+        soundfont: SoundFont filename used to render the audio file.
+
+    Returns:
+        GenerationMetadata or None if the generation does not exist.
+    """
+    metadata = get_generation(gen_id)
+    if metadata is None:
+        return None
+
+    gen_dir = _get_generation_dir(gen_id)
+    metadata_path = os.path.join(gen_dir, "metadata.json")
+
+    dest_audio_path = metadata.audio_path
+    if audio_path and os.path.exists(audio_path):
+        dest_audio_path = os.path.join(gen_dir, "loop.mp3")
+        if os.path.abspath(audio_path) != os.path.abspath(dest_audio_path):
+            shutil.copy2(audio_path, dest_audio_path)
+        else:
+            dest_audio_path = audio_path
+
+    metadata.audio_path = dest_audio_path
+    metadata.soundfont = soundfont
+
+    with open(metadata_path, "w") as f:
+        f.write(metadata.model_dump_json(indent=2))
+
+    return metadata
+
+
 def load_history() -> list[GenerationMetadata]:
     """Load all generations from history.
 
