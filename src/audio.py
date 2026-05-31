@@ -6,7 +6,7 @@ using FluidSynth for synthesis and pydub for MP3 encoding.
 Requires:
     - FluidSynth system library installed
     - FFmpeg installed (for MP3 encoding)
-    - A SoundFont file (Salamander Grand Piano recommended)
+    - At least one SoundFont file in the soundfonts directory
 """
 
 from midi2audio import FluidSynth
@@ -24,13 +24,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Path to the SoundFont file - Salamander Grand Piano
 SOUNDFONT_DIR = os.path.join(os.path.dirname(__file__), "..", "soundfonts")
-SOUNDFONT_FILENAME = "SalamanderGrandPiano.sf2"
-SOUNDFONT_PATH = os.path.join(SOUNDFONT_DIR, SOUNDFONT_FILENAME)
-
-# Alternative soundfont names to search for
-ALTERNATIVE_SOUNDFONTS = [
+# Preferred SoundFont filenames searched in order.
+DEFAULT_SOUNDFONT_CANDIDATES = [
+    "FM-Piano1 20190916.sf2",
     "SalamanderGrandPiano.sf2",
     "salamander-grand-piano.sf2",
     "piano.sf2",
@@ -39,32 +36,76 @@ ALTERNATIVE_SOUNDFONTS = [
 ]
 
 
-def find_soundfont() -> str | None:
-    """Search for an available SoundFont file.
+def list_soundfonts() -> list[str]:
+    """List the available SoundFont filenames.
 
     Returns:
-        str: Path to a SoundFont file if found, None otherwise.
+        list[str]: Sorted `.sf2` filenames in the soundfonts directory.
     """
-    # Check primary path first
-    if os.path.exists(SOUNDFONT_PATH):
-        return SOUNDFONT_PATH
+    if not os.path.exists(SOUNDFONT_DIR):
+        return []
 
-    # Search for alternatives in the soundfonts directory
-    if os.path.exists(SOUNDFONT_DIR):
-        for sf_name in ALTERNATIVE_SOUNDFONTS:
-            sf_path = os.path.join(SOUNDFONT_DIR, sf_name)
-            if os.path.exists(sf_path):
-                logger.info(f"Found alternative SoundFont: {sf_name}")
-                return sf_path
+    return sorted(
+        [file for file in os.listdir(SOUNDFONT_DIR) if file.lower().endswith(".sf2")],
+        key=str.lower,
+    )
 
-        # Check for any .sf2 file in the directory
-        for file in os.listdir(SOUNDFONT_DIR):
-            if file.lower().endswith(".sf2"):
-                sf_path = os.path.join(SOUNDFONT_DIR, file)
-                logger.info(f"Found SoundFont: {file}")
-                return sf_path
 
-    return None
+def get_default_soundfont() -> str | None:
+    """Resolve the default SoundFont path.
+
+    Returns:
+        str | None: Path to the preferred available SoundFont, or None.
+    """
+    available_soundfonts = list_soundfonts()
+    if not available_soundfonts:
+        return None
+
+    available_lookup = {name.lower(): name for name in available_soundfonts}
+
+    for soundfont_name in DEFAULT_SOUNDFONT_CANDIDATES:
+        matched_name = available_lookup.get(soundfont_name.lower())
+        if matched_name:
+            return os.path.join(SOUNDFONT_DIR, matched_name)
+
+    fallback_soundfont = available_soundfonts[0]
+    logger.info(f"Falling back to SoundFont: {fallback_soundfont}")
+    return os.path.join(SOUNDFONT_DIR, fallback_soundfont)
+
+
+def resolve_soundfont(soundfont_name: str | None = None) -> str | None:
+    """Resolve an explicit or default SoundFont path.
+
+    Args:
+        soundfont_name (str | None): Optional SoundFont filename or path.
+
+    Returns:
+        str | None: Path to a SoundFont file if found, None otherwise.
+    """
+    if soundfont_name:
+        if os.path.exists(soundfont_name):
+            return soundfont_name
+
+        requested_name = os.path.basename(soundfont_name)
+        requested_path = os.path.join(SOUNDFONT_DIR, requested_name)
+        if os.path.exists(requested_path):
+            return requested_path
+
+        return None
+
+    return get_default_soundfont()
+
+
+def find_soundfont(soundfont_name: str | None = None) -> str | None:
+    """Backwards-compatible wrapper for SoundFont resolution.
+
+    Args:
+        soundfont_name (str | None): Optional SoundFont filename or path.
+
+    Returns:
+        str | None: Path to a SoundFont file if found, None otherwise.
+    """
+    return resolve_soundfont(soundfont_name)
 
 
 def is_fluidsynth_available() -> bool:
@@ -85,7 +126,7 @@ def is_ffmpeg_available() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
-def is_playback_available() -> tuple[bool, str | None]:
+def is_playback_available(soundfont_name: str | None = None) -> tuple[bool, str | None]:
     """Check if audio playback is available.
 
     Verifies that all required components are present:
@@ -106,11 +147,16 @@ def is_playback_available() -> tuple[bool, str | None]:
     if not is_ffmpeg_available():
         issues.append("FFmpeg is not installed or not in PATH")
 
-    if find_soundfont() is None:
-        issues.append(
-            f"No SoundFont file found in '{SOUNDFONT_DIR}'. "
-            f"Please download Salamander Grand Piano and place the .sf2 file there."
-        )
+    resolved_soundfont = find_soundfont(soundfont_name)
+    if resolved_soundfont is None:
+        if soundfont_name:
+            issues.append(
+                f"Requested SoundFont '{os.path.basename(soundfont_name)}' was not found in '{SOUNDFONT_DIR}'."
+            )
+        else:
+            issues.append(
+                f"No SoundFont file found in '{SOUNDFONT_DIR}'. Add a .sf2 file to enable audio playback."
+            )
 
     if issues:
         return False, "; ".join(issues)
@@ -118,13 +164,18 @@ def is_playback_available() -> tuple[bool, str | None]:
     return True, None
 
 
-def midi_to_mp3(midi_path: str, output_path: str | None = None) -> str | None:
+def midi_to_mp3(
+    midi_path: str,
+    output_path: str | None = None,
+    soundfont_name: str | None = None,
+) -> str | None:
     """Convert a MIDI file to MP3 audio using FluidSynth.
 
     Args:
         midi_path (str): Path to the input MIDI file.
         output_path (str, optional): Path for the output MP3 file.
             If not provided, uses the same name as the MIDI file with .mp3 extension.
+        soundfont_name (str, optional): SoundFont filename or path to use.
 
     Returns:
         str | None: Path to the generated MP3 file, or None if conversion failed.
@@ -136,7 +187,7 @@ def midi_to_mp3(midi_path: str, output_path: str | None = None) -> str | None:
         raise FileNotFoundError(f"MIDI file not found: {midi_path}")
 
     # Check if playback is available
-    available, error = is_playback_available()
+    available, error = is_playback_available(soundfont_name)
     if not available:
         logger.warning(f"Audio playback not available: {error}")
         return None
@@ -147,7 +198,7 @@ def midi_to_mp3(midi_path: str, output_path: str | None = None) -> str | None:
         output_path = f"{base_name}.mp3"
 
     # Find the soundfont
-    soundfont_path = find_soundfont()
+    soundfont_path = find_soundfont(soundfont_name)
     if soundfont_path is None:
         logger.error("No SoundFont file available")
         return None
@@ -183,16 +234,16 @@ def midi_to_mp3(midi_path: str, output_path: str | None = None) -> str | None:
                 pass
 
 
-def get_playback_status_message() -> str:
+def get_playback_status_message(soundfont_name: str | None = None) -> str:
     """Get a user-friendly status message about playback availability.
 
     Returns:
         str: A message describing the playback status and any setup required.
     """
-    available, error = is_playback_available()
+    available, error = is_playback_available(soundfont_name)
 
     if available:
-        soundfont = find_soundfont()
+        soundfont = find_soundfont(soundfont_name)
         sf_name = os.path.basename(soundfont) if soundfont else "Unknown"
         return f"Audio playback ready (using {sf_name})"
 
@@ -207,12 +258,13 @@ def get_playback_status_message() -> str:
     if not is_ffmpeg_available():
         instructions.append("  - Install FFmpeg: https://ffmpeg.org/download.html")
 
-    if find_soundfont() is None:
-        instructions.append(
-            "  - Download Salamander Grand Piano SoundFont and place in 'soundfonts/' folder"
-        )
-        instructions.append(
-            "    https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html"
-        )
+    resolved_soundfont = find_soundfont(soundfont_name)
+    if resolved_soundfont is None:
+        if soundfont_name:
+            instructions.append(
+                f"  - Add the requested SoundFont '{os.path.basename(soundfont_name)}' to 'soundfonts/'"
+            )
+        else:
+            instructions.append("  - Add a `.sf2` SoundFont file to the 'soundfonts/' folder")
 
     return "\n".join(instructions)
