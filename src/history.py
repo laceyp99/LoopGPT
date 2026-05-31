@@ -50,6 +50,7 @@ class GenerationMetadata(BaseModel):
         cost: API cost if available.
         midi_path: Path to the MIDI file.
         audio_path: Path to the audio file (None if synthesis failed).
+        soundfont: SoundFont filename used to render the audio file.
     """
 
     id: str
@@ -63,6 +64,7 @@ class GenerationMetadata(BaseModel):
     cost: Optional[float] = None
     midi_path: str
     audio_path: Optional[str] = None
+    soundfont: Optional[str] = None
 
 
 def _ensure_generations_dir() -> None:
@@ -119,6 +121,7 @@ def save_generation(
     temperature: float,
     cost: Optional[float] = None,
     audio_path: Optional[str] = None,
+    soundfont: Optional[str] = None,
 ) -> str:
     """Save a generation to history.
 
@@ -135,6 +138,7 @@ def save_generation(
         temperature: Temperature setting.
         cost: API cost (optional).
         audio_path: Path to rendered audio file (optional).
+        soundfont: SoundFont filename used to render the audio file (optional).
 
     Returns:
         str: The generation ID.
@@ -169,6 +173,7 @@ def save_generation(
         cost=cost,
         midi_path=dest_midi_path,
         audio_path=dest_audio_path,
+        soundfont=soundfont,
     )
 
     # Save metadata
