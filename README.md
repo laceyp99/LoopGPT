@@ -38,9 +38,11 @@ To enable audio playback of generated MIDI loops, you'll need:
    - macOS: `brew install ffmpeg`
    - Linux: `apt install ffmpeg`
 
-3. **SoundFont file** - Piano samples
-   - Download [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) (~400MB)
-   - Extract and place `SalamanderGrandPiano.sf2` in the `soundfonts/` directory
+3. **Bundled SoundFont** - Piano samples
+   - The repo includes `soundfonts/FM-Piano1 20190916.sf2` as the default playback SoundFont
+   - Source: [FreePats FM Synthesized Piano](https://freepats.zenvoid.org/ElectricPiano/synthesized-piano.html)
+   - License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+   - You can still add additional `.sf2` files to the `soundfonts/` directory for alternate playback voices
 
 *Note: Audio playback is optional. The app will still generate and download MIDI files without these dependencies.*
 
