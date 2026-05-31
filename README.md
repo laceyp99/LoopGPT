@@ -6,6 +6,7 @@ This project is a music generation tool that enables users to create 4 bar loops
 
 - Interact with a sleek Gradio interface for an inviting user experience
 - Audio playback to listen to generated MIDI inside the browser
+- Switch between installed SoundFonts, refresh the SoundFont list in-app, and re-render audio without regenerating MIDI
 - Visualize MIDI output using piano roll display
 - Manage your last 20 generations from the history sidebar
 - View/Edit the system prompt that instruct the model through the generation process
@@ -43,6 +44,7 @@ To enable audio playback of generated MIDI loops, you'll need:
    - Source: [FreePats FM Synthesized Piano](https://freepats.zenvoid.org/ElectricPiano/synthesized-piano.html)
    - License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
    - You can still add additional `.sf2` files to the `soundfonts/` directory for alternate playback voices
+   - If the app is already running, click **Refresh SoundFonts** in the UI after adding new files
 
 *Note: Audio playback is optional. The app will still generate and download MIDI files without these dependencies.*
 
@@ -79,11 +81,14 @@ Run a focused file during development:
 pytest tests/test_utils.py
 pytest tests/test_midi_processing.py
 pytest tests/test_runs.py
+pytest tests/test_audio.py
+pytest tests/test_app.py
 ```
 
 The pytest suite is intentionally local and hermetic:
 
 - `tests/` covers deterministic behavior in `src/`
+- audio and app helper tests cover SoundFont discovery, selection, rerender decisions, and history metadata without needing live model calls
 - generated test files use pytest temporary directories instead of writing into repo folders like `generations/`
 - live provider calls, Gradio UI behavior, and optional audio-toolchain behavior are not part of the default pytest suite
 
@@ -98,15 +103,22 @@ The pytest suite is intentionally local and hermetic:
 2. **Generate & Download**  
    - Click **Generate Loop**  
    - Download the MIDI file via the "Download Generated MIDI" widget  
-   - Listen to the audio preview (if playback is configured)
+   - Listen to the audio preview rendered with the currently selected SoundFont (if playback is configured)
    - View the piano-roll image
 
-3. **Browse History**
+3. **Work With SoundFonts**
+   - Use the **SoundFont** dropdown between Playback and MIDI Visualization to choose the render voice
+   - Click **Refresh SoundFonts** if you add new `.sf2` files while the app is already open
+   - Click **Re-render Audio** to audition the currently loaded MIDI through a different SoundFont without regenerating the loop
+   - Loaded history items reopen with their saved audio immediately; re-render only when you want a different SoundFont version
+
+4. **Browse History**
    - Click **History** to open the sidebar
    - Select a previous generation from the dropdown
    - Click **Load** to view/play it, or **Delete** to remove it
+   - History entries remember which SoundFont produced the saved audio preview
 
-4. **Inspect JSON logs**  
+5. **Inspect JSON logs**  
    - `loop.json` records the full message exchange and reasoning
 
 ## Evaluation Framework
@@ -138,7 +150,16 @@ LoopGPT/
 │   ├── objects.py              # Pydantic models (Note, Bar, Loop, _G variants)
 │   ├── utils.py                # MIDI helpers, visualization, message logging
 │   ├── audio.py                # MIDI to audio conversion using FluidSynth
-│   └── history.py              # Session history management (save/load/delete)
+│   └── history.py              # Session history management (save/load/delete/update audio metadata)
+│
+├── tests/                      # Local pytest coverage for deterministic logic and UI helpers
+│   ├── test_app.py             # App helper coverage for SoundFont refresh/rerender logic
+│   ├── test_audio.py           # SoundFont discovery and audio helper coverage
+│   ├── test_history.py         # History persistence and cleanup coverage
+│   ├── test_midi_processing.py # MIDI conversion coverage
+│   ├── test_objects.py         # Pydantic model coverage
+│   ├── test_runs.py            # Provider routing coverage
+│   └── test_utils.py           # Utility helper coverage
 │
 ├── evaluation/                 # Standalone evaluation framework (see evaluation/README.md)
 │   ├── evaluator.py            # Evaluator class -- orchestrates model testing
@@ -150,7 +171,7 @@ LoopGPT/
 │   └── gen_<timestamp>/
 │       ├── loop.mid            # Generated MIDI file
 │       ├── loop.mp3            # Rendered audio (if playback configured)
-│       └── metadata.json       # Generation parameters and info
+│       └── metadata.json       # Generation parameters, audio path, and saved SoundFont info
 │
 ├── runs/                       # Evaluation run outputs (created by evaluator)
 │   ├── run.log                 # Evaluation log file
@@ -160,7 +181,7 @@ LoopGPT/
 │       ├── analysis/           # Exported dashboard charts (HTML)
 │       └── results/            # Per-model, per-prompt, per-key test results
 │
-├── soundfonts/                 # Place SoundFont (.sf2) files here for audio playback
+├── soundfonts/                 # Bundled/default and user-added SoundFont (.sf2) files for playback
 │
 ├── loop.json                   # JSON log of the last MIDI-generation conversation
 └── output.mid                  # The most recently generated MIDI file
@@ -174,3 +195,4 @@ LoopGPT/
 - The quality of generated music depends on the prompt and model parameters.
 - Requires an active internet connection for API calls to model providers.
 - High API usage may incur significant costs.
+- Audio preview still depends on external FluidSynth and FFmpeg installations even though a default SoundFont is bundled with the repo.
