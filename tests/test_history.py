@@ -31,6 +31,7 @@ def _write_generation_metadata(
     provider: str = "OpenAI",
     temperature: float = 0.0,
     cost: float | None = None,
+    soundfont: str | None = None,
 ):
     gen_dir = base_dir / f"gen_{gen_id}"
     gen_dir.mkdir(parents=True, exist_ok=True)
@@ -47,6 +48,7 @@ def _write_generation_metadata(
         cost=cost,
         midi_path=str(gen_dir / "loop.mid"),
         audio_path=str(gen_dir / "loop.mp3"),
+        soundfont=soundfont,
     )
     (gen_dir / "metadata.json").write_text(metadata.model_dump_json(indent=2), encoding="utf-8")
     return gen_dir
@@ -68,6 +70,7 @@ def test_save_generation_copies_files_and_persists_metadata(isolated_history_dir
         temperature=0.3,
         cost=1.5,
         audio_path=str(audio_source),
+        soundfont="FM-Piano1 20190916.sf2",
     )
 
     gen_dir = isolated_history_dir / "gen_fixed_id"
@@ -85,6 +88,67 @@ def test_save_generation_copies_files_and_persists_metadata(isolated_history_dir
     assert metadata.provider == "OpenAI"
     assert metadata.temperature == 0.3
     assert metadata.cost == 1.5
+    assert metadata.soundfont == "FM-Piano1 20190916.sf2"
+
+
+def test_update_generation_audio_copies_audio_and_updates_soundfont(
+    isolated_history_dir, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
+
+    midi_source = _write_binary_file(tmp_path / "source.mid")
+    original_audio = _write_binary_file(tmp_path / "source.mp3", b"old-audio")
+    updated_audio = _write_binary_file(tmp_path / "updated.mp3", b"new-audio")
+
+    gen_id = history.save_generation(
+        midi_path=str(midi_source),
+        prompt="warm rhodes loop",
+        key="D",
+        scale="minor",
+        model="gpt-4o-mini",
+        provider="OpenAI",
+        temperature=0.3,
+        cost=1.5,
+        audio_path=str(original_audio),
+        soundfont="old.sf2",
+    )
+
+    updated = history.update_generation_audio(
+        gen_id,
+        str(updated_audio),
+        soundfont="new.sf2",
+    )
+    metadata = history.get_generation(gen_id)
+    gen_dir = isolated_history_dir / "gen_fixed_id"
+
+    assert updated is not None
+    assert updated.audio_path == str(gen_dir / "loop.mp3")
+    assert updated.soundfont == "new.sf2"
+    assert (gen_dir / "loop.mp3").read_bytes() == b"new-audio"
+    assert metadata is not None
+    assert metadata.soundfont == "new.sf2"
+
+
+def test_load_history_allows_older_entries_without_soundfont(isolated_history_dir):
+    now = datetime.now()
+    _write_generation_metadata(
+        isolated_history_dir,
+        gen_id="older",
+        timestamp=now - timedelta(days=1),
+        soundfont=None,
+    )
+    _write_generation_metadata(
+        isolated_history_dir,
+        gen_id="newer",
+        timestamp=now,
+        soundfont="FM-Piano1 20190916.sf2",
+    )
+
+    loaded = history.load_history()
+
+    assert [entry.id for entry in loaded] == ["newer", "older"]
+    assert loaded[0].soundfont == "FM-Piano1 20190916.sf2"
+    assert loaded[1].soundfont is None
 
 
 def test_load_history_sorts_newest_first(isolated_history_dir):

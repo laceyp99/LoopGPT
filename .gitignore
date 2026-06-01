@@ -7,6 +7,7 @@ output.mp3
 evaluation/Results/
 evaluation/Datasets/
 soundfonts/*.sf2
+!soundfonts/FM-Piano1 20190916.sf2
 generations/
 __pycache__/
 MIDI/

@@ -10,13 +10,20 @@ Features:
 
 from src.midi_processing import loop_to_midi
 from src.utils import visualize_midi_plotly, get_model_info
-from src.audio import midi_to_mp3, is_playback_available, get_playback_status_message
+from src.audio import (
+    midi_to_mp3,
+    is_playback_available,
+    get_playback_status_message,
+    list_soundfonts,
+    get_default_soundfont,
+)
 from src.history import (
     save_generation,
     load_history,
     get_generation,
     delete_generation,
     get_provider_for_model,
+    update_generation_audio,
 )
 import src.ollama_api as ollama_api
 import src.runs as runs
@@ -199,6 +206,137 @@ def sync_controls_for_thinking(provider, model_choice, use_thinking):
     return sync_model_capabilities(provider, model_choice, use_thinking)
 
 
+def get_soundfont_choices():
+    """Get the available SoundFont filenames for the UI."""
+    return list_soundfonts()
+
+
+def get_selected_soundfont(soundfont_choice=None):
+    """Normalize the selected SoundFont for the UI."""
+    soundfonts = get_soundfont_choices()
+    if not soundfonts:
+        return None
+
+    if soundfont_choice:
+        requested_name = os.path.basename(soundfont_choice)
+        if requested_name in soundfonts:
+            return requested_name
+
+    default_soundfont = get_default_soundfont()
+    if default_soundfont:
+        default_soundfont_name = os.path.basename(default_soundfont)
+        if default_soundfont_name in soundfonts:
+            return default_soundfont_name
+
+    return soundfonts[0]
+
+
+def get_soundfont_dropdown_update(soundfont_choice=None):
+    """Build a dropdown update for the current SoundFont selection."""
+    return gr.update(
+        choices=get_soundfont_choices(),
+        value=get_selected_soundfont(soundfont_choice),
+    )
+
+
+def has_active_rerender_target(midi_path):
+    """Return whether the UI currently has a MIDI file available to rerender."""
+    return bool(midi_path and os.path.exists(midi_path))
+
+
+def rerender_available(soundfont_choice=None, midi_path=None):
+    """Return whether rerendering should be enabled for the current UI state."""
+    selected_soundfont = get_selected_soundfont(soundfont_choice)
+    playback_available, _ = is_playback_available(selected_soundfont)
+    return (
+        playback_available
+        and selected_soundfont is not None
+        and has_active_rerender_target(midi_path)
+    )
+
+
+def get_rerender_button_update(soundfont_choice=None, midi_path=None):
+    """Build a button update for the current rerender availability."""
+    return gr.update(interactive=rerender_available(soundfont_choice, midi_path))
+
+
+def get_soundfont_status_message(soundfont_choice=None):
+    """Build the status text for the current SoundFont and playback state."""
+    selected_soundfont = get_selected_soundfont(soundfont_choice)
+    playback_available, _ = is_playback_available(selected_soundfont)
+
+    if playback_available and selected_soundfont:
+        return f"Found {len(get_soundfont_choices())} SoundFonts. Selected {selected_soundfont}."
+
+    return get_playback_status_message(selected_soundfont)
+
+
+def refresh_soundfont_controls(soundfont_choice=None, midi_path=None):
+    """Refresh SoundFont UI controls from the filesystem."""
+    return (
+        get_soundfont_dropdown_update(soundfont_choice),
+        get_rerender_button_update(soundfont_choice, midi_path),
+        get_soundfont_status_message(soundfont_choice),
+    )
+
+
+def rerender_current_audio(
+    midi_path,
+    soundfont_choice,
+    saved_soundfont,
+    generation_id,
+    current_audio_path,
+):
+    """Re-render the current MIDI file with the selected SoundFont on demand."""
+    if not midi_path:
+        return current_audio_path, "No MIDI file available to re-render.", saved_soundfont, current_audio_path
+
+    if not os.path.exists(midi_path):
+        return current_audio_path, f"MIDI file not found: {midi_path}", saved_soundfont, current_audio_path
+
+    selected_soundfont = get_selected_soundfont(soundfont_choice)
+    if not selected_soundfont:
+        return current_audio_path, get_playback_status_message(soundfont_choice), saved_soundfont, current_audio_path
+
+    if (
+        saved_soundfont == selected_soundfont
+        and current_audio_path
+        and os.path.exists(current_audio_path)
+    ):
+        return (
+            current_audio_path,
+            f"Audio already rendered with {selected_soundfont}.",
+            saved_soundfont,
+            current_audio_path,
+        )
+
+    output_path = current_audio_path or f"{os.path.splitext(midi_path)[0]}.mp3"
+    rendered_audio_path = midi_to_mp3(
+        midi_path,
+        output_path=output_path,
+        soundfont_name=selected_soundfont,
+    )
+    if rendered_audio_path is None:
+        return current_audio_path, get_playback_status_message(selected_soundfont), saved_soundfont, current_audio_path
+
+    persisted_audio_path = rendered_audio_path
+    if generation_id:
+        updated_generation = update_generation_audio(
+            generation_id,
+            rendered_audio_path,
+            soundfont=selected_soundfont,
+        )
+        if updated_generation and updated_generation.audio_path:
+            persisted_audio_path = updated_generation.audio_path
+
+    return (
+        persisted_audio_path,
+        f"Rendered audio with {selected_soundfont}.",
+        selected_soundfont,
+        persisted_audio_path,
+    )
+
+
 def save_prompts(loop_gen_text):
     """This function saves any changes to the loop generation prompt to the text file.
 
@@ -225,6 +363,7 @@ def run_loop(
     model_choice,
     use_thinking,
     effort,
+    soundfont_choice,
     openai_key,
     gemini_key,
     claude_key,
@@ -243,14 +382,16 @@ def run_loop(
         model_choice (str): The model that the user selects from the dropdown.
         use_thinking (bool): Whether to enable extended thinking for supported Claude and Gemini models.
         effort (str): The reasoning effort level for supported OpenAI models.
+         soundfont_choice (str): The selected SoundFont filename for audio rendering.
         openai_key (str): The OpenAI API key that the user inputs in the text box.
         gemini_key (str): The Gemini API key that the user inputs in the text box.
         claude_key (str): The Claude API key that the user inputs in the text box.
 
     Yields:
-        tuple: (file_path, audio_path, visualization, status_message, cancel_button_update) -
-               intermediate yields show progress and keep cancel visible,
-               final yield contains the generated MIDI file, audio, and hides the cancel button.
+         tuple: (file_path, audio_path, visualization, status_message, cancel_button_update,
+             generation_id, saved_soundfont, current_audio_path) - intermediate yields
+             show progress and keep cancel visible, final yield contains the generated MIDI,
+             audio, and persisted audio metadata for rerendering.
     """
     try:
         # If the user provided API keys, update environment variables
@@ -263,9 +404,10 @@ def run_loop(
 
         # Condense the prompt into a single string for the model
         prompt = f"{key} {scale} {description}."
+        selected_soundfont = get_selected_soundfont(soundfont_choice)
 
         # Yield initial status and show cancel button - this is a cancellation checkpoint
-        yield None, None, None, "Working on it...", gr.update(visible=True)
+        yield None, None, None, "Working on it...", gr.update(visible=True), None, None, None
 
         # Run API call in background thread so we can yield periodically for cancellation
         with ThreadPoolExecutor(max_workers=1) as executor:
@@ -281,14 +423,14 @@ def run_loop(
             # Poll for completion, yielding periodically to allow cancellation
             while not future.done():
                 time.sleep(0.5)  # Check every 500ms
-                yield None, None, None, "Generating MIDI...", gr.update(visible=True)
+                yield None, None, None, "Generating MIDI...", gr.update(visible=True), None, None, None
 
             # Get the result (will raise exception if the API call failed)
             loop, messages, total_cost = future.result()
 
         print(f"Total cost: {total_cost}")
 
-        yield None, None, None, "Processing MIDI...", gr.update(visible=True)
+        yield None, None, None, "Processing MIDI...", gr.update(visible=True), None, None, None
         # Convert the generated loop into a MIDI file
         midi = MidiFile()
         model_info = get_model_info()
@@ -301,15 +443,15 @@ def run_loop(
         midi.save(output_path)
 
         # Render audio and visualization from MIDI
-        yield None, None, None, "Rendering Audio...", gr.update(visible=True)
-        audio_path = midi_to_mp3(output_path)
+        yield None, None, None, "Rendering Audio...", gr.update(visible=True), None, None, None
+        audio_path = midi_to_mp3(output_path, soundfont_name=selected_soundfont)
         visualization = visualize_midi_plotly(midi)
 
         # Determine provider for history
         provider = get_provider_for_model(model_choice, model_info)
 
         # Save to history
-        save_generation(
+        gen_id = save_generation(
             midi_path=output_path,
             prompt=description,
             key=key,
@@ -319,14 +461,27 @@ def run_loop(
             temperature=temp,
             cost=total_cost,
             audio_path=audio_path,
+            soundfont=selected_soundfont if audio_path else None,
         )
+        saved_generation = get_generation(gen_id)
+        persisted_audio_path = saved_generation.audio_path if saved_generation else audio_path
+        saved_soundfont = saved_generation.soundfont if saved_generation else selected_soundfont
 
         # Final yield with the completed result and hide cancel button
-        yield output_path, audio_path, visualization, "", gr.update(visible=False)
+        yield (
+            output_path,
+            persisted_audio_path,
+            visualization,
+            "",
+            gr.update(visible=False),
+            gen_id,
+            saved_soundfont,
+            persisted_audio_path,
+        )
 
     except Exception as e:
         # Catch any exception and yield the error message, hide cancel button
-        yield None, None, None, str(e), gr.update(visible=False)
+        yield None, None, None, str(e), gr.update(visible=False), None, None, None
 
 
 def toggle_history_sidebar(is_visible):
@@ -423,24 +578,63 @@ def load_history_item(gen_id):
         gen_id (str): The generation ID to load.
 
     Returns:
-        tuple: (midi_path, audio_path, visualization, error_message)
+        tuple: (midi_path, audio_path, soundfont_update, visualization, error_message,
+               generation_id, saved_soundfont, current_audio_path, rerender_update)
     """
     if not gen_id:
-        return None, None, None, "No generation selected"
+        return (
+            None,
+            None,
+            get_soundfont_dropdown_update(),
+            None,
+            "No generation selected",
+            None,
+            None,
+            None,
+            get_rerender_button_update(),
+        )
 
     gen = get_generation(gen_id)
     if not gen:
-        return None, None, None, f"Generation {gen_id} not found"
+        return (
+            None,
+            None,
+            get_soundfont_dropdown_update(),
+            None,
+            f"Generation {gen_id} not found",
+            None,
+            None,
+            None,
+            get_rerender_button_update(),
+        )
 
     # Check if files exist
     if not os.path.exists(gen.midi_path):
-        return None, None, None, f"MIDI file not found: {gen.midi_path}"
+        return (
+            None,
+            None,
+            get_soundfont_dropdown_update(gen.soundfont),
+            None,
+            f"MIDI file not found: {gen.midi_path}",
+            None,
+            None,
+            None,
+            get_rerender_button_update(gen.soundfont, None),
+        )
+
+    missing_soundfont_message = ""
+    if gen.soundfont:
+        saved_soundfont_name = os.path.basename(gen.soundfont)
+        if saved_soundfont_name not in get_soundfont_choices():
+            missing_soundfont_message = (
+                f"Previously used SoundFont: {saved_soundfont_name} (missing)"
+            )
 
     # Load visualization
     try:
         midi = MidiFile(gen.midi_path)
         visualization = visualize_midi_plotly(midi)
-    except Exception as e:
+    except Exception:
         visualization = None
 
     # Get audio path if it exists
@@ -448,38 +642,82 @@ def load_history_item(gen_id):
         gen.audio_path if gen.audio_path and os.path.exists(gen.audio_path) else None
     )
 
-    return gen.midi_path, audio_path, visualization, ""
+    return (
+        gen.midi_path,
+        audio_path,
+        get_soundfont_dropdown_update(gen.soundfont),
+        visualization,
+        missing_soundfont_message,
+        gen.id,
+        gen.soundfont,
+        audio_path,
+        get_rerender_button_update(gen.soundfont, gen.midi_path),
+    )
 
 
-def delete_history_item(gen_id):
+def delete_history_item(
+    gen_id,
+    current_generation_id=None,
+    soundfont_choice=None,
+    midi_path=None,
+    current_saved_soundfont=None,
+    current_audio_path=None,
+):
     """Delete a history item.
 
     Args:
         gen_id (str): The generation ID to delete.
 
     Returns:
-        tuple: (dropdown_update, status_message, history_html)
+        tuple: (dropdown_update, status_message, history_html, midi_path, audio_path,
+               visualization, generation_id, saved_soundfont, current_audio_path,
+               rerender_update)
     """
     if not gen_id:
         return (
             gr.update(choices=get_history_choices(), value=None),
             "No generation selected",
             render_history_html(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            current_generation_id,
+            current_saved_soundfont,
+            current_audio_path,
+            get_rerender_button_update(soundfont_choice, midi_path),
         )
 
     success = delete_generation(gen_id)
     choices = get_history_choices()
+    deleted_active_generation = success and gen_id == current_generation_id
     if success:
         return (
             gr.update(choices=choices, value=None),
             "Deleted generation",
             render_history_html(),
+            None if deleted_active_generation else gr.update(),
+            None if deleted_active_generation else gr.update(),
+            None if deleted_active_generation else gr.update(),
+            None if deleted_active_generation else current_generation_id,
+            None if deleted_active_generation else current_saved_soundfont,
+            None if deleted_active_generation else current_audio_path,
+            get_rerender_button_update(
+                soundfont_choice,
+                None if deleted_active_generation else midi_path,
+            ),
         )
     else:
         return (
             gr.update(choices=choices, value=None),
             "Failed to delete generation",
             render_history_html(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            current_generation_id,
+            current_saved_soundfont,
+            current_audio_path,
+            get_rerender_button_update(soundfont_choice, midi_path),
         )
 
 
@@ -495,8 +733,9 @@ def refresh_history():
 
 def create_demo(playback_status=None):
     """Build and return the Gradio demo."""
+    default_soundfont = get_selected_soundfont()
     if playback_status is None:
-        playback_status = is_playback_available()
+        playback_status = is_playback_available(default_soundfont)
 
     playback_available, playback_error = playback_status
 
@@ -527,6 +766,9 @@ def create_demo(playback_status=None):
     ) as demo:
         # State for sidebar visibility
         sidebar_visible = gr.State(value=False)
+        current_generation_id = gr.State(value=None)
+        current_saved_soundfont = gr.State(value=None)
+        current_audio_path = gr.State(value=None)
 
         # Header with title centered on the original full-width layout
         with gr.Row(elem_classes=["app-header"]):
@@ -629,9 +871,23 @@ def create_demo(playback_status=None):
                             # Show playback status if not available
                             if not playback_available:
                                 gr.Markdown(
-                                    f"*Audio playback unavailable. {playback_error}*",
+                                    f"*{get_soundfont_status_message(default_soundfont)}*",
                                     elem_classes=["warning-text"],
                                 )
+
+                    with gr.Row(equal_height=False):
+                        soundfont_input = gr.Dropdown(
+                            choices=get_soundfont_choices(),
+                            label="SoundFont",
+                            value=default_soundfont,
+                            interactive=True,
+                        )
+                        with gr.Column():
+                            refresh_soundfonts_button = gr.Button("Refresh SoundFonts")
+                            rerender_button = gr.Button(
+                                "Re-render Audio",
+                                interactive=rerender_available(default_soundfont, None),
+                            )
 
                     vis_output = gr.Plot(label="MIDI Visualization")
                     error_message = gr.Textbox(label="Error Message", interactive=False)
@@ -679,6 +935,7 @@ def create_demo(playback_status=None):
                             model_choice_input,
                             thinking_checkbox,
                             effort_input,
+                            soundfont_input,
                             openai_key_input,
                             gemini_key_input,
                             claude_key_input,
@@ -689,6 +946,9 @@ def create_demo(playback_status=None):
                             vis_output,
                             error_message,
                             cancel_button,
+                            current_generation_id,
+                            current_saved_soundfont,
+                            current_audio_path,
                         ],
                     )
                     # Cancel button stops waiting for the API response and hides itself
@@ -699,6 +959,9 @@ def create_demo(playback_status=None):
                             None,
                             "Generation cancelled.",
                             gr.update(visible=False),
+                            None,
+                            None,
+                            None,
                         ),
                         outputs=[
                             prog_output,
@@ -706,8 +969,36 @@ def create_demo(playback_status=None):
                             vis_output,
                             error_message,
                             cancel_button,
+                            current_generation_id,
+                            current_saved_soundfont,
+                            current_audio_path,
                         ],
                         cancels=[gen_event],
+                    ).then(
+                        get_rerender_button_update,
+                        inputs=[soundfont_input, prog_output],
+                        outputs=[rerender_button],
+                    )
+                    rerender_button.click(
+                        rerender_current_audio,
+                        inputs=[
+                            prog_output,
+                            soundfont_input,
+                            current_saved_soundfont,
+                            current_generation_id,
+                            current_audio_path,
+                        ],
+                        outputs=[
+                            audio_output,
+                            error_message,
+                            current_saved_soundfont,
+                            current_audio_path,
+                        ],
+                    )
+                    refresh_soundfonts_button.click(
+                        refresh_soundfont_controls,
+                        inputs=[soundfont_input, prog_output],
+                        outputs=[soundfont_input, rerender_button, error_message],
                     )
 
                 # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
@@ -783,14 +1074,42 @@ def create_demo(playback_status=None):
         load_btn.click(
             load_history_item,
             inputs=[history_dropdown],
-            outputs=[prog_output, audio_output, vis_output, error_message],
+            outputs=[
+                prog_output,
+                audio_output,
+                soundfont_input,
+                vis_output,
+                error_message,
+                current_generation_id,
+                current_saved_soundfont,
+                current_audio_path,
+                rerender_button,
+            ],
         )
 
         # Delete history item
         delete_btn.click(
             delete_history_item,
-            inputs=[history_dropdown],
-            outputs=[history_dropdown, history_status, history_html],
+            inputs=[
+                history_dropdown,
+                current_generation_id,
+                soundfont_input,
+                prog_output,
+                current_saved_soundfont,
+                current_audio_path,
+            ],
+            outputs=[
+                history_dropdown,
+                history_status,
+                history_html,
+                prog_output,
+                audio_output,
+                vis_output,
+                current_generation_id,
+                current_saved_soundfont,
+                current_audio_path,
+                rerender_button,
+            ],
         )
 
         # Refresh history
@@ -802,6 +1121,10 @@ def create_demo(playback_status=None):
         # Also refresh history after generation completes (when cancel button becomes hidden)
         # We do this by having the generation flow trigger a refresh
         gen_event.then(
+            get_rerender_button_update,
+            inputs=[soundfont_input, prog_output],
+            outputs=[rerender_button],
+        ).then(
             refresh_history,
             outputs=[history_dropdown, history_html],
         )
@@ -811,10 +1134,11 @@ def create_demo(playback_status=None):
 
 def main():
     """Run the Gradio app."""
-    playback_status = is_playback_available()
+    default_soundfont = get_selected_soundfont()
+    playback_status = is_playback_available(default_soundfont)
     playback_available, _ = playback_status
     if not playback_available:
-        print(f"Warning: {get_playback_status_message()}")
+        print(f"Warning: {get_playback_status_message(default_soundfont)}")
 
     demo = create_demo(playback_status=playback_status)
     demo.launch()
