@@ -622,6 +622,14 @@ def load_history_item(gen_id):
             get_rerender_button_update(gen.soundfont, None),
         )
 
+    missing_soundfont_message = ""
+    if gen.soundfont:
+        saved_soundfont_name = os.path.basename(gen.soundfont)
+        if saved_soundfont_name not in get_soundfont_choices():
+            missing_soundfont_message = (
+                f"Previously used SoundFont: {saved_soundfont_name} (missing)"
+            )
+
     # Load visualization
     try:
         midi = MidiFile(gen.midi_path)
@@ -639,7 +647,7 @@ def load_history_item(gen_id):
         audio_path,
         get_soundfont_dropdown_update(gen.soundfont),
         visualization,
-        "",
+        missing_soundfont_message,
         gen.id,
         gen.soundfont,
         audio_path,

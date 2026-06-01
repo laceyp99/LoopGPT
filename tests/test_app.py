@@ -84,6 +84,54 @@ def test_rerender_current_audio_updates_saved_generation(monkeypatch, tmp_path):
     assert current_audio_path == str(tmp_path / "saved-loop.mp3")
 
 
+def test_load_history_item_warns_when_saved_soundfont_is_missing(monkeypatch, tmp_path):
+    midi_path = _write_binary_file(tmp_path / "loop.mid")
+    audio_path = _write_binary_file(tmp_path / "loop.mp3")
+
+    monkeypatch.setattr(app, "get_soundfont_choices", lambda: ["FM-Piano1 20190916.sf2", "new.sf2"])
+    monkeypatch.setattr(
+        app,
+        "get_default_soundfont",
+        lambda: str(Path("soundfonts") / "FM-Piano1 20190916.sf2"),
+    )
+    monkeypatch.setattr(
+        app,
+        "get_generation",
+        lambda gen_id: SimpleNamespace(
+            midi_path=str(midi_path),
+            audio_path=str(audio_path),
+            soundfont="missing.sf2",
+            id=gen_id,
+        ),
+    )
+    monkeypatch.setattr(app, "MidiFile", lambda path: object())
+    monkeypatch.setattr(app, "visualize_midi_plotly", lambda midi: "viz")
+    monkeypatch.setattr(app, "is_playback_available", lambda soundfont_name=None: (True, None))
+    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
+
+    (
+        loaded_midi_path,
+        loaded_audio_path,
+        dropdown_update,
+        visualization,
+        error_message,
+        generation_id,
+        saved_soundfont,
+        current_audio_path,
+        rerender_update,
+    ) = app.load_history_item("gen_1")
+
+    assert loaded_midi_path == str(midi_path)
+    assert loaded_audio_path == str(audio_path)
+    assert dropdown_update["value"] == "FM-Piano1 20190916.sf2"
+    assert visualization == "viz"
+    assert error_message == "Previously used SoundFont: missing.sf2 (missing)"
+    assert generation_id == "gen_1"
+    assert saved_soundfont == "missing.sf2"
+    assert current_audio_path == str(audio_path)
+    assert rerender_update["interactive"] is True
+
+
 def test_refresh_soundfont_controls_updates_dropdown_choices(monkeypatch):
     midi_path = _write_binary_file(Path("active.mid"))
 
