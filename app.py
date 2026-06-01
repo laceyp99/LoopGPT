@@ -260,20 +260,23 @@ def get_rerender_button_update(soundfont_choice=None, midi_path=None):
     return gr.update(interactive=rerender_available(soundfont_choice, midi_path))
 
 
-def refresh_soundfont_controls(soundfont_choice=None, midi_path=None):
-    """Refresh SoundFont UI controls from the filesystem."""
+def get_soundfont_status_message(soundfont_choice=None):
+    """Build the status text for the current SoundFont and playback state."""
     selected_soundfont = get_selected_soundfont(soundfont_choice)
     playback_available, _ = is_playback_available(selected_soundfont)
 
-    if selected_soundfont:
-        status_message = f"Found {len(get_soundfont_choices())} SoundFonts. Selected {selected_soundfont}."
-    else:
-        status_message = get_playback_status_message(selected_soundfont)
+    if playback_available and selected_soundfont:
+        return f"Found {len(get_soundfont_choices())} SoundFonts. Selected {selected_soundfont}."
 
+    return get_playback_status_message(selected_soundfont)
+
+
+def refresh_soundfont_controls(soundfont_choice=None, midi_path=None):
+    """Refresh SoundFont UI controls from the filesystem."""
     return (
         get_soundfont_dropdown_update(soundfont_choice),
         get_rerender_button_update(soundfont_choice, midi_path),
-        status_message,
+        get_soundfont_status_message(soundfont_choice),
     )
 
 
@@ -860,7 +863,7 @@ def create_demo(playback_status=None):
                             # Show playback status if not available
                             if not playback_available:
                                 gr.Markdown(
-                                    f"*Audio playback unavailable. {playback_error}*",
+                                    f"*{get_soundfont_status_message(default_soundfont)}*",
                                     elem_classes=["warning-text"],
                                 )
 

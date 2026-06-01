@@ -106,6 +106,32 @@ def test_refresh_soundfont_controls_updates_dropdown_choices(monkeypatch):
         midi_path.unlink(missing_ok=True)
 
 
+def test_refresh_soundfont_controls_prefers_dependency_status_message(monkeypatch):
+    monkeypatch.setattr(app, "get_soundfont_choices", lambda: ["FM-Piano1 20190916.sf2", "new.sf2"])
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "new.sf2")
+    monkeypatch.setattr(
+        app,
+        "is_playback_available",
+        lambda soundfont_name=None: (False, "FluidSynth is not installed or not in PATH"),
+    )
+    monkeypatch.setattr(
+        app,
+        "get_playback_status_message",
+        lambda soundfont_name=None: "Audio playback is not available. Setup required:\n  - Install FluidSynth: https://github.com/FluidSynth/fluidsynth/releases",
+    )
+    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
+
+    dropdown_update, rerender_update, status_message = app.refresh_soundfont_controls("new.sf2", None)
+
+    assert dropdown_update["choices"] == ["FM-Piano1 20190916.sf2", "new.sf2"]
+    assert dropdown_update["value"] == "new.sf2"
+    assert rerender_update["interactive"] is False
+    assert status_message == (
+        "Audio playback is not available. Setup required:\n"
+        "  - Install FluidSynth: https://github.com/FluidSynth/fluidsynth/releases"
+    )
+
+
 def test_get_rerender_button_update_requires_active_midi(monkeypatch):
     monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "new.sf2")
     monkeypatch.setattr(app, "is_playback_available", lambda soundfont_name=None: (True, None))

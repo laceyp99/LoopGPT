@@ -247,16 +247,25 @@ def get_playback_status_message(soundfont_name: str | None = None) -> str:
         sf_name = os.path.basename(soundfont) if soundfont else "Unknown"
         return f"Audio playback ready (using {sf_name})"
 
-    # Build setup instructions
-    instructions = ["Audio playback is not available. Setup required:"]
+    dependency_instructions = []
 
     if not is_fluidsynth_available():
-        instructions.append(
+        dependency_instructions.append(
             "  - Install FluidSynth: https://github.com/FluidSynth/fluidsynth/releases"
         )
 
     if not is_ffmpeg_available():
-        instructions.append("  - Install FFmpeg: https://ffmpeg.org/download.html")
+        dependency_instructions.append(
+            "  - Install FFmpeg: https://ffmpeg.org/download.html"
+        )
+
+    if dependency_instructions:
+        return "\n".join([
+            "Audio playback is not available. Setup required:",
+            *dependency_instructions,
+        ])
+
+    instructions = ["Audio playback is not available. Setup required:"]
 
     resolved_soundfont = find_soundfont(soundfont_name)
     if resolved_soundfont is None:

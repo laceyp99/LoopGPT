@@ -49,6 +49,19 @@ def test_is_playback_available_reports_missing_requested_soundfont(monkeypatch, 
     assert error == f"Requested SoundFont 'missing.sf2' was not found in '{tmp_path}'."
 
 
+def test_get_playback_status_message_prioritizes_missing_dependencies(monkeypatch):
+    monkeypatch.setattr(audio, "is_playback_available", lambda soundfont_name=None: (False, "dependency error"))
+    monkeypatch.setattr(audio, "is_fluidsynth_available", lambda: False)
+    monkeypatch.setattr(audio, "is_ffmpeg_available", lambda: False)
+    monkeypatch.setattr(audio, "find_soundfont", lambda soundfont_name=None: None)
+
+    status_message = audio.get_playback_status_message("missing.sf2")
+
+    assert "Install FluidSynth" in status_message
+    assert "Install FFmpeg" in status_message
+    assert "Add the requested SoundFont" not in status_message
+
+
 def test_midi_to_mp3_uses_requested_soundfont(monkeypatch, tmp_path):
     midi_path = _write_file(tmp_path / "loop.mid")
     soundfont_path = _write_file(tmp_path / "custom.sf2")
