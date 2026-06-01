@@ -239,7 +239,28 @@ def get_soundfont_dropdown_update(soundfont_choice=None):
     )
 
 
-def refresh_soundfont_controls(soundfont_choice=None):
+def has_active_rerender_target(midi_path):
+    """Return whether the UI currently has a MIDI file available to rerender."""
+    return bool(midi_path and os.path.exists(midi_path))
+
+
+def rerender_available(soundfont_choice=None, midi_path=None):
+    """Return whether rerendering should be enabled for the current UI state."""
+    selected_soundfont = get_selected_soundfont(soundfont_choice)
+    playback_available, _ = is_playback_available(selected_soundfont)
+    return (
+        playback_available
+        and selected_soundfont is not None
+        and has_active_rerender_target(midi_path)
+    )
+
+
+def get_rerender_button_update(soundfont_choice=None, midi_path=None):
+    """Build a button update for the current rerender availability."""
+    return gr.update(interactive=rerender_available(soundfont_choice, midi_path))
+
+
+def refresh_soundfont_controls(soundfont_choice=None, midi_path=None):
     """Refresh SoundFont UI controls from the filesystem."""
     selected_soundfont = get_selected_soundfont(soundfont_choice)
     playback_available, _ = is_playback_available(selected_soundfont)
@@ -251,7 +272,7 @@ def refresh_soundfont_controls(soundfont_choice=None):
 
     return (
         get_soundfont_dropdown_update(soundfont_choice),
-        gr.update(interactive=playback_available and selected_soundfont is not None),
+        get_rerender_button_update(soundfont_choice, midi_path),
         status_message,
     )
 
@@ -555,14 +576,34 @@ def load_history_item(gen_id):
 
     Returns:
         tuple: (midi_path, audio_path, soundfont_update, visualization, error_message,
-               generation_id, saved_soundfont, current_audio_path)
+               generation_id, saved_soundfont, current_audio_path, rerender_update)
     """
     if not gen_id:
-        return None, None, get_soundfont_dropdown_update(), None, "No generation selected", None, None, None
+        return (
+            None,
+            None,
+            get_soundfont_dropdown_update(),
+            None,
+            "No generation selected",
+            None,
+            None,
+            None,
+            get_rerender_button_update(),
+        )
 
     gen = get_generation(gen_id)
     if not gen:
-        return None, None, get_soundfont_dropdown_update(), None, f"Generation {gen_id} not found", None, None, None
+        return (
+            None,
+            None,
+            get_soundfont_dropdown_update(),
+            None,
+            f"Generation {gen_id} not found",
+            None,
+            None,
+            None,
+            get_rerender_button_update(),
+        )
 
     # Check if files exist
     if not os.path.exists(gen.midi_path):
@@ -575,6 +616,7 @@ def load_history_item(gen_id):
             None,
             None,
             None,
+            get_rerender_button_update(gen.soundfont, None),
         )
 
     # Load visualization
@@ -598,38 +640,73 @@ def load_history_item(gen_id):
         gen.id,
         gen.soundfont,
         audio_path,
+        get_rerender_button_update(gen.soundfont, gen.midi_path),
     )
 
 
-def delete_history_item(gen_id):
+def delete_history_item(
+    gen_id,
+    current_generation_id=None,
+    soundfont_choice=None,
+    midi_path=None,
+    current_saved_soundfont=None,
+    current_audio_path=None,
+):
     """Delete a history item.
 
     Args:
         gen_id (str): The generation ID to delete.
 
     Returns:
-        tuple: (dropdown_update, status_message, history_html)
+        tuple: (dropdown_update, status_message, history_html, midi_path, audio_path,
+               visualization, generation_id, saved_soundfont, current_audio_path,
+               rerender_update)
     """
     if not gen_id:
         return (
             gr.update(choices=get_history_choices(), value=None),
             "No generation selected",
             render_history_html(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            current_generation_id,
+            current_saved_soundfont,
+            current_audio_path,
+            get_rerender_button_update(soundfont_choice, midi_path),
         )
 
     success = delete_generation(gen_id)
     choices = get_history_choices()
+    deleted_active_generation = success and gen_id == current_generation_id
     if success:
         return (
             gr.update(choices=choices, value=None),
             "Deleted generation",
             render_history_html(),
+            None if deleted_active_generation else gr.update(),
+            None if deleted_active_generation else gr.update(),
+            None if deleted_active_generation else gr.update(),
+            None if deleted_active_generation else current_generation_id,
+            None if deleted_active_generation else current_saved_soundfont,
+            None if deleted_active_generation else current_audio_path,
+            get_rerender_button_update(
+                soundfont_choice,
+                None if deleted_active_generation else midi_path,
+            ),
         )
     else:
         return (
             gr.update(choices=choices, value=None),
             "Failed to delete generation",
             render_history_html(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            current_generation_id,
+            current_saved_soundfont,
+            current_audio_path,
+            get_rerender_button_update(soundfont_choice, midi_path),
         )
 
 
@@ -798,7 +875,7 @@ def create_demo(playback_status=None):
                             refresh_soundfonts_button = gr.Button("Refresh SoundFonts")
                             rerender_button = gr.Button(
                                 "Re-render Audio",
-                                interactive=playback_available and default_soundfont is not None,
+                                interactive=rerender_available(default_soundfont, None),
                             )
 
                     vis_output = gr.Plot(label="MIDI Visualization")
@@ -886,6 +963,10 @@ def create_demo(playback_status=None):
                             current_audio_path,
                         ],
                         cancels=[gen_event],
+                    ).then(
+                        get_rerender_button_update,
+                        inputs=[soundfont_input, prog_output],
+                        outputs=[rerender_button],
                     )
                     rerender_button.click(
                         rerender_current_audio,
@@ -905,7 +986,7 @@ def create_demo(playback_status=None):
                     )
                     refresh_soundfonts_button.click(
                         refresh_soundfont_controls,
-                        inputs=[soundfont_input],
+                        inputs=[soundfont_input, prog_output],
                         outputs=[soundfont_input, rerender_button, error_message],
                     )
 
@@ -991,14 +1072,33 @@ def create_demo(playback_status=None):
                 current_generation_id,
                 current_saved_soundfont,
                 current_audio_path,
+                rerender_button,
             ],
         )
 
         # Delete history item
         delete_btn.click(
             delete_history_item,
-            inputs=[history_dropdown],
-            outputs=[history_dropdown, history_status, history_html],
+            inputs=[
+                history_dropdown,
+                current_generation_id,
+                soundfont_input,
+                prog_output,
+                current_saved_soundfont,
+                current_audio_path,
+            ],
+            outputs=[
+                history_dropdown,
+                history_status,
+                history_html,
+                prog_output,
+                audio_output,
+                vis_output,
+                current_generation_id,
+                current_saved_soundfont,
+                current_audio_path,
+                rerender_button,
+            ],
         )
 
         # Refresh history
@@ -1010,6 +1110,10 @@ def create_demo(playback_status=None):
         # Also refresh history after generation completes (when cancel button becomes hidden)
         # We do this by having the generation flow trigger a refresh
         gen_event.then(
+            get_rerender_button_update,
+            inputs=[soundfont_input, prog_output],
+            outputs=[rerender_button],
+        ).then(
             refresh_history,
             outputs=[history_dropdown, history_html],
         )

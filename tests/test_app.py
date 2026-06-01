@@ -85,14 +85,86 @@ def test_rerender_current_audio_updates_saved_generation(monkeypatch, tmp_path):
 
 
 def test_refresh_soundfont_controls_updates_dropdown_choices(monkeypatch):
+    midi_path = _write_binary_file(Path("active.mid"))
+
     monkeypatch.setattr(app, "get_soundfont_choices", lambda: ["FM-Piano1 20190916.sf2", "new.sf2"])
     monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "new.sf2")
     monkeypatch.setattr(app, "is_playback_available", lambda soundfont_name=None: (True, None))
     monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
 
-    dropdown_update, rerender_update, status_message = app.refresh_soundfont_controls("new.sf2")
+    try:
+        dropdown_update, rerender_update, status_message = app.refresh_soundfont_controls(
+            "new.sf2",
+            str(midi_path),
+        )
 
-    assert dropdown_update["choices"] == ["FM-Piano1 20190916.sf2", "new.sf2"]
-    assert dropdown_update["value"] == "new.sf2"
-    assert rerender_update["interactive"] is True
-    assert status_message == "Found 2 SoundFonts. Selected new.sf2."
+        assert dropdown_update["choices"] == ["FM-Piano1 20190916.sf2", "new.sf2"]
+        assert dropdown_update["value"] == "new.sf2"
+        assert rerender_update["interactive"] is True
+        assert status_message == "Found 2 SoundFonts. Selected new.sf2."
+    finally:
+        midi_path.unlink(missing_ok=True)
+
+
+def test_get_rerender_button_update_requires_active_midi(monkeypatch):
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "new.sf2")
+    monkeypatch.setattr(app, "is_playback_available", lambda soundfont_name=None: (True, None))
+    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
+
+    rerender_update = app.get_rerender_button_update("new.sf2", None)
+
+    assert rerender_update["interactive"] is False
+
+
+def test_delete_history_item_disables_rerender_for_deleted_loaded_generation(monkeypatch, tmp_path):
+    midi_path = _write_binary_file(tmp_path / "loop.mid")
+    audio_path = _write_binary_file(tmp_path / "loop.mp3")
+
+    monkeypatch.setattr(app, "delete_generation", lambda gen_id: True)
+    monkeypatch.setattr(app, "get_history_choices", lambda: ["gen_2"])
+    monkeypatch.setattr(app, "render_history_html", lambda: "<div>history</div>")
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "new.sf2")
+    monkeypatch.setattr(app, "is_playback_available", lambda soundfont_name=None: (True, None))
+    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
+
+    (
+        dropdown_update,
+        status_message,
+        history_html,
+        cleared_midi_path,
+        cleared_audio_path,
+        cleared_visualization,
+        current_generation_id,
+        current_saved_soundfont,
+        current_audio_path,
+        rerender_update,
+    ) = app.delete_history_item(
+        "gen_1",
+        current_generation_id="gen_1",
+        soundfont_choice="new.sf2",
+        midi_path=str(midi_path),
+        current_saved_soundfont="old.sf2",
+        current_audio_path=str(audio_path),
+    )
+
+    assert dropdown_update == {"choices": ["gen_2"], "value": None}
+    assert status_message == "Deleted generation"
+    assert history_html == "<div>history</div>"
+    assert cleared_midi_path is None
+    assert cleared_audio_path is None
+    assert cleared_visualization is None
+    assert current_generation_id is None
+    assert current_saved_soundfont is None
+    assert current_audio_path is None
+    assert rerender_update["interactive"] is False
+
+
+def test_refresh_soundfont_controls_stays_disabled_after_active_delete(monkeypatch):
+    monkeypatch.setattr(app, "get_soundfont_choices", lambda: ["FM-Piano1 20190916.sf2", "new.sf2"])
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "new.sf2")
+    monkeypatch.setattr(app, "is_playback_available", lambda soundfont_name=None: (True, None))
+    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
+
+    _, rerender_update, _ = app.refresh_soundfont_controls("new.sf2", None)
+
+    assert rerender_update["interactive"] is False
