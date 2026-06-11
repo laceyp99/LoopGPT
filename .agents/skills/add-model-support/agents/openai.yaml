@@ -1,0 +1,6 @@
+interface:
+  display_name: "Add Model Support"
+  short_description: "Simply implement model support for a newly released model to be utilized within LoopGPT."
+
+policy:
+  allow_implicit_invocation: false
