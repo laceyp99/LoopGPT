@@ -9,6 +9,8 @@ import os
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+ALWAYS_ON_ADAPTIVE_THINKING_MODELS = {"claude-fable-5", "claude-mythos-5"}
+
 def initialize_anthropic_client():
     """
     Initializes and returns an Anthropic client using API key from the .env file.
@@ -116,26 +118,30 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     
     # Prepare API call parameters
     model_info = utils.get_model_info()
+    model_config = model_info["models"]["Anthropic"][model]
+    always_on_adaptive_thinking = model in ALWAYS_ON_ADAPTIVE_THINKING_MODELS
     api_params = {
         "model": model,
-        "max_tokens": model_info["models"]["Anthropic"][model]["max_tokens"],
+        "max_tokens": model_config["max_tokens"],
         "system": [{"type": "text", "text": loop_prompt, "cache_control": {"type": "ephemeral"}}],
-        "temperature": temp,
         "messages": [{"role": "user", "content": prompt}],
         "tools": tools,
         "tool_choice": {"type": "tool", "name": "build_MIDI_loop"},
         "stream": True
     }
+    if not always_on_adaptive_thinking:
+        api_params["temperature"] = temp
     
     # Add thinking configuration
-    model_config = model_info["models"]["Anthropic"][model]
-    # Auto-enable adaptive thinking for models with effort_options (e.g., 4-6 models)
+    # Auto-enable adaptive thinking for models with effort_options when it is not always on.
     # Thinking requires tool_choice "auto" (forced tool use not allowed)
     if model_config.get("effort_options"):
         api_params["tool_choice"] = {"type": "auto"}
-        api_params["thinking"] = {"type": "adaptive"}
+        if not always_on_adaptive_thinking:
+            api_params["thinking"] = {"type": "adaptive"}
         api_params["output_config"] = {"effort": effort}
-        api_params["temperature"] = 1.0
+        if not always_on_adaptive_thinking:
+            api_params["temperature"] = 1.0
     # Legacy extended thinking requires explicit opt-in and auto tool_choice
     elif use_thinking and model_config.get("extended_thinking"):
         api_params["tool_choice"] = {"type": "auto"}
