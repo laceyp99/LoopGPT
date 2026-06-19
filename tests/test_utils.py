@@ -158,6 +158,10 @@ def test_midi_number_to_name_and_octave_returns_canonical_name_and_octave(
     assert octave == expected_octave
 
 
+def test_midi_to_note_name_accepts_plain_python_lists():
+    assert utils.midi_to_note_name([60, 61, 72]) == ["C4", "C#4", "C5"]
+
+
 def test_sixteenth_converters_round_trip_enum_values():
     sixteenth_note = utils.int_to_sixteenth_g(16)
 

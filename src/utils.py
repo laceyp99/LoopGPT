@@ -305,6 +305,7 @@ def midi_to_note_name(midi_numbers):
     Returns:
         midi_names (list[str]): A list of note names corresponding to the MIDI numbers.
     """
+    midi_numbers = np.asarray(midi_numbers)
     octave = midi_numbers // 12 - 1
     return [f"{pitch_class_to_note(n)}{oct}" for n, oct in zip(midi_numbers, octave)]
 
