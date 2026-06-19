@@ -305,8 +305,7 @@ def midi_to_note_name(midi_numbers):
     Returns:
         midi_names (list[str]): A list of note names corresponding to the MIDI numbers.
     """
-    octave = midi_numbers // 12 - 1
-    return [f"{pitch_class_to_note(n)}{oct}" for n, oct in zip(midi_numbers, octave)]
+    return [f"{pitch_class_to_note(n)}{n // 12 - 1}" for n in midi_numbers]
 
 
 def save_messages_to_json(messages, filename):
