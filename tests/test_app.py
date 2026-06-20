@@ -233,6 +233,51 @@ def test_delete_history_item_disables_rerender_for_deleted_loaded_generation(mon
     assert rerender_update["interactive"] is False
 
 
+def test_render_history_html_displays_zero_cost(monkeypatch):
+    monkeypatch.setattr(
+        app,
+        "load_history",
+        lambda: [
+            SimpleNamespace(
+                id="20260101_120000",
+                timestamp=__import__("datetime").datetime(2026, 1, 1, 12, 0),
+                prompt="local model loop",
+                key="C",
+                scale="Major",
+                model="llama3",
+                cost=0,
+            )
+        ],
+    )
+
+    html = app.render_history_html()
+
+    assert "Cost: $0.0000" in html
+    assert "Cost: N/A" not in html
+
+
+def test_render_history_html_displays_missing_cost_as_na(monkeypatch):
+    monkeypatch.setattr(
+        app,
+        "load_history",
+        lambda: [
+            SimpleNamespace(
+                id="20260101_120000",
+                timestamp=__import__("datetime").datetime(2026, 1, 1, 12, 0),
+                prompt="cloud model loop",
+                key="C",
+                scale="Major",
+                model="gpt-5-mini",
+                cost=None,
+            )
+        ],
+    )
+
+    html = app.render_history_html()
+
+    assert "Cost: N/A" in html
+
+
 def test_refresh_soundfont_controls_stays_disabled_after_active_delete(monkeypatch):
     monkeypatch.setattr(app, "get_soundfont_choices", lambda: ["FM-Piano1 20190916.sf2", "new.sf2"])
     monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "new.sf2")

@@ -525,7 +525,7 @@ def render_history_html():
     html_parts = []
     for gen in history:
         timestamp_str = gen.timestamp.strftime("%b %d, %I:%M %p")
-        cost_str = f"${gen.cost:.4f}" if gen.cost else "N/A"
+        cost_str = f"${gen.cost:.4f}" if gen.cost is not None else "N/A"
         prompt_preview = gen.prompt[:40] + "..." if len(gen.prompt) > 40 else gen.prompt
 
         html_parts.append(f"""
