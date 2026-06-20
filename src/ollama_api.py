@@ -107,13 +107,15 @@ def loop_gen(prompt, model, temp=0.0):
         }
     )
     # Extract the generated MIDI loop
-    if completion.message.content:
-        midi_loop = objects.Loop.model_validate_json(completion.message.content)
-    else:
-        print("No content returned from the model")
-        midi_loop = None
-    if completion.message.thinking:
-        messages.append({"role": "assistant", "content": completion.message.thinking})
+    message = getattr(completion, "message", None)
+    content = getattr(message, "content", None)
+    if not content:
+        raise ValueError("Ollama response did not include generated content.")
+
+    midi_loop = objects.Loop.model_validate_json(content)
+    thinking = getattr(message, "thinking", None)
+    if thinking:
+        messages.append({"role": "assistant", "content": thinking})
     messages.append({"role": "assistant", "content": str(midi_loop)})
     # Save messages for debugging/training purposes
     utils.save_messages_to_json(messages, filename="loop")

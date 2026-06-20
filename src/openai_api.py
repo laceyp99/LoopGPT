@@ -65,9 +65,11 @@ def calc_price(model, response):
 def extract_reasoning(response):
     reasoning = ""
     for item in getattr(response, "output", []):
-        if item.type == "reasoning":
-            for s in item.summary:
-                reasoning += s.text + "\n"
+        if getattr(item, "type", None) == "reasoning":
+            for summary in getattr(item, "summary", []) or []:
+                text = getattr(summary, "text", None)
+                if text:
+                    reasoning += text + "\n"
     return reasoning
 
 def loop_gen(prompt, model, temp=0.0, effort=None):
@@ -121,6 +123,9 @@ def loop_gen(prompt, model, temp=0.0, effort=None):
     except APIError as e:
         logger.error(f"OpenAI API error: {e}")
         raise
+
+    if response.output_parsed is None:
+        raise ValueError("OpenAI response did not include parsed loop content.")
 
     reasoning = extract_reasoning(response)
     if reasoning:
