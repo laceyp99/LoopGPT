@@ -35,6 +35,10 @@ import time
 import os
 
 
+DEFAULT_PROVIDER = "Google"
+DEFAULT_MODEL = "gemini-3.1-flash-lite"
+
+
 def format_price_summary(price_value):
     """Format scalar or tiered pricing for dropdown labels."""
     if isinstance(price_value, (int, float)):
@@ -826,8 +830,8 @@ def create_demo(playback_status=None):
                             )
                         with gr.Column():
                             gr.Markdown("## Generation Parameters")
-                            default_provider = "Google"
-                            default_model = "gemini-3.1-flash-lite-preview"
+                            default_provider = DEFAULT_PROVIDER
+                            default_model = DEFAULT_MODEL
                             default_settings = get_model_settings(
                                 default_provider, default_model, False
                             )

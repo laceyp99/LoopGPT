@@ -26,6 +26,13 @@ def test_get_selected_soundfont_prefers_requested_choice(monkeypatch):
     assert selected_soundfont == "custom.sf2"
 
 
+def test_default_model_exists_in_model_metadata():
+    model_info = app.get_model_info()
+
+    assert app.DEFAULT_PROVIDER in model_info["models"]
+    assert app.DEFAULT_MODEL in model_info["models"][app.DEFAULT_PROVIDER]
+
+
 def test_rerender_current_audio_skips_existing_matching_soundfont(monkeypatch, tmp_path):
     midi_path = _write_binary_file(tmp_path / "loop.mid")
     audio_path = _write_binary_file(tmp_path / "loop.mp3")
