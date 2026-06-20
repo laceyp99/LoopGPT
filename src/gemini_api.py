@@ -78,13 +78,25 @@ def calc_cost(model, usage):
 def process_output(response):
     final_result = ""
     thinking_content = ""
-    for part in response.candidates[0].content.parts:
-        if not part.text:
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        raise ValueError("Google response did not include any candidates.")
+
+    content = getattr(candidates[0], "content", None)
+    parts = getattr(content, "parts", None) or []
+    if not parts:
+        raise ValueError("Google response did not include generated content parts.")
+
+    for part in parts:
+        text = getattr(part, "text", None)
+        if not text:
             continue
-        if part.thought:
-            thinking_content += part.text
+        if getattr(part, "thought", False):
+            thinking_content += text
         else:
-            final_result += part.text
+            final_result += text
+    if not final_result:
+        raise ValueError("Google response did not include final loop content.")
     return final_result, thinking_content
 
 
@@ -134,7 +146,9 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
         config=config
     )  
     content, thinking_content = process_output(response)
-    midi_loop: objects.Loop_G = response.parsed  
+    midi_loop: objects.Loop_G = response.parsed
+    if midi_loop is None:
+        raise ValueError("Google response did not include parsed loop content.")
     # Format into a message history for training and debugging purposes
     messages = [
         {"role": "system", "content": loop_prompt},
