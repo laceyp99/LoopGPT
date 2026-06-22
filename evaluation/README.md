@@ -30,6 +30,19 @@ results = evaluator.evaluate(
 )
 ```
 
+### Direct Script Safeguard
+
+Running `python evaluation/evaluator.py` directly is guarded because the
+example in that file starts a broad cloud evaluation across multiple paid
+providers. The script prints a warning and requires the exact confirmation
+phrase `RUN CLOUD EVALUATION` before it creates an `Evaluator` or starts any
+provider calls.
+
+Pressing Enter, sending no input, or typing anything else aborts the script
+without creating evaluation outputs. For smaller intentional runs, prefer the
+Python API examples above so you can choose the prompts, roots, models, and run
+name explicitly.
+
 ### Launch the Dashboard
 
 ```bash
