@@ -11,6 +11,22 @@ import sys
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+PRICE_PER_MILLION_TOKENS = 1000000
+# Gemini implicit cache storage is reported as roughly 5-6 minutes.
+IMPLICIT_CACHE_STORAGE_TTL_HOURS = 0.1
+
+
+def _cache_storage_cost(cached_tokens, storage_hour_price):
+    """Estimate Gemini implicit cache storage from cached tokens and assumed TTL."""
+    if not cached_tokens or not storage_hour_price:
+        return 0
+    return (
+        cached_tokens
+        * (storage_hour_price / PRICE_PER_MILLION_TOKENS)
+        * IMPLICIT_CACHE_STORAGE_TTL_HOURS
+    )
+
+
 def initialize_gemini_client():
     """Initializes and returns a Gemini client using API key from the .env file or the default key.
     
@@ -41,37 +57,33 @@ def calc_cost(model, usage):
     """
     model_info = utils.get_model_info()
     model_cost = model_info["models"]["Google"][model]["cost"]
-    cached = usage.cached_content_token_count or 0
+    prompt_tokens = usage.prompt_token_count or 0
+    cached = min(usage.cached_content_token_count or 0, prompt_tokens)
 
     # Models with tiered pricing switch rates once the prompt exceeds 200k tokens.
     if isinstance(model_cost["input"], dict):
-        if usage.prompt_token_count <= 200000:
-            input_cost = model_cost["input"]["<=200k"] / 1000000
-            output_cost = model_cost["output"]["<=200k"] / 1000000
-            cache_cost = model_cost["cache"]["<=200k"] / 1000000
+        if prompt_tokens <= 200000:
+            input_cost = model_cost["input"]["<=200k"] / PRICE_PER_MILLION_TOKENS
+            output_cost = model_cost["output"]["<=200k"] / PRICE_PER_MILLION_TOKENS
+            cache_cost = model_cost["cache"]["<=200k"] / PRICE_PER_MILLION_TOKENS
         else:
-            input_cost = model_cost["input"][">200k"] / 1000000
-            output_cost = model_cost["output"][">200k"] / 1000000
-            cache_cost = model_cost["cache"][">200k"] / 1000000
-        # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
-        storage_cost = model_cost["cache"]["storage hour"] * 0.1 if cached else 0
+            input_cost = model_cost["input"][">200k"] / PRICE_PER_MILLION_TOKENS
+            output_cost = model_cost["output"][">200k"] / PRICE_PER_MILLION_TOKENS
+            cache_cost = model_cost["cache"][">200k"] / PRICE_PER_MILLION_TOKENS
+        storage_cost = _cache_storage_cost(cached, model_cost["cache"]["storage hour"])
     else:
         # For other models, use the default cost structure
-        input_cost = model_cost["input"] / 1000000
-        output_cost = model_cost["output"] / 1000000
+        input_cost = model_cost["input"] / PRICE_PER_MILLION_TOKENS
+        output_cost = model_cost["output"] / PRICE_PER_MILLION_TOKENS
         # Check if cache cost is defined for the model
         if "cache" in model_cost:
-            cache_cost = model_cost["cache"]["text"] / 1000000
-            # Implicit caching storage is reported 5-6 minutes, so we can estimate storage cost per api call
-            storage_cost = model_cost["cache"]["storage hour"] * 0.1 if cached else 0
+            cache_cost = model_cost["cache"]["text"] / PRICE_PER_MILLION_TOKENS
+            storage_cost = _cache_storage_cost(cached, model_cost["cache"]["storage hour"])
         else:
             cache_cost = 0
             storage_cost = 0
     # Gemini doesn't subtract cached tokens from prompt tokens, so we need to do that here
-    if cached:
-        new_input_tokens = usage.prompt_token_count - cached
-    else:
-        new_input_tokens = usage.prompt_token_count
+    new_input_tokens = max(prompt_tokens - cached, 0)
     # Calculate total cost
     return (new_input_tokens * input_cost) + (usage.candidates_token_count * output_cost) + (cached * cache_cost) + storage_cost
 
