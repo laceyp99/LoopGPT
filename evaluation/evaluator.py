@@ -31,6 +31,35 @@ from src.utils import DURATION_KEYWORDS
 from src.midi_processing import loop_to_midi
 from evaluation.tests import scale_test, duration_test
 
+DIRECT_EVALUATION_CONFIRMATION = "RUN CLOUD EVALUATION"
+
+
+def confirm_direct_evaluation(input_func=input) -> bool:
+    """
+    Confirm before running the expensive direct-execution evaluation.
+
+    Returns:
+        bool: True when the exact confirmation phrase is entered.
+    """
+    print(
+        "WARNING: This direct evaluator run starts a broad cloud evaluation "
+        "across multiple paid providers."
+    )
+    print("It may be slow and may incur API costs.")
+    try:
+        response = input_func(
+            f"Type {DIRECT_EVALUATION_CONFIRMATION!r} to continue: "
+        )
+    except EOFError:
+        response = ""
+
+    if response != DIRECT_EVALUATION_CONFIRMATION:
+        print("Aborted. No evaluator was created and no provider calls were made.")
+        return False
+
+    return True
+
+
 class Evaluator:
     """
     Unified evaluation framework for testing MIDI loop generation across models.
@@ -973,6 +1002,9 @@ class Evaluator:
 
 
 if __name__ == "__main__":
+
+    if not confirm_direct_evaluation():
+        raise SystemExit(0)
 
     eval = Evaluator(output_dir="runs",temperature=0.0)
     eval.evaluate(
