@@ -54,14 +54,33 @@ def _write_generation_metadata(
     return gen_dir
 
 
-def test_save_generation_copies_files_and_persists_metadata(isolated_history_dir, monkeypatch, tmp_path):
+def test_create_generation_workspace_allocates_canonical_paths(isolated_history_dir, monkeypatch):
     monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
 
-    midi_source = _write_binary_file(tmp_path / "source.mid")
-    audio_source = _write_binary_file(tmp_path / "source.mp3")
+    workspace = history.create_generation_workspace()
 
-    gen_id = history.save_generation(
-        midi_path=str(midi_source),
+    gen_dir = isolated_history_dir / "gen_fixed_id"
+    assert workspace.id == "fixed_id"
+    assert workspace.directory == str(gen_dir)
+    assert workspace.midi_path == str(gen_dir / "loop.mid")
+    assert workspace.audio_path == str(gen_dir / "loop.mp3")
+    assert workspace.messages_path == str(gen_dir / "messages.json")
+    assert workspace.metadata_path == str(gen_dir / "metadata.json")
+    assert gen_dir.exists()
+
+
+def test_finalize_generation_persists_metadata_for_direct_written_artifacts(
+    isolated_history_dir, monkeypatch
+):
+    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
+
+    workspace = history.create_generation_workspace()
+    _write_binary_file(Path(workspace.midi_path), b"midi")
+    _write_binary_file(Path(workspace.audio_path), b"audio")
+    Path(workspace.messages_path).write_text("[]", encoding="utf-8")
+
+    metadata = history.finalize_generation(
+        workspace=workspace,
         prompt="warm rhodes loop",
         key="D",
         scale="minor",
@@ -69,18 +88,17 @@ def test_save_generation_copies_files_and_persists_metadata(isolated_history_dir
         provider="OpenAI",
         temperature=0.3,
         cost=1.5,
-        audio_path=str(audio_source),
         soundfont="FM-Piano1 20190916.sf2",
     )
 
     gen_dir = isolated_history_dir / "gen_fixed_id"
-    metadata = history.get_generation(gen_id)
+    loaded_metadata = history.get_generation("fixed_id")
 
-    assert gen_id == "fixed_id"
     assert gen_dir.exists()
-    assert (gen_dir / "loop.mid").read_bytes() == midi_source.read_bytes()
-    assert (gen_dir / "loop.mp3").read_bytes() == audio_source.read_bytes()
-    assert metadata is not None
+    assert (gen_dir / "loop.mid").read_bytes() == b"midi"
+    assert (gen_dir / "loop.mp3").read_bytes() == b"audio"
+    assert (gen_dir / "messages.json").read_text(encoding="utf-8") == "[]"
+    assert metadata.id == "fixed_id"
     assert metadata.prompt == "warm rhodes loop"
     assert metadata.key == "D"
     assert metadata.scale == "minor"
@@ -88,7 +106,54 @@ def test_save_generation_copies_files_and_persists_metadata(isolated_history_dir
     assert metadata.provider == "OpenAI"
     assert metadata.temperature == 0.3
     assert metadata.cost == 1.5
+    assert metadata.midi_path == str(gen_dir / "loop.mid")
+    assert metadata.audio_path == str(gen_dir / "loop.mp3")
+    assert metadata.messages_path == str(gen_dir / "messages.json")
     assert metadata.soundfont == "FM-Piano1 20190916.sf2"
+    assert loaded_metadata == metadata
+
+
+def test_finalize_generation_requires_direct_written_midi(isolated_history_dir, monkeypatch):
+    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
+    workspace = history.create_generation_workspace()
+
+    with pytest.raises(FileNotFoundError):
+        history.finalize_generation(
+            workspace=workspace,
+            prompt="warm rhodes loop",
+            key="D",
+            scale="minor",
+            model="gpt-4o-mini",
+            provider="OpenAI",
+            temperature=0.3,
+        )
+
+    assert not (isolated_history_dir / "gen_fixed_id" / "metadata.json").exists()
+
+
+def test_cleanup_generation_workspace_removes_only_unfinalized_directories(
+    isolated_history_dir, monkeypatch
+):
+    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
+    workspace = history.create_generation_workspace()
+
+    assert history.cleanup_generation_workspace(workspace) is True
+    assert not (isolated_history_dir / "gen_fixed_id").exists()
+
+    workspace = history.create_generation_workspace()
+    _write_binary_file(Path(workspace.midi_path), b"midi")
+    history.finalize_generation(
+        workspace=workspace,
+        prompt="warm rhodes loop",
+        key="D",
+        scale="minor",
+        model="gpt-4o-mini",
+        provider="OpenAI",
+        temperature=0.3,
+    )
+
+    assert history.cleanup_generation_workspace(workspace) is False
+    assert (isolated_history_dir / "gen_fixed_id").exists()
 
 
 def test_update_generation_audio_copies_audio_and_updates_soundfont(
@@ -96,12 +161,14 @@ def test_update_generation_audio_copies_audio_and_updates_soundfont(
 ):
     monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
 
-    midi_source = _write_binary_file(tmp_path / "source.mid")
     original_audio = _write_binary_file(tmp_path / "source.mp3", b"old-audio")
     updated_audio = _write_binary_file(tmp_path / "updated.mp3", b"new-audio")
 
-    gen_id = history.save_generation(
-        midi_path=str(midi_source),
+    workspace = history.create_generation_workspace()
+    _write_binary_file(Path(workspace.midi_path), b"midi")
+    _write_binary_file(Path(workspace.audio_path), original_audio.read_bytes())
+    metadata = history.finalize_generation(
+        workspace=workspace,
         prompt="warm rhodes loop",
         key="D",
         scale="minor",
@@ -109,16 +176,15 @@ def test_update_generation_audio_copies_audio_and_updates_soundfont(
         provider="OpenAI",
         temperature=0.3,
         cost=1.5,
-        audio_path=str(original_audio),
         soundfont="old.sf2",
     )
 
     updated = history.update_generation_audio(
-        gen_id,
+        metadata.id,
         str(updated_audio),
         soundfont="new.sf2",
     )
-    metadata = history.get_generation(gen_id)
+    metadata = history.get_generation(metadata.id)
     gen_dir = isolated_history_dir / "gen_fixed_id"
 
     assert updated is not None

@@ -9,6 +9,7 @@ Storage structure:
         gen_<timestamp>/
             loop.mid        # Generated MIDI file
             loop.mp3        # Rendered audio (if available)
+            messages.json   # Provider message history (if available)
             metadata.json   # Generation parameters and info
 """
 
@@ -50,6 +51,7 @@ class GenerationMetadata(BaseModel):
         cost: API cost if available.
         midi_path: Path to the MIDI file.
         audio_path: Path to the audio file (None if synthesis failed).
+        messages_path: Path to the provider message history file.
         soundfont: SoundFont filename used to render the audio file.
     """
 
@@ -64,7 +66,19 @@ class GenerationMetadata(BaseModel):
     cost: Optional[float] = None
     midi_path: str
     audio_path: Optional[str] = None
+    messages_path: Optional[str] = None
     soundfont: Optional[str] = None
+
+
+class GenerationWorkspace(BaseModel):
+    """Canonical artifact paths for a generation in progress."""
+
+    id: str
+    directory: str
+    midi_path: str
+    audio_path: str
+    messages_path: str
+    metadata_path: str
 
 
 def _ensure_generations_dir() -> None:
@@ -95,6 +109,19 @@ def _get_generation_dir(gen_id: str) -> str:
     return os.path.join(GENERATIONS_DIR, f"gen_{gen_id}")
 
 
+def _build_workspace(gen_id: str) -> GenerationWorkspace:
+    """Build the canonical path set for a generation ID."""
+    gen_dir = _get_generation_dir(gen_id)
+    return GenerationWorkspace(
+        id=gen_id,
+        directory=gen_dir,
+        midi_path=os.path.join(gen_dir, "loop.mid"),
+        audio_path=os.path.join(gen_dir, "loop.mp3"),
+        messages_path=os.path.join(gen_dir, "messages.json"),
+        metadata_path=os.path.join(gen_dir, "metadata.json"),
+    )
+
+
 def get_provider_for_model(model: str, model_info: dict) -> str:
     """Determine the provider for a given model name.
 
@@ -111,8 +138,32 @@ def get_provider_for_model(model: str, model_info: dict) -> str:
     return "Ollama"  # Default to Ollama for local models
 
 
-def save_generation(
-    midi_path: str,
+def create_generation_workspace() -> GenerationWorkspace:
+    """Create a generation directory and return its canonical artifact paths.
+
+    Returns:
+        GenerationWorkspace: The newly allocated generation workspace.
+
+    Raises:
+        RuntimeError: If a unique generation ID cannot be allocated.
+    """
+    _ensure_generations_dir()
+
+    for _ in range(100):
+        gen_id = _generate_id()
+        workspace = _build_workspace(gen_id)
+        try:
+            os.makedirs(workspace.directory)
+            logger.info(f"Created generation workspace: {workspace.directory}")
+            return workspace
+        except FileExistsError:
+            continue
+
+    raise RuntimeError("Unable to allocate a unique generation workspace")
+
+
+def finalize_generation(
+    workspace: GenerationWorkspace,
     prompt: str,
     key: str,
     scale: str,
@@ -120,16 +171,12 @@ def save_generation(
     provider: str,
     temperature: float,
     cost: Optional[float] = None,
-    audio_path: Optional[str] = None,
     soundfont: Optional[str] = None,
-) -> str:
-    """Save a generation to history.
-
-    Copies the MIDI and audio files to a timestamped directory
-    and saves metadata.
+) -> GenerationMetadata:
+    """Finalize a generation after its artifacts have been written.
 
     Args:
-        midi_path: Path to the generated MIDI file.
+        workspace: Generation workspace with canonical artifact paths.
         prompt: User's description/prompt.
         key: Musical key.
         scale: Major or minor.
@@ -137,32 +184,20 @@ def save_generation(
         provider: API provider.
         temperature: Temperature setting.
         cost: API cost (optional).
-        audio_path: Path to rendered audio file (optional).
         soundfont: SoundFont filename used to render the audio file (optional).
 
     Returns:
-        str: The generation ID.
+        GenerationMetadata: The persisted metadata.
     """
-    _ensure_generations_dir()
+    if not os.path.exists(workspace.midi_path):
+        raise FileNotFoundError(f"Missing MIDI file for generation: {workspace.midi_path}")
 
-    # Generate unique ID and create directory
-    gen_id = _generate_id()
-    gen_dir = _get_generation_dir(gen_id)
-    os.makedirs(gen_dir)
-
-    # Copy MIDI file
-    dest_midi_path = os.path.join(gen_dir, "loop.mid")
-    shutil.copy2(midi_path, dest_midi_path)
-
-    # Copy audio file if available
-    dest_audio_path = None
-    if audio_path and os.path.exists(audio_path):
-        dest_audio_path = os.path.join(gen_dir, "loop.mp3")
-        shutil.copy2(audio_path, dest_audio_path)
+    audio_path = workspace.audio_path if os.path.exists(workspace.audio_path) else None
+    messages_path = workspace.messages_path if os.path.exists(workspace.messages_path) else None
 
     # Create metadata
     metadata = GenerationMetadata(
-        id=gen_id,
+        id=workspace.id,
         timestamp=datetime.now(),
         prompt=prompt,
         key=key,
@@ -171,22 +206,45 @@ def save_generation(
         provider=provider,
         temperature=temperature,
         cost=cost,
-        midi_path=dest_midi_path,
-        audio_path=dest_audio_path,
-        soundfont=soundfont,
+        midi_path=workspace.midi_path,
+        audio_path=audio_path,
+        messages_path=messages_path,
+        soundfont=soundfont if audio_path else None,
     )
 
     # Save metadata
-    metadata_path = os.path.join(gen_dir, "metadata.json")
-    with open(metadata_path, "w") as f:
+    with open(workspace.metadata_path, "w") as f:
         f.write(metadata.model_dump_json(indent=2))
 
-    logger.info(f"Saved generation {gen_id} to history")
+    logger.info(f"Finalized generation {workspace.id} in history")
 
     # Enforce generation limit
     _enforce_limit()
 
-    return gen_id
+    return metadata
+
+
+def cleanup_generation_workspace(workspace: GenerationWorkspace) -> bool:
+    """Remove an unfinalized generation workspace.
+
+    Finalized generation directories are left intact so cleanup can be called
+    from broad exception handlers without deleting visible history entries.
+
+    Args:
+        workspace: Generation workspace to remove.
+
+    Returns:
+        bool: True if the workspace was removed, False otherwise.
+    """
+    if os.path.exists(workspace.metadata_path):
+        return False
+
+    if not os.path.isdir(workspace.directory):
+        return False
+
+    shutil.rmtree(workspace.directory)
+    logger.info(f"Removed unfinalized generation workspace: {workspace.directory}")
+    return True
 
 
 def update_generation_audio(
