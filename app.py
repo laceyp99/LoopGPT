@@ -18,7 +18,9 @@ from src.audio import (
     get_default_soundfont,
 )
 from src.history import (
-    save_generation,
+    create_generation_workspace,
+    finalize_generation,
+    cleanup_generation_workspace,
     load_history,
     get_generation,
     delete_generation,
@@ -32,6 +34,7 @@ from datetime import datetime
 from mido import MidiFile
 import gradio as gr
 import time
+import json
 import os
 
 
@@ -397,6 +400,7 @@ def run_loop(
              show progress and keep cancel visible, final yield contains the generated MIDI,
              audio, and persisted audio metadata for rerendering.
     """
+    workspace = None
     try:
         # If the user provided API keys, update environment variables
         if openai_key and openai_key.strip() != "":
@@ -435,6 +439,8 @@ def run_loop(
         print(f"Total cost: {total_cost}")
 
         yield None, None, None, "Processing MIDI...", gr.update(visible=True), None, None, None
+        workspace = create_generation_workspace()
+
         # Convert the generated loop into a MIDI file
         midi = MidiFile()
         model_info = get_model_info()
@@ -443,20 +449,27 @@ def run_loop(
             loop,
             times_as_string=model_choice in model_info["models"]["Google"].keys(),
         )
-        output_path = "output.mid"
+        output_path = workspace.midi_path
         midi.save(output_path)
 
         # Render audio and visualization from MIDI
         yield None, None, None, "Rendering Audio...", gr.update(visible=True), None, None, None
-        audio_path = midi_to_mp3(output_path, soundfont_name=selected_soundfont)
+        audio_path = midi_to_mp3(
+            output_path,
+            output_path=workspace.audio_path,
+            soundfont_name=selected_soundfont,
+        )
         visualization = visualize_midi_plotly(midi)
+
+        with open(workspace.messages_path, "w", encoding="utf-8") as messages_file:
+            json.dump(messages, messages_file, indent=2)
 
         # Determine provider for history
         provider = get_provider_for_model(model_choice, model_info)
 
         # Save to history
-        gen_id = save_generation(
-            midi_path=output_path,
+        saved_generation = finalize_generation(
+            workspace=workspace,
             prompt=description,
             key=key,
             scale=scale,
@@ -464,16 +477,15 @@ def run_loop(
             provider=provider,
             temperature=temp,
             cost=total_cost,
-            audio_path=audio_path,
             soundfont=selected_soundfont if audio_path else None,
         )
-        saved_generation = get_generation(gen_id)
-        persisted_audio_path = saved_generation.audio_path if saved_generation else audio_path
-        saved_soundfont = saved_generation.soundfont if saved_generation else selected_soundfont
+        gen_id = saved_generation.id
+        persisted_audio_path = saved_generation.audio_path
+        saved_soundfont = saved_generation.soundfont
 
         # Final yield with the completed result and hide cancel button
         yield (
-            output_path,
+            saved_generation.midi_path,
             persisted_audio_path,
             visualization,
             "",
@@ -484,6 +496,8 @@ def run_loop(
         )
 
     except Exception as e:
+        if workspace is not None:
+            cleanup_generation_workspace(workspace)
         # Catch any exception and yield the error message, hide cancel button
         yield None, None, None, str(e), gr.update(visible=False), None, None, None
 
