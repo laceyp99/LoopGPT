@@ -104,6 +104,19 @@ def get_loop_prompt():
     with open(os.path.join("Prompts", "loop gen.txt"), "r") as prompt_file:
         return prompt_file.read()
 
+
+def split_reported_cache_tokens(total_tokens, cached_tokens):
+    """Return uncached and cached token counts from provider-reported usage.
+
+    Cache savings should come from actual provider usage fields, not estimated
+    cache behavior. Malformed negative values are ignored, and cached tokens are
+    capped to the reported total so input-token costs cannot go negative.
+    """
+    total = max(total_tokens or 0, 0)
+    cached = min(max(cached_tokens or 0, 0), total)
+    return total - cached, cached
+
+
 def pitch_class_to_note(pc):
     """Convert a pitch class integer (0-11) to a note name.
 

@@ -53,8 +53,10 @@ def calc_price(model, response):
 
     # Determine cached tokens if available (Responses API structure)
     if (hasattr(usage, "input_tokens_details") and usage.input_tokens_details and hasattr(usage.input_tokens_details, "cached_tokens")):
-        cached_tokens = usage.input_tokens_details.cached_tokens or 0
-        new_input_tokens = usage.input_tokens - cached_tokens
+        new_input_tokens, cached_tokens = utils.split_reported_cache_tokens(
+            usage.input_tokens,
+            usage.input_tokens_details.cached_tokens,
+        )
     else:
         new_input_tokens = usage.input_tokens
         cached_tokens = 0
