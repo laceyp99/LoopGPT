@@ -41,6 +41,54 @@ def test_openai_extract_reasoning_ignores_missing_summary():
     assert openai_api.extract_reasoning(response) == ""
 
 
+def test_openai_calc_price_uses_reported_cached_tokens():
+    response = SimpleNamespace(
+        usage=SimpleNamespace(
+            input_tokens=1000,
+            output_tokens=200,
+            input_tokens_details=SimpleNamespace(cached_tokens=400),
+        )
+    )
+
+    cost = openai_api.calc_price("gpt-4o-mini", response)
+
+    expected = (600 * 0.15 / 1_000_000) + (400 * 0.075 / 1_000_000) + (200 * 0.60 / 1_000_000)
+    assert cost == pytest.approx(expected)
+
+
+def test_openai_calc_price_clamps_malformed_cached_tokens():
+    response = SimpleNamespace(
+        usage=SimpleNamespace(
+            input_tokens=100,
+            output_tokens=0,
+            input_tokens_details=SimpleNamespace(cached_tokens=150),
+        )
+    )
+
+    cost = openai_api.calc_price("gpt-4o-mini", response)
+
+    assert cost == pytest.approx(100 * 0.075 / 1_000_000)
+
+
+def test_claude_calc_price_uses_reported_cache_creation_and_reads():
+    output = {
+        "input_tokens": 1000,
+        "output_tokens": 200,
+        "cache_creation": 300,
+        "cache_read": 400,
+    }
+
+    cost = claude_api.calc_price("claude-sonnet-4-5", output)
+
+    expected = (
+        (1000 * 3.00 / 1_000_000)
+        + (200 * 15.00 / 1_000_000)
+        + (300 * 3.75 / 1_000_000)
+        + (400 * 0.30 / 1_000_000)
+    )
+    assert cost == pytest.approx(expected)
+
+
 def test_gemini_process_output_rejects_empty_candidates():
     response = SimpleNamespace(candidates=[])
 
