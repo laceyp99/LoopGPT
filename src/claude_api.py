@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s -
 logger = logging.getLogger(__name__)
 
 ALWAYS_ON_ADAPTIVE_THINKING_MODELS = {"claude-fable-5", "claude-mythos-5"}
+ANTHROPIC_CACHE_CONTROL_MIN_CHARS = 4096
 
 def initialize_anthropic_client():
     """
@@ -50,6 +51,14 @@ def calc_price(model, output):
                     
         total_price = (output["input_tokens"] * input_cost) + (output["output_tokens"] * output_cost) + (output["cache_creation"] * cached_5min) + (output["cache_read"] * cache_hits)
         return total_price
+
+
+def build_system_prompt_block(loop_prompt):
+    """Build Anthropic's system text block, marking only likely-cacheable prompts."""
+    block = {"type": "text", "text": loop_prompt}
+    if len(loop_prompt) >= ANTHROPIC_CACHE_CONTROL_MIN_CHARS:
+        block["cache_control"] = {"type": "ephemeral"}
+    return block
 
 def process_streaming_response(completion):
     # Extract text, tool JSON, and token usage from the streaming response.
@@ -123,7 +132,7 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     api_params = {
         "model": model,
         "max_tokens": model_config["max_tokens"],
-        "system": [{"type": "text", "text": loop_prompt, "cache_control": {"type": "ephemeral"}}],
+        "system": [build_system_prompt_block(loop_prompt)],
         "messages": [{"role": "user", "content": prompt}],
         "tools": tools,
         "tool_choice": {"type": "tool", "name": "build_MIDI_loop"},
