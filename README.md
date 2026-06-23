@@ -121,6 +121,12 @@ The pytest suite is intentionally local and hermetic:
 5. **Inspect JSON logs**  
    - `loop.json` records the full message exchange and reasoning
 
+## Cost and Prompt Caching
+
+LoopGPT estimates provider costs from the token usage fields returned by each API. Prompt-cache savings, when a provider reports them, are included in those estimates.
+
+Normal LoopGPT generations should not be expected to benefit much from prompt caching. The reusable system prompt is relatively short, and each request includes a variable user prompt, so typical requests are below many provider cache thresholds. Avoid padding prompts solely to force cache eligibility; it adds cost and can make generations less predictable.
+
 ## Evaluation Framework
 
 The evaluation framework lives in the `evaluation/` directory and is documented separately in [`evaluation/README.md`](evaluation/README.md).
