@@ -63,9 +63,10 @@ def calc_cost(model, usage):
         else:
             cache_cost = 0
     # Gemini reports cached tokens separately but leaves them in prompt tokens.
-    # Only charge non-cached prompt tokens at the standard input rate, and guard
-    # against malformed usage payloads that report more cached tokens than input.
-    new_input_tokens = max((usage.prompt_token_count or 0) - cached, 0)
+    new_input_tokens, cached = utils.split_reported_cache_tokens(
+        usage.prompt_token_count,
+        cached,
+    )
     # Calculate total cost
     return (new_input_tokens * input_cost) + (usage.candidates_token_count * output_cost) + (cached * cache_cost)
 

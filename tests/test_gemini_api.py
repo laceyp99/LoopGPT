@@ -27,7 +27,7 @@ def test_calc_cost_clamps_cached_tokens_to_avoid_negative_input_cost():
 
     cost = gemini_api.calc_cost("gemini-2.5-pro", usage)
 
-    assert cost == pytest.approx(150 * 0.125 / 1_000_000)
+    assert cost == pytest.approx(100 * 0.125 / 1_000_000)
 
 
 def test_calc_cost_handles_models_without_cache_pricing():

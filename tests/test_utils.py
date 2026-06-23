@@ -104,6 +104,15 @@ def test_beats_to_duration_name_formats_standard_and_nonstandard_lengths(beats, 
     assert utils.beats_to_duration_name(beats) == expected
 
 
+def test_split_reported_cache_tokens_uses_reported_counts():
+    assert utils.split_reported_cache_tokens(1000, 400) == (600, 400)
+
+
+def test_split_reported_cache_tokens_clamps_malformed_counts():
+    assert utils.split_reported_cache_tokens(100, 150) == (0, 100)
+    assert utils.split_reported_cache_tokens(100, -20) == (100, 0)
+
+
 def test_scale_returns_expected_note_family_for_c_major():
     scale_notes = utils.scale("C", "major")
 
