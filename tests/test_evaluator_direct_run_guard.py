@@ -17,7 +17,7 @@ def test_direct_evaluator_run_aborts_before_creating_outputs(
     with pytest.raises(SystemExit) as exc_info:
         runpy.run_path(str(evaluator_path), run_name="__main__")
 
-    assert exc_info.value.code == 0
+    assert exc_info.value.code == 1
     assert not (tmp_path / "runs" / "run.log").exists()
 
 
@@ -34,3 +34,12 @@ def test_direct_evaluation_confirmation_requires_exact_phrase():
         )
         is True
     )
+
+
+def test_direct_evaluation_confirmation_handles_closed_stdin():
+    from evaluation.evaluator import confirm_direct_evaluation
+
+    def raise_eof(_prompt):
+        raise EOFError
+
+    assert confirm_direct_evaluation(raise_eof) is False

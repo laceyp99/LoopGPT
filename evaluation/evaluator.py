@@ -1004,7 +1004,7 @@ class Evaluator:
 if __name__ == "__main__":
 
     if not confirm_direct_evaluation():
-        raise SystemExit(0)
+        raise SystemExit(1)
 
     eval = Evaluator(output_dir="runs",temperature=0.0)
     eval.evaluate(
