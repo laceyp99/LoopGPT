@@ -119,7 +119,7 @@ The pytest suite is intentionally local and hermetic:
    - History entries remember which SoundFont produced the saved audio preview
 
 5. **Inspect JSON logs**  
-   - `loop.json` records the full message exchange and reasoning
+   - Each saved generation includes `messages.json` with the full message exchange and reasoning
 
 ## Cost and Prompt Caching
 
@@ -177,7 +177,8 @@ LoopGPT/
 │   └── gen_<timestamp>/
 │       ├── loop.mid            # Generated MIDI file
 │       ├── loop.mp3            # Rendered audio (if playback configured)
-│       └── metadata.json       # Generation parameters, audio path, and saved SoundFont info
+│       ├── messages.json       # Provider message history
+│       └── metadata.json       # Generation parameters, artifact paths, and saved SoundFont info
 │
 ├── runs/                       # Evaluation run outputs (created by evaluator)
 │   ├── run.log                 # Evaluation log file
@@ -187,10 +188,7 @@ LoopGPT/
 │       ├── analysis/           # Exported dashboard charts (HTML)
 │       └── results/            # Per-model, per-prompt, per-key test results
 │
-├── soundfonts/                 # Bundled/default and user-added SoundFont (.sf2) files for playback
-│
-├── loop.json                   # JSON log of the last MIDI-generation conversation
-└── output.mid                  # The most recently generated MIDI file
+└── soundfonts/                 # Bundled/default and user-added SoundFont (.sf2) files for playback
 ```
 
 ## Limitations

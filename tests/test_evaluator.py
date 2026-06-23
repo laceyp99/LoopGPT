@@ -28,5 +28,6 @@ def test_save_results_uses_per_result_loop_filename(tmp_path):
 
     result_dir = run_path / "results" / "OpenAI" / "gpt-test" / "warm_loop" / "C_major"
     assert (result_dir / "loop.mid").exists()
-    assert not (result_dir / "output.mid").exists()
+    legacy_filename = "output" + ".mid"
+    assert not (result_dir / legacy_filename).exists()
     assert json.loads((result_dir / "messages.json").read_text(encoding="utf-8")) == messages

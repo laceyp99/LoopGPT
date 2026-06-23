@@ -183,7 +183,7 @@ runs/
             └── gpt-4o-mini/
                 └── an_arpeggiator_using_only_quarter_notes/
                     ├── C_major/
-                    │   ├── output.mid         # Generated MIDI file
+                    │   ├── loop.mid           # Generated MIDI file
                     │   ├── messages.json      # Chat history (for fine-tuning)
                     │   └── test_results.json  # Individual test results
                     └── C_minor/
@@ -196,7 +196,7 @@ When using `test_reasoning`, variation subfolders are created:
 # With test_reasoning=True (effort levels as subfolders)
 C_major/
 ├── none/                   # No reasoning effort
-│   ├── output.mid
+│   ├── loop.mid
 │   ├── messages.json
 │   └── test_results.json
 ├── low/
