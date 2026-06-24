@@ -117,6 +117,4 @@ def loop_gen(prompt, model, temp=0.0):
     if thinking:
         messages.append({"role": "assistant", "content": thinking})
     messages.append({"role": "assistant", "content": str(midi_loop)})
-    # Save messages for debugging/training purposes
-    utils.save_messages_to_json(messages, filename="loop")
     return midi_loop, messages, 0

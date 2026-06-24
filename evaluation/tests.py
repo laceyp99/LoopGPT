@@ -246,6 +246,6 @@ def run_midi_tests(midi_data, root, scale, duration):
 
 if __name__ == "__main__":
     # Single test example
-    test_path = "/path/to/output.mid"
+    test_path = "/path/to/loop.mid"
     midi = MidiFile(test_path)
     print(f"Test Results: {run_midi_tests(midi, 'C', 'major', 'quarter')}")

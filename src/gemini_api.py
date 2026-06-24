@@ -154,6 +154,4 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=None, effort=None):
         messages.insert(2, {"role": "assistant", "content": thinking_content})
     # Calculate the cost of the generation
     cost = calc_cost(model, response.usage_metadata)
-    # Save the messages to a JSON file for debugging and training purposes
-    utils.save_messages_to_json(messages, filename="loop")
     return midi_loop, messages, cost

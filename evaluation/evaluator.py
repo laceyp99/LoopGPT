@@ -868,7 +868,7 @@ class Evaluator:
 
         # Save MIDI
         if midi_data is not None:
-            midi_path = result_dir / "output.mid"
+            midi_path = result_dir / "loop.mid"
             midi_data.save(str(midi_path))
 
         # Save messages (for fine-tuning)

@@ -136,5 +136,4 @@ def loop_gen(prompt, model, temp=0.0, effort=None):
 
     midi_loop = response.output_parsed
     cost = calc_price(model, response)
-    utils.save_messages_to_json(messages, filename="loop")
     return midi_loop, messages, cost

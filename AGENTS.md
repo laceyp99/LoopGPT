@@ -28,7 +28,7 @@ Useful evaluation/debug commands:
 ```bash
 python evaluation/analysis.py
 python evaluation/analysis.py <path-to-run-directory>
-python -c "from evaluation.tests import scale_test, duration_test; from mido import MidiFile; midi = MidiFile('output.mid'); print(scale_test(midi, 'C', 'major')); print(duration_test(midi, 'quarter'))"
+python -c "from evaluation.tests import scale_test, duration_test; from mido import MidiFile; midi = MidiFile('generations/gen_<id>/loop.mid'); print(scale_test(midi, 'C', 'major')); print(duration_test(midi, 'quarter'))"
 ```
 
 Avoid launching large automated evaluation runs or broad multi-model fan-outs without approval.
@@ -64,8 +64,7 @@ LoopGPT generates 4-bar MIDI loops from natural-language prompts via a Gradio UI
 ## Data and Outputs
 
 - **Model list**: [model_list.json](model_list.json) is the source of truth for provider metadata.
-- **Latest session**: [loop.json](loop.json) stores the latest loop-generation message history.
-- **Generations**: `generations/` contains recent UI outputs with `loop.mid` and `metadata.json`.
+- **Generations**: `generations/` contains recent UI outputs with `loop.mid`, optional `loop.mp3`, `messages.json`, and `metadata.json`.
 
 Evaluation runs produce a structured directory with `config.json`, `summary.json`, generated MIDI files, message logs, and per-run test results.
 

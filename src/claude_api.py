@@ -179,6 +179,4 @@ def loop_gen(prompt, model, temp=0.0, use_thinking=False, effort="low"):
     messages.append({"role": "assistant", "content": output["loop"]})
     
     cost = calc_price(model, output)
-    # Save messages for debugging/training purposes
-    utils.save_messages_to_json(messages, filename="loop")
     return loop, messages, cost
