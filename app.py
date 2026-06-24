@@ -401,6 +401,7 @@ def run_loop(
              audio, and persisted audio metadata for rerendering.
     """
     workspace = None
+    finalized = False
     try:
         # If the user provided API keys, update environment variables
         if openai_key and openai_key.strip() != "":
@@ -479,6 +480,7 @@ def run_loop(
             cost=total_cost,
             soundfont=selected_soundfont if audio_path else None,
         )
+        finalized = True
         gen_id = saved_generation.id
         persisted_audio_path = saved_generation.audio_path
         saved_soundfont = saved_generation.soundfont
@@ -496,10 +498,11 @@ def run_loop(
         )
 
     except Exception as e:
-        if workspace is not None:
-            cleanup_generation_workspace(workspace)
         # Catch any exception and yield the error message, hide cancel button
         yield None, None, None, str(e), gr.update(visible=False), None, None, None
+    finally:
+        if workspace is not None and not finalized:
+            cleanup_generation_workspace(workspace)
 
 
 def toggle_history_sidebar(is_visible):

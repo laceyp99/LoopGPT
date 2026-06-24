@@ -75,6 +75,59 @@ def test_run_loop_persists_artifacts_in_generation_workspace(monkeypatch, tmp_pa
     assert metadata.messages_path == str(gen_dir / "messages.json")
 
 
+def test_run_loop_cleans_workspace_when_generator_closes_before_finalization(
+    monkeypatch, tmp_path, sample_loop
+):
+    generations_dir = tmp_path / "generations"
+    monkeypatch.setattr(history, "GENERATIONS_DIR", str(generations_dir))
+    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
+    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
+    monkeypatch.setattr(
+        app.runs,
+        "generate_midi",
+        lambda **kwargs: (sample_loop, [{"role": "user", "content": "prompt"}], 0.25),
+    )
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "custom.sf2")
+    monkeypatch.setattr(
+        app,
+        "get_model_info",
+        lambda: {
+            "models": {
+                "Google": {},
+                "OpenAI": {"gpt-test": {}},
+            }
+        },
+    )
+
+    def fail_midi_to_mp3(*args, **kwargs):
+        raise AssertionError("midi_to_mp3 should not run before this cancellation point")
+
+    monkeypatch.setattr(app, "midi_to_mp3", fail_midi_to_mp3)
+    monkeypatch.setattr(app, "visualize_midi_plotly", lambda midi: "viz")
+
+    generator = app.run_loop(
+        key="C",
+        scale="Major",
+        description="warm rhodes loop",
+        temp=0.3,
+        model_choice="gpt-test",
+        use_thinking=False,
+        effort="low",
+        soundfont_choice="custom.sf2",
+        openai_key="",
+        gemini_key="",
+        claude_key="",
+    )
+
+    assert next(generator)[3] == "Working on it..."
+    assert next(generator)[3] == "Processing MIDI..."
+    assert next(generator)[3] == "Rendering Audio..."
+
+    generator.close()
+
+    assert not (generations_dir / "gen_fixed_id").exists()
+
+
 def test_get_selected_soundfont_prefers_requested_choice(monkeypatch):
     monkeypatch.setattr(
         app,
