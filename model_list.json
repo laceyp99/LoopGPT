@@ -277,6 +277,18 @@
             }
         },
         "Anthropic": {
+            "claude-fable-5":{
+                "extended_thinking": false,
+                "effort_options": ["low", "medium", "high", "xhigh", "max"],
+                "max_tokens": 128000,
+                "cost": {
+                    "input": 10.00,
+                    "5m cache input": 12.50,
+                    "1h cache input": 20.00,
+                    "cache hits/refreshes": 1.00,
+                    "output": 50.00
+                }
+            },
             "claude-sonnet-5":{
                 "extended_thinking": false,
                 "effort_options": ["low", "medium", "high", "xhigh", "max"],
