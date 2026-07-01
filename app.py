@@ -881,7 +881,7 @@ def create_demo(playback_status=None):
                             )
                     with gr.Row():
                         prog_button = gr.Button("Generate Loop", variant="primary")
-                        cancel_button = gr.Button("Stop Waiting", variant="stop", visible=False)
+                        stop_waiting_button = gr.Button("Stop Waiting", variant="stop", visible=False)
 
                     # Output section
                     with gr.Row():
@@ -966,14 +966,14 @@ def create_demo(playback_status=None):
                             audio_output,
                             vis_output,
                             error_message,
-                            cancel_button,
+                            stop_waiting_button,
                             current_generation_id,
                             current_saved_soundfont,
                             current_audio_path,
                         ],
                     )
                     # Stop Waiting detaches the UI from the API response wait and hides itself.
-                    cancel_button.click(
+                    stop_waiting_button.click(
                         fn=lambda: (
                             None,
                             None,
@@ -989,7 +989,7 @@ def create_demo(playback_status=None):
                             audio_output,
                             vis_output,
                             error_message,
-                            cancel_button,
+                            stop_waiting_button,
                             current_generation_id,
                             current_saved_soundfont,
                             current_audio_path,
@@ -1139,7 +1139,7 @@ def create_demo(playback_status=None):
             outputs=[history_dropdown, history_html],
         )
 
-        # Also refresh history after generation completes (when cancel button becomes hidden)
+        # Also refresh history after generation completes (when the stop-waiting button becomes hidden)
         # We do this by having the generation flow trigger a refresh
         gen_event.then(
             get_rerender_button_update,

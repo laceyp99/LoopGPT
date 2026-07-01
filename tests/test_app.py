@@ -100,7 +100,7 @@ def test_run_loop_cleans_workspace_when_generator_closes_before_finalization(
     )
 
     def fail_midi_to_mp3(*args, **kwargs):
-        raise AssertionError("midi_to_mp3 should not run before this cancellation point")
+        raise AssertionError("midi_to_mp3 should not run before this stop-waiting point")
 
     monkeypatch.setattr(app, "midi_to_mp3", fail_midi_to_mp3)
     monkeypatch.setattr(app, "visualize_midi_plotly", lambda midi: "viz")
