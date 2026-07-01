@@ -3,7 +3,6 @@ This file contains utility functions for handling the creation of MIDI objects, 
 """
 
 import plotly.graph_objects as go
-import numpy as np
 import json
 import mido
 import os
@@ -14,35 +13,77 @@ NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 # Enharmonic note name variants per pitch class (for scale spelling, validation, etc.)
 ENHARMONIC_NOTE_NAMES = [
-    ["B#", "C", "Dbb"],   # 0
+    ["B#", "C", "Dbb"],  # 0
     ["C#", "Db", "B##"],  # 1
     ["D", "C##", "Ebb"],  # 2
     ["D#", "Eb", "Fbb"],  # 3
-    ["E", "Fb", "D##"],   # 4
-    ["E#", "F", "Gbb"],   # 5
+    ["E", "Fb", "D##"],  # 4
+    ["E#", "F", "Gbb"],  # 5
     ["F#", "Gb", "E##"],  # 6
     ["G", "F##", "Abb"],  # 7
-    ["G#", "Ab"],          # 8
+    ["G#", "Ab"],  # 8
     ["A", "G##", "Bbb"],  # 9
     ["A#", "Bb", "Cbb"],  # 10
-    ["B", "Cb", "A##"],   # 11
+    ["B", "Cb", "A##"],  # 11
 ]
 # A dictionary that maps note names to their corresponding MIDI numbers
 base_midi_numbers = {
     "C": 0,
-    "B♯♯": 1, "B##": 1, "C♯": 1, "C#": 1,
-    "D♭": 1, "Db": 1,
-    "C♯♯": 2, "C##": 2, "D": 2,
-    "D♯": 3, "D#": 3, "E♭": 3, "Eb": 3,
-    "D♯♯": 4, "D##": 4, "E": 4, "Fb": 4, "F♭": 4,
-    "E♯": 5, "E#": 5, "F": 5,
-    "E♯♯": 6, "E##": 6, "F♯": 6, "F#": 6, "Gb": 6, "G♭": 6,
-    "F♯♯": 7, "F##": 7, "G": 7,
-    "G♯": 8, "G#": 8, "A♭": 8, "Ab": 8,
-    "G♯♯": 9, "G##": 9, "A": 9,
-    "A♯": 10, "A#": 10, "B♭": 10, "Bb": 10,
-    "A♯♯": 11, "A##": 11, "B": 11, "Cb": 11, "C♭": 11,
-    "B♯": 12, "B#": 12
+    "Dbb": 0,
+    "B♯♯": 1,
+    "B##": 1,
+    "C♯": 1,
+    "C#": 1,
+    "D♭": 1,
+    "Db": 1,
+    "C♯♯": 2,
+    "C##": 2,
+    "D": 2,
+    "Ebb": 2,
+    "D♯": 3,
+    "D#": 3,
+    "E♭": 3,
+    "Eb": 3,
+    "Fbb": 3,
+    "D♯♯": 4,
+    "D##": 4,
+    "E": 4,
+    "Fb": 4,
+    "F♭": 4,
+    "E♯": 5,
+    "E#": 5,
+    "F": 5,
+    "Gbb": 5,
+    "E♯♯": 6,
+    "E##": 6,
+    "F♯": 6,
+    "F#": 6,
+    "Gb": 6,
+    "G♭": 6,
+    "F♯♯": 7,
+    "F##": 7,
+    "G": 7,
+    "Abb": 7,
+    "G♯": 8,
+    "G#": 8,
+    "A♭": 8,
+    "Ab": 8,
+    "G♯♯": 9,
+    "G##": 9,
+    "A": 9,
+    "Bbb": 9,
+    "A♯": 10,
+    "A#": 10,
+    "B♭": 10,
+    "Bb": 10,
+    "Cbb": 10,
+    "A♯♯": 11,
+    "A##": 11,
+    "B": 11,
+    "Cb": 11,
+    "C♭": 11,
+    "B♯": 12,
+    "B#": 12,
 }
 
 # Scale intervals (semitones from root) for each mode
@@ -55,16 +96,18 @@ SCALE_INTERVALS = {
 
 # Canonical duration definitions: name -> beats, sixteenths, display string, and aliases
 DURATION_MAP = {
-    "sixteenth": {"beats": 0.25, "sixteenths": 1,  "display": "1/16",  "aliases": ["16th"]},
-    "eighth":    {"beats": 0.5,  "sixteenths": 2,  "display": "1/8",   "aliases": ["8th"]},
-    "quarter":   {"beats": 1.0,  "sixteenths": 4,  "display": "1/4",   "aliases": []},
-    "half":      {"beats": 2.0,  "sixteenths": 8,  "display": "1/2",   "aliases": []},
-    "whole":     {"beats": 4.0,  "sixteenths": 16, "display": "1 bar", "aliases": []},
+    "sixteenth": {"beats": 0.25, "sixteenths": 1, "display": "1/16", "aliases": ["16th"]},
+    "eighth": {"beats": 0.5, "sixteenths": 2, "display": "1/8", "aliases": ["8th"]},
+    "quarter": {"beats": 1.0, "sixteenths": 4, "display": "1/4", "aliases": []},
+    "half": {"beats": 2.0, "sixteenths": 8, "display": "1/2", "aliases": []},
+    "whole": {"beats": 4.0, "sixteenths": 16, "display": "1 bar", "aliases": []},
 }
 
 # Derived lookups from DURATION_MAP
 DURATION_BEATS = {name: d["beats"] for name, d in DURATION_MAP.items()}
-DURATION_SIXTEENTHS_TO_DISPLAY = {d["sixteenths"]: d["display"] for d in DURATION_MAP.values()}
+DURATION_SIXTEENTHS_TO_DISPLAY = {
+    d["sixteenths"]: d["display"] for d in DURATION_MAP.values()
+}
 DURATION_KEYWORDS = {name: name for name in DURATION_MAP}
 for name, d in DURATION_MAP.items():
     for alias in d["aliases"]:
@@ -73,12 +116,22 @@ DURATION_BEATS_TO_NAME = {d["beats"]: name.title() for name, d in DURATION_MAP.i
 
 # Interval names (semitones 0-11 relative to root)
 INTERVAL_NAMES = [
-    "Root", "m2", "M2", "m3", "M3", "P4",
-    "Tritone", "P5", "m6", "M6", "m7", "M7",
+    "Root",
+    "m2",
+    "M2",
+    "m3",
+    "M3",
+    "P4",
+    "Tritone",
+    "P5",
+    "m6",
+    "M6",
+    "m7",
+    "M7",
 ]
 
 PLOTLY_BG = "#1a1a2e"
-PLOTLY_BG_ALT = "#252540"       # Slightly lighter (e.g. black key lanes)
+PLOTLY_BG_ALT = "#252540"  # Slightly lighter (e.g. black key lanes)
 PLOTLY_GRID = "#2a2a4a"
 PLOTLY_GRID_STRONG = "#4a4a6a"  # Bar boundaries
 PLOTLY_TEXT = "#e0e0e0"
@@ -245,6 +298,7 @@ def apply_plotly_theme(fig):
     )
     return fig
 
+
 def scale(scale_letter, scale_mode):
     """Returns all the possible notes of a scale given the scale letter and mode.
 
@@ -286,10 +340,11 @@ def calculate_midi_number(note):
     Returns:
         int: A MIDI number that corresponds to the note.
     """
-    cleaned_pitch = note.pitch.strip().replace("♯", "#").replace("♭", "b").replace("𝄪", "##")
-    for char in cleaned_pitch:
-        if not char.isalpha() and char != "#":
-            cleaned_pitch = cleaned_pitch.replace(char, "")
+    cleaned_pitch = (
+        note.pitch.strip().replace("♯", "#").replace("♭", "b").replace("𝄪", "##").replace("x", "##").replace("𝄫", "bb")
+    )
+    if cleaned_pitch not in base_midi_numbers:
+        raise ValueError(f"Unrecognized note name: {note.pitch}")
     base_number = base_midi_numbers[cleaned_pitch]
     midi_number = base_number + ((note.octave + 1) * 12)
     return midi_number

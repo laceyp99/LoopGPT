@@ -128,6 +128,14 @@ def test_scale_rejects_invalid_root_and_mode():
         utils.scale("C", "dorian")
 
 
+def test_advertised_enharmonic_spellings_convert_to_midi(note_factory):
+    for pitch_class_notes in utils.ENHARMONIC_NOTE_NAMES:
+        for pitch in pitch_class_notes:
+            note = note_factory(pitch=pitch)
+
+            assert isinstance(utils.calculate_midi_number(note), int)
+
+
 @pytest.mark.parametrize(
     ("pitch", "octave", "expected_midi_number"),
     [
@@ -146,6 +154,36 @@ def test_calculate_midi_number_normalizes_pitch_names(
     note = note_factory(pitch=pitch, octave=octave)
 
     assert utils.calculate_midi_number(note) == expected_midi_number
+
+
+@pytest.mark.parametrize(
+    ("pitch", "octave", "expected_midi_number"),
+    [
+        ("Dbb", 4, 60),
+        ("Ebb", 4, 62),
+        ("Fbb", 4, 63),
+        ("Gbb", 4, 65),
+        ("Abb", 4, 67),
+        ("Bbb", 4, 69),
+        ("Cbb", 4, 70),
+    ],
+)
+def test_calculate_midi_number_supports_ascii_double_flats(
+    note_factory,
+    pitch,
+    octave,
+    expected_midi_number,
+):
+    note = note_factory(pitch=pitch, octave=octave)
+
+    assert utils.calculate_midi_number(note) == expected_midi_number
+
+
+def test_calculate_midi_number_rejects_unknown_pitch_names(note_factory):
+    note = note_factory(pitch="H")
+
+    with pytest.raises(ValueError, match="Unrecognized note name"):
+        utils.calculate_midi_number(note)
 
 
 @pytest.mark.parametrize(
