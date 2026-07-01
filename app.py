@@ -377,9 +377,9 @@ def run_loop(
 ):
     """Run the loop generation process based on user inputs and selected model.
 
-    This is a generator function that yields progress updates, allowing the generation
-    to be cancelled by Gradio's cancellation mechanism. The API call runs in a background
-    thread while the generator periodically yields status updates.
+    This is a generator function that yields progress updates while the API call runs
+    in a background thread. Gradio can stop waiting for the generator, but that does
+    not cancel the in-flight provider request.
 
     Args:
         key (str): The key for the loop that the user selects from the dropdown.
@@ -395,9 +395,9 @@ def run_loop(
         claude_key (str): The Claude API key that the user inputs in the text box.
 
     Yields:
-         tuple: (file_path, audio_path, visualization, status_message, cancel_button_update,
+         tuple: (file_path, audio_path, visualization, status_message, stop_button_update,
              generation_id, saved_soundfont, current_audio_path) - intermediate yields
-             show progress and keep cancel visible, final yield contains the generated MIDI,
+             show progress and keep the stop-waiting control visible, final yield contains the generated MIDI,
              audio, and persisted audio metadata for rerendering.
     """
     workspace = None
@@ -415,10 +415,10 @@ def run_loop(
         prompt = f"{key} {scale} {description}."
         selected_soundfont = get_selected_soundfont(soundfont_choice)
 
-        # Yield initial status and show cancel button - this is a cancellation checkpoint
+        # Yield initial status and show the stop-waiting button.
         yield None, None, None, "Working on it...", gr.update(visible=True), None, None, None
 
-        # Run API call in background thread so we can yield periodically for cancellation
+        # Run API call in a background thread so the UI can stop waiting.
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
                 runs.generate_midi,
@@ -429,7 +429,7 @@ def run_loop(
                 effort=effort,
             )
 
-            # Poll for completion, yielding periodically to allow cancellation
+            # Poll for completion, yielding periodically so Gradio can interrupt the wait.
             while not future.done():
                 time.sleep(0.5)  # Check every 500ms
                 yield None, None, None, "Generating MIDI...", gr.update(visible=True), None, None, None
@@ -485,7 +485,7 @@ def run_loop(
         persisted_audio_path = saved_generation.audio_path
         saved_soundfont = saved_generation.soundfont
 
-        # Final yield with the completed result and hide cancel button
+        # Final yield with the completed result and hide the stop-waiting button.
         yield (
             saved_generation.midi_path,
             persisted_audio_path,
@@ -498,7 +498,7 @@ def run_loop(
         )
 
     except Exception as e:
-        # Catch any exception and yield the error message, hide cancel button
+        # Catch any exception and yield the error message, hide the stop-waiting button.
         yield None, None, None, str(e), gr.update(visible=False), None, None, None
     finally:
         if workspace is not None and not finalized:
@@ -881,7 +881,7 @@ def create_demo(playback_status=None):
                             )
                     with gr.Row():
                         prog_button = gr.Button("Generate Loop", variant="primary")
-                        cancel_button = gr.Button("Cancel", variant="stop", visible=False)
+                        cancel_button = gr.Button("Stop Waiting", variant="stop", visible=False)
 
                     # Output section
                     with gr.Row():
@@ -944,8 +944,8 @@ def create_demo(playback_status=None):
                             effort_input,
                         ],
                     )
-                    # When the user clicks the button, run the loop generation function based on the current inputs
-                    # Capture the event so we can cancel it with the cancel button
+                    # When the user clicks the button, run the loop generation function based on the current inputs.
+                    # Capture the event so the stop-waiting button can detach the UI from the in-flight request.
                     gen_event = prog_button.click(
                         run_loop,
                         inputs=[
@@ -972,13 +972,13 @@ def create_demo(playback_status=None):
                             current_audio_path,
                         ],
                     )
-                    # Cancel button stops waiting for the API response and hides itself
+                    # Stop Waiting detaches the UI from the API response wait and hides itself.
                     cancel_button.click(
                         fn=lambda: (
                             None,
                             None,
                             None,
-                            "Generation cancelled.",
+                            "Stopped waiting. The provider request may still finish in the background.",
                             gr.update(visible=False),
                             None,
                             None,
