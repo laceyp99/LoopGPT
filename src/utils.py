@@ -14,35 +14,77 @@ NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 # Enharmonic note name variants per pitch class (for scale spelling, validation, etc.)
 ENHARMONIC_NOTE_NAMES = [
-    ["B#", "C", "Dbb"],   # 0
+    ["B#", "C", "Dbb"],  # 0
     ["C#", "Db", "B##"],  # 1
     ["D", "C##", "Ebb"],  # 2
     ["D#", "Eb", "Fbb"],  # 3
-    ["E", "Fb", "D##"],   # 4
-    ["E#", "F", "Gbb"],   # 5
+    ["E", "Fb", "D##"],  # 4
+    ["E#", "F", "Gbb"],  # 5
     ["F#", "Gb", "E##"],  # 6
     ["G", "F##", "Abb"],  # 7
-    ["G#", "Ab"],          # 8
+    ["G#", "Ab"],  # 8
     ["A", "G##", "Bbb"],  # 9
     ["A#", "Bb", "Cbb"],  # 10
-    ["B", "Cb", "A##"],   # 11
+    ["B", "Cb", "A##"],  # 11
 ]
 # A dictionary that maps note names to their corresponding MIDI numbers
 base_midi_numbers = {
     "C": 0,
-    "B♯♯": 1, "B##": 1, "C♯": 1, "C#": 1,
-    "D♭": 1, "Db": 1,
-    "C♯♯": 2, "C##": 2, "D": 2,
-    "D♯": 3, "D#": 3, "E♭": 3, "Eb": 3,
-    "D♯♯": 4, "D##": 4, "E": 4, "Fb": 4, "F♭": 4,
-    "E♯": 5, "E#": 5, "F": 5,
-    "E♯♯": 6, "E##": 6, "F♯": 6, "F#": 6, "Gb": 6, "G♭": 6,
-    "F♯♯": 7, "F##": 7, "G": 7,
-    "G♯": 8, "G#": 8, "A♭": 8, "Ab": 8,
-    "G♯♯": 9, "G##": 9, "A": 9,
-    "A♯": 10, "A#": 10, "B♭": 10, "Bb": 10,
-    "A♯♯": 11, "A##": 11, "B": 11, "Cb": 11, "C♭": 11,
-    "B♯": 12, "B#": 12
+    "Dbb": 0,
+    "B♯♯": 1,
+    "B##": 1,
+    "C♯": 1,
+    "C#": 1,
+    "D♭": 1,
+    "Db": 1,
+    "C♯♯": 2,
+    "C##": 2,
+    "D": 2,
+    "Ebb": 2,
+    "D♯": 3,
+    "D#": 3,
+    "E♭": 3,
+    "Eb": 3,
+    "Fbb": 3,
+    "D♯♯": 4,
+    "D##": 4,
+    "E": 4,
+    "Fb": 4,
+    "F♭": 4,
+    "E♯": 5,
+    "E#": 5,
+    "F": 5,
+    "Gbb": 5,
+    "E♯♯": 6,
+    "E##": 6,
+    "F♯": 6,
+    "F#": 6,
+    "Gb": 6,
+    "G♭": 6,
+    "F♯♯": 7,
+    "F##": 7,
+    "G": 7,
+    "Abb": 7,
+    "G♯": 8,
+    "G#": 8,
+    "A♭": 8,
+    "Ab": 8,
+    "G♯♯": 9,
+    "G##": 9,
+    "A": 9,
+    "Bbb": 9,
+    "A♯": 10,
+    "A#": 10,
+    "B♭": 10,
+    "Bb": 10,
+    "Cbb": 10,
+    "A♯♯": 11,
+    "A##": 11,
+    "B": 11,
+    "Cb": 11,
+    "C♭": 11,
+    "B♯": 12,
+    "B#": 12,
 }
 
 # Scale intervals (semitones from root) for each mode
@@ -245,6 +287,7 @@ def apply_plotly_theme(fig):
     )
     return fig
 
+
 def scale(scale_letter, scale_mode):
     """Returns all the possible notes of a scale given the scale letter and mode.
 
@@ -286,11 +329,15 @@ def calculate_midi_number(note):
     Returns:
         int: A MIDI number that corresponds to the note.
     """
-    cleaned_pitch = note.pitch.strip().replace("♯", "#").replace("♭", "b").replace("𝄪", "##")
+    cleaned_pitch = (
+        note.pitch.strip().replace("♯", "#").replace("♭", "b").replace("𝄪", "##").replace("x", "##").replace("𝄫", "bb")
+    )
     for char in cleaned_pitch:
         if not char.isalpha() and char != "#":
             cleaned_pitch = cleaned_pitch.replace(char, "")
-    base_number = base_midi_numbers[cleaned_pitch]
+    base_number = base_midi_numbers.get(cleaned_pitch)
+    if base_number is None:
+        raise ValueError(f"Unrecognized note name: {note.pitch}") from None
     midi_number = base_number + ((note.octave + 1) * 12)
     return midi_number
 
