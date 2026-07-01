@@ -97,16 +97,18 @@ SCALE_INTERVALS = {
 
 # Canonical duration definitions: name -> beats, sixteenths, display string, and aliases
 DURATION_MAP = {
-    "sixteenth": {"beats": 0.25, "sixteenths": 1,  "display": "1/16",  "aliases": ["16th"]},
-    "eighth":    {"beats": 0.5,  "sixteenths": 2,  "display": "1/8",   "aliases": ["8th"]},
-    "quarter":   {"beats": 1.0,  "sixteenths": 4,  "display": "1/4",   "aliases": []},
-    "half":      {"beats": 2.0,  "sixteenths": 8,  "display": "1/2",   "aliases": []},
-    "whole":     {"beats": 4.0,  "sixteenths": 16, "display": "1 bar", "aliases": []},
+    "sixteenth": {"beats": 0.25, "sixteenths": 1, "display": "1/16", "aliases": ["16th"]},
+    "eighth": {"beats": 0.5, "sixteenths": 2, "display": "1/8", "aliases": ["8th"]},
+    "quarter": {"beats": 1.0, "sixteenths": 4, "display": "1/4", "aliases": []},
+    "half": {"beats": 2.0, "sixteenths": 8, "display": "1/2", "aliases": []},
+    "whole": {"beats": 4.0, "sixteenths": 16, "display": "1 bar", "aliases": []},
 }
 
 # Derived lookups from DURATION_MAP
 DURATION_BEATS = {name: d["beats"] for name, d in DURATION_MAP.items()}
-DURATION_SIXTEENTHS_TO_DISPLAY = {d["sixteenths"]: d["display"] for d in DURATION_MAP.values()}
+DURATION_SIXTEENTHS_TO_DISPLAY = {
+    d["sixteenths"]: d["display"] for d in DURATION_MAP.values()
+}
 DURATION_KEYWORDS = {name: name for name in DURATION_MAP}
 for name, d in DURATION_MAP.items():
     for alias in d["aliases"]:
@@ -115,12 +117,22 @@ DURATION_BEATS_TO_NAME = {d["beats"]: name.title() for name, d in DURATION_MAP.i
 
 # Interval names (semitones 0-11 relative to root)
 INTERVAL_NAMES = [
-    "Root", "m2", "M2", "m3", "M3", "P4",
-    "Tritone", "P5", "m6", "M6", "m7", "M7",
+    "Root",
+    "m2",
+    "M2",
+    "m3",
+    "M3",
+    "P4",
+    "Tritone",
+    "P5",
+    "m6",
+    "M6",
+    "m7",
+    "M7",
 ]
 
 PLOTLY_BG = "#1a1a2e"
-PLOTLY_BG_ALT = "#252540"       # Slightly lighter (e.g. black key lanes)
+PLOTLY_BG_ALT = "#252540"  # Slightly lighter (e.g. black key lanes)
 PLOTLY_GRID = "#2a2a4a"
 PLOTLY_GRID_STRONG = "#4a4a6a"  # Bar boundaries
 PLOTLY_TEXT = "#e0e0e0"
