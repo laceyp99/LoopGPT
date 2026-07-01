@@ -199,4 +199,5 @@ LoopGPT/
 - The quality of generated music depends on the prompt and model parameters.
 - Requires an active internet connection for API calls to model providers.
 - High API usage may incur significant costs.
+- The `Stop Waiting` control only detaches the UI from an in-flight request; it does not abort the provider call.
 - Audio preview still depends on external FluidSynth and FFmpeg installations even though a default SoundFont is bundled with the repo.
