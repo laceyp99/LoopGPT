@@ -279,7 +279,7 @@
         "Anthropic": {
             "claude-sonnet-5":{
                 "extended_thinking": false,
-                "effort_options": ["low", "medium", "high"],
+                "effort_options": ["low", "medium", "high", "xhigh", "max"],
                 "max_tokens": 128000,
                 "cost": {
                     "input": 3.00,
