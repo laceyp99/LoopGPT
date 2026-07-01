@@ -3,7 +3,6 @@ This file contains utility functions for handling the creation of MIDI objects, 
 """
 
 import plotly.graph_objects as go
-import numpy as np
 import json
 import mido
 import os
