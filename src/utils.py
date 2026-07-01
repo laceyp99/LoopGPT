@@ -343,12 +343,9 @@ def calculate_midi_number(note):
     cleaned_pitch = (
         note.pitch.strip().replace("♯", "#").replace("♭", "b").replace("𝄪", "##").replace("x", "##").replace("𝄫", "bb")
     )
-    for char in cleaned_pitch:
-        if not char.isalpha() and char != "#":
-            cleaned_pitch = cleaned_pitch.replace(char, "")
-    base_number = base_midi_numbers.get(cleaned_pitch)
-    if base_number is None:
-        raise ValueError(f"Unrecognized note name: {note.pitch}") from None
+    if cleaned_pitch not in base_midi_numbers:
+        raise ValueError(f"Unrecognized note name: {note.pitch}")
+    base_number = base_midi_numbers[cleaned_pitch]
     midi_number = base_number + ((note.octave + 1) * 12)
     return midi_number
 
