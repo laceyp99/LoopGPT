@@ -41,6 +41,7 @@ def loop_to_midi(midi, loop, times_as_string=True):
     # Calculated ticks per sixteenth note, based on provided ticks per beat (quarter note).
     ticks_per_beat = int(midi.ticks_per_beat / 4)
     bar_length = 16 * ticks_per_beat 
+    final_bar_ticks = 4 * bar_length
     
     # Initialize a list to hold all note events (on and off).
     events = []
@@ -62,6 +63,9 @@ def loop_to_midi(midi, loop, times_as_string=True):
             note_start_tick = bar_offset + (start_beat - 1) * ticks_per_beat
             note_duration_ticks = duration * ticks_per_beat
             note_end_tick = note_start_tick + note_duration_ticks
+            if note_end_tick > final_bar_ticks:
+                logger.warning("[MIDI] Note output clamped to the 4-bar loop boundary.")
+                note_end_tick = final_bar_ticks
             
             # Append note on and note off events.
             events.append((note_start_tick, 'note_on', note))
@@ -95,7 +99,6 @@ def loop_to_midi(midi, loop, times_as_string=True):
         track.append(msg)
         prev_tick = event_time
     
-    final_bar_ticks = 4 * 16 * ticks_per_beat
     if prev_tick < final_bar_ticks:
         remaining = final_bar_ticks - prev_tick
         track.append(MetaMessage('end_of_track', time=remaining))

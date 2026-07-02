@@ -3,6 +3,16 @@ from mido import Message, MetaMessage, MidiFile, MidiTrack
 from src.midi_processing import loop_to_midi, midi_to_loop
 
 
+def _note_events_with_absolute_times(midi):
+    events = []
+    absolute_time = 0
+    for msg in midi.tracks[0]:
+        absolute_time += msg.time
+        if msg.type != "end_of_track":
+            events.append((msg.type, msg.note, absolute_time))
+    return events
+
+
 def test_loop_to_midi_orders_note_off_before_note_on_at_same_tick(loop_factory, note_factory):
     loop = loop_factory(
         bars=[
@@ -45,6 +55,45 @@ def test_loop_to_midi_clamps_out_of_range_velocity(loop_factory, note_factory):
     note_messages = [msg for msg in midi.tracks[0] if msg.type != "end_of_track"]
 
     assert [msg.velocity for msg in note_messages] == [127, 127]
+
+
+def test_loop_to_midi_allows_notes_to_cross_early_bar_boundaries(loop_factory, note_factory):
+    loop = loop_factory(
+        bars=[
+            [note_factory(pitch="C", start_beat=16, duration=4)],
+            [],
+            [],
+            [],
+        ]
+    )
+    midi = MidiFile(ticks_per_beat=480)
+
+    loop_to_midi(midi, loop, times_as_string=False)
+
+    assert _note_events_with_absolute_times(midi) == [
+        ("note_on", 60, 1800),
+        ("note_off", 60, 2280),
+    ]
+
+
+def test_loop_to_midi_clamps_notes_at_four_bar_boundary(loop_factory, note_factory, caplog):
+    loop = loop_factory(
+        bars=[
+            [],
+            [],
+            [],
+            [note_factory(pitch="C", start_beat=16, duration=4)],
+        ]
+    )
+    midi = MidiFile(ticks_per_beat=480)
+
+    loop_to_midi(midi, loop, times_as_string=False)
+
+    assert _note_events_with_absolute_times(midi) == [
+        ("note_on", 60, 7560),
+        ("note_off", 60, 7680),
+    ]
+    assert "clamped to the 4-bar loop boundary" in caplog.text
 
 
 def test_midi_to_loop_round_trips_integer_timing(sample_loop, midi_builder):
