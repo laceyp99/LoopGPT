@@ -1,13 +1,7 @@
-"""
-This file contains utility functions for handling the creation of MIDI objects, conversion to MIDI files, and visualization of MIDI data.
-"""
-
-import plotly.graph_objects as go
 import json
-import mido
-import os
-import src.objects as objects
-from conductor_core import music as core_music
+from importlib import resources
+
+from conductor_core import models as objects
 
 # Flat list of chromatic note names (pitch class 0-11, sharps only)
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -144,12 +138,26 @@ _model_info_cache = None
 
 def get_model_info():
     """Load packaged model metadata once and reuse it."""
-    return core_music.get_model_info()
+    global _model_info_cache
+
+    if _model_info_cache is None:
+        model_info_resource = resources.files("conductor_core.resources").joinpath(
+            "model_list.json"
+        )
+        with model_info_resource.open("r", encoding="utf-8") as model_file:
+            _model_info_cache = json.load(model_file)
+
+    return _model_info_cache
 
 
 def get_loop_prompt():
     """Load the packaged default loop generation prompt."""
-    return core_music.get_loop_prompt()
+    prompt_resource = resources.files("conductor_core.resources").joinpath(
+        "prompts",
+        "loop_gen.txt",
+    )
+    with prompt_resource.open("r", encoding="utf-8") as prompt_file:
+        return prompt_file.read()
 
 
 def split_reported_cache_tokens(total_tokens, cached_tokens):
@@ -414,6 +422,9 @@ def visualize_midi_plotly(input_midi):
     Returns:
         go.Figure: A Plotly figure object for the piano roll visualization.
     """
+    import mido
+    import plotly.graph_objects as go
+
     # Load MIDI if input is a filename
     if isinstance(input_midi, str):
         mid = mido.MidiFile(input_midi)
