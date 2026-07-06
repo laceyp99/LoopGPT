@@ -8,38 +8,40 @@ Features:
 - Toggleable history sidebar panel
 """
 
-from src.midi_processing import loop_to_midi
-from src.utils import visualize_midi_plotly, get_model_info
-from src.audio import (
+from conductor_core import (
+    EngineConfig,
+    GenerationRequest,
+    LoopGenerationEngine,
+    ProviderCredentials,
+)
+from conductor_core.music import get_loop_prompt, get_model_info
+from conductor_core.playback import (
     midi_to_mp3,
     is_playback_available,
     get_playback_status_message,
     list_soundfonts,
     get_default_soundfont,
 )
-from src.history import (
-    create_generation_workspace,
-    finalize_generation,
-    cleanup_generation_workspace,
+from conductor_core import storage as history_storage
+from conductor_core.storage import (
     load_history,
     get_generation,
     delete_generation,
-    get_provider_for_model,
     update_generation_audio,
 )
-import src.ollama_api as ollama_api
-import src.runs as runs
+from conductor_core.providers import ollama as ollama_api
+from src.utils import visualize_midi_plotly
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from mido import MidiFile
+from queue import Empty, Queue
 import gradio as gr
-import time
-import json
 import os
 
 
 DEFAULT_PROVIDER = "Google"
 DEFAULT_MODEL = "gemini-3.1-flash-lite"
+PROMPT_OVERRIDE_PATH = os.path.join("Prompts", "loop gen.txt")
 
 
 def format_price_summary(price_value):
@@ -344,6 +346,20 @@ def rerender_current_audio(
     )
 
 
+def load_app_prompt_override():
+    """Load the app-owned prompt override if the user has saved one."""
+    if not os.path.exists(PROMPT_OVERRIDE_PATH):
+        return None
+
+    with open(PROMPT_OVERRIDE_PATH, "r", encoding="utf-8") as prompt_file:
+        return prompt_file.read()
+
+
+def get_prompt_editor_text():
+    """Return the prompt text shown in the Prompt Editor."""
+    return load_app_prompt_override() or get_loop_prompt()
+
+
 def save_prompts(loop_gen_text):
     """This function saves any changes to the loop generation prompt to the text file.
 
@@ -353,7 +369,8 @@ def save_prompts(loop_gen_text):
     Returns:
         str: A message indicating the status of the save operation.
     """
-    with open("Prompts/loop gen.txt", "w") as f:
+    os.makedirs(os.path.dirname(PROMPT_OVERRIDE_PATH), exist_ok=True)
+    with open(PROMPT_OVERRIDE_PATH, "w", encoding="utf-8") as f:
         f.write(loop_gen_text)
     return (
         "Prompts saved successfully at "
@@ -400,109 +417,82 @@ def run_loop(
              show progress and keep the stop-waiting control visible, final yield contains the generated MIDI,
              audio, and persisted audio metadata for rerendering.
     """
-    workspace = None
-    finalized = False
     try:
-        # If the user provided API keys, update environment variables
-        if openai_key and openai_key.strip() != "":
-            os.environ["OPENAI_API_KEY"] = openai_key.strip()
-        if gemini_key and gemini_key.strip() != "":
-            os.environ["GEMINI_API_KEY"] = gemini_key.strip()
-        if claude_key and claude_key.strip() != "":
-            os.environ["ANTHROPIC_API_KEY"] = claude_key.strip()
-
-        # Condense the prompt into a single string for the model
-        prompt = f"{key} {scale} {description}."
         selected_soundfont = get_selected_soundfont(soundfont_choice)
+        credentials = ProviderCredentials(
+            openai_api_key=openai_key.strip() if openai_key and openai_key.strip() else None,
+            google_api_key=gemini_key.strip() if gemini_key and gemini_key.strip() else None,
+            anthropic_api_key=claude_key.strip() if claude_key and claude_key.strip() else None,
+        )
+        engine = LoopGenerationEngine(
+            EngineConfig.from_defaults(
+                artifact_root=history_storage.GENERATIONS_DIR,
+                provider_credentials=credentials,
+                prompt_override=load_app_prompt_override(),
+                default_soundfont_path=selected_soundfont,
+            )
+        )
+        request = GenerationRequest(
+            key=key,
+            scale=scale,
+            description=description,
+            model=model_choice,
+            temperature=temp,
+            use_thinking=use_thinking,
+            effort=effort,
+            render_audio=True,
+            soundfont_path=selected_soundfont,
+        )
+        progress_events = Queue()
+
+        def handle_progress(event):
+            progress_events.put(event)
 
         # Yield initial status and show the stop-waiting button.
         yield None, None, None, "Working on it...", gr.update(visible=True), None, None, None
 
-        # Run API call in a background thread so the UI can stop waiting.
+        # Run the synchronous Core engine in a background thread so the UI can stop waiting.
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
-                runs.generate_midi,
-                model_choice=model_choice,
-                prompt=prompt,
-                temp=temp,
-                use_thinking=use_thinking,
-                effort=effort,
+                engine.generate,
+                request,
+                handle_progress,
             )
 
             # Poll for completion, yielding periodically so Gradio can interrupt the wait.
             while not future.done():
-                time.sleep(0.5)  # Check every 500ms
-                yield None, None, None, "Generating MIDI...", gr.update(visible=True), None, None, None
+                try:
+                    progress_event = progress_events.get(timeout=0.5)
+                    status_message = progress_event.message
+                except Empty:
+                    status_message = "Generating MIDI..."
+                yield None, None, None, status_message, gr.update(visible=True), None, None, None
+
+            while not progress_events.empty():
+                progress_event = progress_events.get()
+                yield None, None, None, progress_event.message, gr.update(visible=True), None, None, None
 
             # Get the result (will raise exception if the API call failed)
-            loop, messages, total_cost = future.result()
+            result = future.result()
 
-        print(f"Total cost: {total_cost}")
-
-        yield None, None, None, "Processing MIDI...", gr.update(visible=True), None, None, None
-        workspace = create_generation_workspace()
-
-        # Convert the generated loop into a MIDI file
-        midi = MidiFile()
-        model_info = get_model_info()
-        loop_to_midi(
-            midi,
-            loop,
-            times_as_string=model_choice in model_info["models"]["Google"].keys(),
-        )
-        output_path = workspace.midi_path
-        midi.save(output_path)
-
-        # Render audio and visualization from MIDI
-        yield None, None, None, "Rendering Audio...", gr.update(visible=True), None, None, None
-        audio_path = midi_to_mp3(
-            output_path,
-            output_path=workspace.audio_path,
-            soundfont_name=selected_soundfont,
-        )
-        visualization = visualize_midi_plotly(midi)
-
-        with open(workspace.messages_path, "w", encoding="utf-8") as messages_file:
-            json.dump(messages, messages_file, indent=2)
-
-        # Determine provider for history
-        provider = get_provider_for_model(model_choice, model_info)
-
-        # Save to history
-        saved_generation = finalize_generation(
-            workspace=workspace,
-            prompt=description,
-            key=key,
-            scale=scale,
-            model=model_choice,
-            provider=provider,
-            temperature=temp,
-            cost=total_cost,
-            soundfont=selected_soundfont if audio_path else None,
-        )
-        finalized = True
-        gen_id = saved_generation.id
-        persisted_audio_path = saved_generation.audio_path
-        saved_soundfont = saved_generation.soundfont
+        print(f"Total cost: {result.cost}")
+        visualization = visualize_midi_plotly(MidiFile(result.midi_path))
 
         # Final yield with the completed result and hide the stop-waiting button.
         yield (
-            saved_generation.midi_path,
-            persisted_audio_path,
+            result.midi_path,
+            result.audio_path,
             visualization,
             "",
             gr.update(visible=False),
-            gen_id,
-            saved_soundfont,
-            persisted_audio_path,
+            result.generation_id,
+            result.metadata.soundfont,
+            result.audio_path,
         )
 
     except Exception as e:
         # Catch any exception and yield the error message, hide the stop-waiting button.
         yield None, None, None, str(e), gr.update(visible=False), None, None, None
-    finally:
-        if workspace is not None and not finalized:
-            cleanup_generation_workspace(workspace)
 
 
 def toggle_history_sidebar(is_visible):
@@ -1025,13 +1015,7 @@ def create_demo(playback_status=None):
                 # Prompt Editor Tab to allow users to edit the system prompts used in the generation process
                 with gr.Tab(label="Prompt Editor"):
                     gr.Markdown("## Edit System Prompt")
-                    ## Load the existing prompts from the text files in the Prompts folder
-                    # If the files do not exist, set the text to an empty string
-                    try:
-                        with open("Prompts/loop gen.txt", "r") as lg:
-                            loop_gen_text = lg.read()
-                    except Exception:
-                        loop_gen_text = ""
+                    loop_gen_text = get_prompt_editor_text()
                     # Create text boxes for the user to edit the prompts
                     gr.Markdown("### Loop Generation Prompt")
                     gr.Markdown(

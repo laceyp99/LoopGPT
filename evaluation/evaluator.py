@@ -27,6 +27,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import src.runs as runs
 import src.ollama_api as ollama_api
+from conductor_core.music import get_model_info
 from src.utils import DURATION_KEYWORDS
 from src.midi_processing import loop_to_midi
 from evaluation.tests import scale_test, duration_test
@@ -98,9 +99,7 @@ class Evaluator:
         self.console = Console(force_terminal=True)
         self._setup_logging()
 
-        # Load model info
-        with open("model_list.json", "r") as f:
-            self.model_info = json.load(f)
+        self.model_info = get_model_info()
 
     def _setup_logging(self):
         log_path = self.output_dir / "run.log"
