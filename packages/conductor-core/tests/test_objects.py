@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from src.objects import Loop, SixteenthNote, SixteenthNote_G, TimeInformation, TimeInformation_G
+from conductor_core.models import Loop, SixteenthNote, SixteenthNote_G, TimeInformation, TimeInformation_G
 
 
 def test_sixteenth_note_g_from_int_returns_expected_enum_member():

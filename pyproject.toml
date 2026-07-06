@@ -45,7 +45,8 @@ include = ["src*", "evaluation*"]
 namespaces = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "packages/conductor-core/tests"]
+pythonpath = ["packages/conductor-core/src"]
 python_files = ["test_*.py"]
 addopts = "-ra"
 markers = [

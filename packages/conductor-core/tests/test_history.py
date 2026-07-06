@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src import history
+from conductor_core import storage as history
 
 
 @pytest.fixture

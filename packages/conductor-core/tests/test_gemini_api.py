@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src import gemini_api
+from conductor_core.providers import google as gemini_api
 
 
 def test_calc_cost_uses_reported_cached_tokens_without_storage_estimate():

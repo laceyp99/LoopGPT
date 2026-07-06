@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import app
+from conductor_core import engine as engine_module
 from src import history
 
 
@@ -16,24 +17,18 @@ def test_run_loop_persists_artifacts_in_generation_workspace(monkeypatch, tmp_pa
     monkeypatch.setattr(history, "GENERATIONS_DIR", str(generations_dir))
     monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
     monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
-    monkeypatch.setattr(app.runs, "generate_midi", lambda **kwargs: (sample_loop, [{"role": "user", "content": "prompt"}], 0.25))
-    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "custom.sf2")
     monkeypatch.setattr(
-        app,
-        "get_model_info",
-        lambda: {
-            "models": {
-                "Google": {},
-                "OpenAI": {"gpt-test": {}},
-            }
-        },
+        engine_module.routing,
+        "generate_midi",
+        lambda **kwargs: (sample_loop, [{"role": "user", "content": "prompt"}], 0.25),
     )
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "custom.sf2")
 
     def fake_midi_to_mp3(midi_path, output_path=None, soundfont_name=None):
         Path(output_path).write_bytes(b"audio")
         return output_path
 
-    monkeypatch.setattr(app, "midi_to_mp3", fake_midi_to_mp3)
+    monkeypatch.setattr(engine_module.playback, "midi_to_mp3", fake_midi_to_mp3)
     monkeypatch.setattr(app, "visualize_midi_plotly", lambda midi: "viz")
 
     outputs = list(
@@ -75,57 +70,95 @@ def test_run_loop_persists_artifacts_in_generation_workspace(monkeypatch, tmp_pa
     assert metadata.messages_path == str(gen_dir / "messages.json")
 
 
-def test_run_loop_cleans_workspace_when_generator_closes_before_finalization(
-    monkeypatch, tmp_path, sample_loop
-):
-    generations_dir = tmp_path / "generations"
-    monkeypatch.setattr(history, "GENERATIONS_DIR", str(generations_dir))
-    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
+def test_run_loop_passes_ui_configuration_to_core(monkeypatch, tmp_path):
+    captured = {}
+    midi_path = tmp_path / "loop.mid"
+    midi_path.write_bytes(b"midi")
     monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
-    monkeypatch.setattr(
-        app.runs,
-        "generate_midi",
-        lambda **kwargs: (sample_loop, [{"role": "user", "content": "prompt"}], 0.25),
-    )
     monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "custom.sf2")
-    monkeypatch.setattr(
-        app,
-        "get_model_info",
-        lambda: {
-            "models": {
-                "Google": {},
-                "OpenAI": {"gpt-test": {}},
-            }
-        },
-    )
-
-    def fail_midi_to_mp3(*args, **kwargs):
-        raise AssertionError("midi_to_mp3 should not run before this stop-waiting point")
-
-    monkeypatch.setattr(app, "midi_to_mp3", fail_midi_to_mp3)
+    monkeypatch.setattr(app, "load_app_prompt_override", lambda: "override prompt")
+    monkeypatch.setattr(app, "MidiFile", lambda path: "midi")
     monkeypatch.setattr(app, "visualize_midi_plotly", lambda midi: "viz")
 
-    generator = app.run_loop(
-        key="C",
-        scale="Major",
-        description="warm rhodes loop",
-        temp=0.3,
-        model_choice="gpt-test",
-        use_thinking=False,
-        effort="low",
-        soundfont_choice="custom.sf2",
-        openai_key="",
-        gemini_key="",
-        claude_key="",
+    class FakeEngine:
+        def __init__(self, config):
+            captured["config"] = config
+
+        def generate(self, request, progress_callback=None):
+            captured["request"] = request
+            if progress_callback:
+                progress_callback(SimpleNamespace(stage="provider_call", message="Generating MIDI..."))
+            return SimpleNamespace(
+                midi_path=str(midi_path),
+                audio_path=None,
+                cost=0.25,
+                generation_id="fixed_id",
+                metadata=SimpleNamespace(soundfont=None),
+            )
+
+    monkeypatch.setattr(app, "LoopGenerationEngine", FakeEngine)
+
+    outputs = list(
+        app.run_loop(
+            key="C",
+            scale="Major",
+            description="warm rhodes loop",
+            temp=0.3,
+            model_choice="gpt-test",
+            use_thinking=False,
+            effort="low",
+            soundfont_choice="custom.sf2",
+            openai_key=" openai-key ",
+            gemini_key=" gemini-key ",
+            claude_key=" claude-key ",
+        )
     )
 
-    assert next(generator)[3] == "Working on it..."
-    assert next(generator)[3] == "Processing MIDI..."
-    assert next(generator)[3] == "Rendering Audio..."
+    final_output = outputs[-1]
 
-    generator.close()
+    assert final_output[0] == str(midi_path)
+    assert final_output[2] == "viz"
+    assert captured["config"].prompt_override == "override prompt"
+    assert captured["config"].provider_credentials.openai_api_key == "openai-key"
+    assert captured["config"].provider_credentials.google_api_key == "gemini-key"
+    assert captured["config"].provider_credentials.anthropic_api_key == "claude-key"
+    assert captured["config"].default_soundfont_path == "custom.sf2"
+    assert captured["request"].render_audio is True
+    assert captured["request"].soundfont_path == "custom.sf2"
+    assert captured["request"].description == "warm rhodes loop"
 
-    assert not (generations_dir / "gen_fixed_id").exists()
+
+def test_run_loop_reports_core_generation_errors(monkeypatch):
+    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "custom.sf2")
+
+    class FailingEngine:
+        def __init__(self, config):
+            pass
+
+        def generate(self, request, progress_callback=None):
+            raise ValueError("provider failed")
+
+    monkeypatch.setattr(app, "LoopGenerationEngine", FailingEngine)
+
+    outputs = list(
+        app.run_loop(
+            key="C",
+            scale="Major",
+            description="warm rhodes loop",
+            temp=0.3,
+            model_choice="gpt-test",
+            use_thinking=False,
+            effort="low",
+            soundfont_choice="custom.sf2",
+            openai_key="",
+            gemini_key="",
+            claude_key="",
+        )
+    )
+
+    assert outputs[-1][3] == "provider failed"
+    assert outputs[-1][4] == {"visible": False}
 
 
 def test_get_selected_soundfont_prefers_requested_choice(monkeypatch):

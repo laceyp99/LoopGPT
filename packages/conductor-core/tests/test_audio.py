@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src import audio
+from conductor_core import playback as audio
 
 
 def _write_file(path: Path, content: bytes = b"data") -> Path:

@@ -3,7 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from src import claude_api, gemini_api, objects, ollama_api, openai_api
+from conductor_core import models as objects
+from conductor_core.providers import anthropic as claude_api
+from conductor_core.providers import google as gemini_api
+from conductor_core.providers import ollama as ollama_api
+from conductor_core.providers import openai as openai_api
 
 
 def _loop_payload():

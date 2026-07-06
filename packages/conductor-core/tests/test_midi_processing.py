@@ -1,6 +1,6 @@
 from mido import Message, MetaMessage, MidiFile, MidiTrack
 
-from src.midi_processing import loop_to_midi, midi_to_loop
+from conductor_core.midi import loop_to_midi, midi_to_loop
 
 
 def _note_events_with_absolute_times(midi):

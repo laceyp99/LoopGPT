@@ -1,7 +1,7 @@
 import pytest
 
-from src import utils
-from src.objects import SixteenthNote_G
+from conductor_core import music as utils
+from conductor_core.models import SixteenthNote_G
 
 
 @pytest.mark.parametrize(
