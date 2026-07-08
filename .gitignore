@@ -4,14 +4,19 @@ loop.json
 evaluation_log.json
 output.mid
 output.mp3
+build/
+dist/
 evaluation/Results/
 evaluation/Datasets/
 soundfonts/*.sf2
 !soundfonts/FM-Piano1 20190916.sf2
 generations/
 __pycache__/
+*.py[cod]
 MIDI/
 runs/
 **/*.egg-info/
 .pytest_cache/
+.coverage
+htmlcov/
 .vscode/
