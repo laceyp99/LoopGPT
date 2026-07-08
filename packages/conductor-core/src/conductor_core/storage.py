@@ -43,24 +43,14 @@ class FilesystemArtifactStore:
     def __init__(self, artifact_root: str | Path = GENERATIONS_DIR):
         self.artifact_root = str(artifact_root)
 
-    def _call_with_root(self, func, *args, **kwargs):
-        global GENERATIONS_DIR
-
-        previous_root = GENERATIONS_DIR
-        GENERATIONS_DIR = self.artifact_root
-        try:
-            return func(*args, **kwargs)
-        finally:
-            GENERATIONS_DIR = previous_root
-
     def create_generation_workspace(self) -> "GenerationWorkspace":
-        return self._call_with_root(create_generation_workspace)
+        return _create_generation_workspace(self.artifact_root)
 
     def finalize_generation(self, *args, **kwargs) -> "GenerationMetadata":
-        return self._call_with_root(finalize_generation, *args, **kwargs)
+        return _finalize_generation(self.artifact_root, *args, **kwargs)
 
     def cleanup_generation_workspace(self, workspace: "GenerationWorkspace") -> bool:
-        return self._call_with_root(cleanup_generation_workspace, workspace)
+        return _cleanup_generation_workspace(workspace)
 
     def update_generation_audio(
         self,
@@ -68,21 +58,16 @@ class FilesystemArtifactStore:
         audio_path: Optional[str],
         soundfont: Optional[str] = None,
     ) -> Optional["GenerationMetadata"]:
-        return self._call_with_root(
-            update_generation_audio,
-            gen_id,
-            audio_path,
-            soundfont=soundfont,
-        )
+        return _update_generation_audio(self.artifact_root, gen_id, audio_path, soundfont=soundfont)
 
     def load_history(self) -> list["GenerationMetadata"]:
-        return self._call_with_root(load_history)
+        return _load_history(self.artifact_root)
 
     def get_generation(self, gen_id: str) -> Optional["GenerationMetadata"]:
-        return self._call_with_root(get_generation, gen_id)
+        return _get_generation(self.artifact_root, gen_id)
 
     def delete_generation(self, gen_id: str) -> bool:
-        return self._call_with_root(delete_generation, gen_id)
+        return _delete_generation(self.artifact_root, gen_id)
 
 
 class GenerationMetadata(BaseModel):
@@ -130,11 +115,16 @@ class GenerationWorkspace(BaseModel):
     metadata_path: str
 
 
-def _ensure_generations_dir() -> None:
+def _resolve_artifact_root(artifact_root: str | Path | None = None) -> str:
+    return str(artifact_root if artifact_root is not None else GENERATIONS_DIR)
+
+
+def _ensure_generations_dir(artifact_root: str | Path | None = None) -> None:
     """Create the generations directory if it doesn't exist."""
-    if not os.path.exists(GENERATIONS_DIR):
-        os.makedirs(GENERATIONS_DIR)
-        logger.info(f"Created generations directory: {GENERATIONS_DIR}")
+    root = _resolve_artifact_root(artifact_root)
+    if not os.path.exists(root):
+        os.makedirs(root)
+        logger.info(f"Created generations directory: {root}")
 
 
 def _generate_id() -> str:
@@ -146,7 +136,7 @@ def _generate_id() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
 
-def _get_generation_dir(gen_id: str) -> str:
+def _get_generation_dir(gen_id: str, artifact_root: str | Path | None = None) -> str:
     """Get the directory path for a specific generation.
 
     Args:
@@ -155,12 +145,12 @@ def _get_generation_dir(gen_id: str) -> str:
     Returns:
         str: Path to the generation's directory.
     """
-    return os.path.join(GENERATIONS_DIR, f"gen_{gen_id}")
+    return os.path.join(_resolve_artifact_root(artifact_root), f"gen_{gen_id}")
 
 
-def _build_workspace(gen_id: str) -> GenerationWorkspace:
+def _build_workspace(gen_id: str, artifact_root: str | Path | None = None) -> GenerationWorkspace:
     """Build the canonical path set for a generation ID."""
-    gen_dir = _get_generation_dir(gen_id)
+    gen_dir = _get_generation_dir(gen_id, artifact_root)
     return GenerationWorkspace(
         id=gen_id,
         directory=gen_dir,
@@ -196,11 +186,16 @@ def create_generation_workspace() -> GenerationWorkspace:
     Raises:
         RuntimeError: If a unique generation ID cannot be allocated.
     """
-    _ensure_generations_dir()
+    return _create_generation_workspace(GENERATIONS_DIR)
+
+
+def _create_generation_workspace(artifact_root: str | Path) -> GenerationWorkspace:
+    """Create a generation workspace under an explicit artifact root."""
+    _ensure_generations_dir(artifact_root)
 
     for _ in range(100):
         gen_id = _generate_id()
-        workspace = _build_workspace(gen_id)
+        workspace = _build_workspace(gen_id, artifact_root)
         try:
             os.makedirs(workspace.directory)
             logger.info(f"Created generation workspace: {workspace.directory}")
@@ -238,13 +233,39 @@ def finalize_generation(
     Returns:
         GenerationMetadata: The persisted metadata.
     """
+    return _finalize_generation(
+        GENERATIONS_DIR,
+        workspace=workspace,
+        prompt=prompt,
+        key=key,
+        scale=scale,
+        model=model,
+        provider=provider,
+        temperature=temperature,
+        cost=cost,
+        soundfont=soundfont,
+    )
+
+
+def _finalize_generation(
+    artifact_root: str | Path,
+    workspace: GenerationWorkspace,
+    prompt: str,
+    key: str,
+    scale: str,
+    model: str,
+    provider: str,
+    temperature: float,
+    cost: Optional[float] = None,
+    soundfont: Optional[str] = None,
+) -> GenerationMetadata:
+    """Finalize a generation using an explicit artifact root."""
     if not os.path.exists(workspace.midi_path):
         raise FileNotFoundError(f"Missing MIDI file for generation: {workspace.midi_path}")
 
     audio_path = workspace.audio_path if os.path.exists(workspace.audio_path) else None
     messages_path = workspace.messages_path if os.path.exists(workspace.messages_path) else None
 
-    # Create metadata
     metadata = GenerationMetadata(
         id=workspace.id,
         timestamp=datetime.now(),
@@ -261,14 +282,11 @@ def finalize_generation(
         soundfont=soundfont if audio_path else None,
     )
 
-    # Save metadata
     with open(workspace.metadata_path, "w") as f:
         f.write(metadata.model_dump_json(indent=2))
 
     logger.info(f"Finalized generation {workspace.id} in history")
-
-    # Enforce generation limit
-    _enforce_limit()
+    _enforce_limit(artifact_root)
 
     return metadata
 
@@ -285,6 +303,11 @@ def cleanup_generation_workspace(workspace: GenerationWorkspace) -> bool:
     Returns:
         bool: True if the workspace was removed, False otherwise.
     """
+    return _cleanup_generation_workspace(workspace)
+
+
+def _cleanup_generation_workspace(workspace: GenerationWorkspace) -> bool:
+    """Remove an unfinalized generation workspace."""
     if os.path.exists(workspace.metadata_path):
         return False
 
@@ -311,11 +334,21 @@ def update_generation_audio(
     Returns:
         GenerationMetadata or None if the generation does not exist.
     """
-    metadata = get_generation(gen_id)
+    return _update_generation_audio(GENERATIONS_DIR, gen_id, audio_path, soundfont=soundfont)
+
+
+def _update_generation_audio(
+    artifact_root: str | Path,
+    gen_id: str,
+    audio_path: Optional[str],
+    soundfont: Optional[str] = None,
+) -> Optional[GenerationMetadata]:
+    """Update stored audio metadata under an explicit artifact root."""
+    metadata = _get_generation(artifact_root, gen_id)
     if metadata is None:
         return None
 
-    gen_dir = _get_generation_dir(gen_id)
+    gen_dir = _get_generation_dir(gen_id, artifact_root)
     metadata_path = os.path.join(gen_dir, "metadata.json")
 
     dest_audio_path = metadata.audio_path
@@ -341,15 +374,20 @@ def load_history() -> list[GenerationMetadata]:
     Returns:
         list: List of GenerationMetadata objects, sorted by timestamp (newest first).
     """
-    _ensure_generations_dir()
+    return _load_history(GENERATIONS_DIR)
+
+
+def _load_history(artifact_root: str | Path) -> list[GenerationMetadata]:
+    """Load generation history from an explicit artifact root."""
+    _ensure_generations_dir(artifact_root)
 
     generations = []
 
-    for item in os.listdir(GENERATIONS_DIR):
+    for item in os.listdir(artifact_root):
         if not item.startswith("gen_"):
             continue
 
-        gen_dir = os.path.join(GENERATIONS_DIR, item)
+        gen_dir = os.path.join(str(artifact_root), item)
         if not os.path.isdir(gen_dir):
             continue
 
@@ -382,7 +420,12 @@ def get_generation(gen_id: str) -> Optional[GenerationMetadata]:
     Returns:
         GenerationMetadata or None if not found.
     """
-    gen_dir = _get_generation_dir(gen_id)
+    return _get_generation(GENERATIONS_DIR, gen_id)
+
+
+def _get_generation(artifact_root: str | Path, gen_id: str) -> Optional[GenerationMetadata]:
+    """Get a specific generation from an explicit artifact root."""
+    gen_dir = _get_generation_dir(gen_id, artifact_root)
     metadata_path = os.path.join(gen_dir, "metadata.json")
 
     if not os.path.exists(metadata_path):
@@ -406,7 +449,12 @@ def delete_generation(gen_id: str) -> bool:
     Returns:
         bool: True if deleted successfully, False otherwise.
     """
-    gen_dir = _get_generation_dir(gen_id)
+    return _delete_generation(GENERATIONS_DIR, gen_id)
+
+
+def _delete_generation(artifact_root: str | Path, gen_id: str) -> bool:
+    """Delete a generation from an explicit artifact root."""
+    gen_dir = _get_generation_dir(gen_id, artifact_root)
 
     if not os.path.exists(gen_dir):
         logger.warning(f"Generation not found: {gen_id}")
@@ -421,9 +469,10 @@ def delete_generation(gen_id: str) -> bool:
         return False
 
 
-def _enforce_limit() -> None:
+def _enforce_limit(artifact_root: str | Path | None = None) -> None:
     """Delete oldest generations if over the limit."""
-    generations = load_history()
+    root = _resolve_artifact_root(artifact_root)
+    generations = _load_history(root)
 
     if len(generations) <= MAX_GENERATIONS:
         return
@@ -433,7 +482,7 @@ def _enforce_limit() -> None:
 
     for gen in generations_to_delete:
         logger.info(f"Removing old generation {gen.id} to enforce limit")
-        delete_generation(gen.id)
+        _delete_generation(root, gen.id)
 
 
 def get_history_count() -> int:

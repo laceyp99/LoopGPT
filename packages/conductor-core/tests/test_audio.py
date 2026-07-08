@@ -38,6 +38,19 @@ def test_resolve_soundfont_returns_requested_file_from_soundfont_dir(monkeypatch
     assert soundfont_path == str(expected)
 
 
+def test_resolve_soundfont_ignores_cwd_soundfonts(monkeypatch, tmp_path):
+    core_soundfonts = tmp_path / "core"
+    cwd = tmp_path / "cwd"
+    cwd_soundfonts = cwd / "soundfonts"
+    core_soundfonts.mkdir()
+    cwd_soundfonts.mkdir(parents=True)
+    _write_file(cwd_soundfonts / "cwd-only.sf2")
+    monkeypatch.setattr(audio, "SOUNDFONT_DIR", str(core_soundfonts))
+    monkeypatch.chdir(cwd)
+
+    assert audio.resolve_soundfont("cwd-only.sf2") is None
+
+
 def test_is_playback_available_reports_missing_requested_soundfont(monkeypatch, tmp_path):
     monkeypatch.setattr(audio, "SOUNDFONT_DIR", str(tmp_path))
     monkeypatch.setattr(audio, "is_fluidsynth_available", lambda: True)

@@ -27,8 +27,6 @@ FluidSynth = None
 AudioSegment = None
 
 SOUNDFONT_DIR = str(resources.files("conductor_core.resources").joinpath("soundfonts"))
-_DEFAULT_SOUNDFONT_DIR = SOUNDFONT_DIR
-APP_SOUNDFONT_DIR = os.path.abspath(os.path.join(os.getcwd(), "soundfonts"))
 # Preferred SoundFont filenames searched in order.
 DEFAULT_SOUNDFONT_CANDIDATES = [
     "FM-Piano1 20190916.sf2",
@@ -42,10 +40,7 @@ DEFAULT_SOUNDFONT_CANDIDATES = [
 
 def _soundfont_search_dirs() -> list[str]:
     """Return SoundFont search directories in priority order."""
-    search_dirs = [SOUNDFONT_DIR]
-    if SOUNDFONT_DIR == _DEFAULT_SOUNDFONT_DIR and APP_SOUNDFONT_DIR != SOUNDFONT_DIR:
-        search_dirs.append(APP_SOUNDFONT_DIR)
-    return search_dirs
+    return [SOUNDFONT_DIR]
 
 
 def _find_soundfont_file(soundfont_name: str) -> str | None:
@@ -304,9 +299,9 @@ def get_playback_status_message(soundfont_name: str | None = None) -> str:
     if resolved_soundfont is None:
         if soundfont_name:
             instructions.append(
-                f"  - Add the requested SoundFont '{os.path.basename(soundfont_name)}' to 'soundfonts/'"
+                f"  - Pass an existing SoundFont path or package '{os.path.basename(soundfont_name)}' with Core"
             )
         else:
-            instructions.append("  - Add a `.sf2` SoundFont file to the 'soundfonts/' folder")
+            instructions.append("  - Package a `.sf2` SoundFont file with Core")
 
     return "\n".join(instructions)

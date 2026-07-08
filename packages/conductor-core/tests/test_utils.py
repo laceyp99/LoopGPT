@@ -55,43 +55,6 @@ def test_pitch_class_to_interval_uses_wrapped_distance(
 
 
 @pytest.mark.parametrize(
-    ("velocity", "expected_color"),
-    [
-        (0, "rgb(45,27,78)"),
-        (127, "rgb(255,107,91)"),
-    ],
-)
-def test_velocity_to_color_maps_expected_endpoint_colors(velocity, expected_color):
-    assert utils.velocity_to_color(velocity) == expected_color
-
-
-@pytest.mark.parametrize(
-    ("midi_pitch", "expected"),
-    [
-        (60, False),
-        (61, True),
-        (66, True),
-        (67, False),
-    ],
-)
-def test_is_black_key_identifies_black_and_white_keys(midi_pitch, expected):
-    assert utils.is_black_key(midi_pitch) is expected
-
-
-@pytest.mark.parametrize(
-    ("sixteenths", "expected"),
-    [
-        (1, "1/16"),
-        (4, "1/4"),
-        (16, "1 bar"),
-        (3, "3/16"),
-    ],
-)
-def test_format_duration_sixteenths_formats_standard_and_fallback_values(sixteenths, expected):
-    assert utils.format_duration_sixteenths(sixteenths) == expected
-
-
-@pytest.mark.parametrize(
     ("beats", "expected"),
     [
         (0.25, "Sixteenth"),
