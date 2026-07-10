@@ -17,12 +17,12 @@ Core owns:
 
 ## Installation
 
-From the repository root on Windows:
+From the `conductor-core` project directory on Windows:
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e ".\packages\conductor-core"
+.\.venv\Scripts\python.exe -m pip install -e .
 ```
 
 The base install supports deterministic music models and MIDI operations. Add
@@ -40,13 +40,13 @@ only the capabilities your consumer needs:
 
 ```powershell
 # All providers
-.\.venv\Scripts\python.exe -m pip install -e ".\packages\conductor-core[providers]"
+.\.venv\Scripts\python.exe -m pip install -e ".[providers]"
 
 # One provider plus playback
-.\.venv\Scripts\python.exe -m pip install -e ".\packages\conductor-core[google,playback]"
+.\.venv\Scripts\python.exe -m pip install -e ".[google,playback]"
 
 # Complete local development install
-.\.venv\Scripts\python.exe -m pip install -e ".\packages\conductor-core[providers,playback,dev]"
+.\.venv\Scripts\python.exe -m pip install -e ".[providers,playback,dev]"
 ```
 
 Using the venv interpreter explicitly is intentional. `py -3.12 -m pip`
@@ -298,7 +298,7 @@ decide how to display, retry, or log them.
 ## Validate Core independently
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest .\packages\conductor-core\tests -q
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
 The tests are deterministic and do not make live provider calls or require the

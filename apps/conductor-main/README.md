@@ -24,13 +24,14 @@ service to replace Conductor Main without rewriting the engine.
 
 ## Installation on Windows
 
-Run these commands from the repository root:
+Run these commands from the `conductor-main` project directory. Install a
+compatible published `conductor-core` release first:
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e ".\packages\conductor-core[providers,playback]"
-.\.venv\Scripts\python.exe -m pip install -e ".\apps\conductor-main"
+.\.venv\Scripts\python.exe -m pip install "conductor-core[providers,playback]"
+.\.venv\Scripts\python.exe -m pip install -e .
 $env:PYTHONUTF8 = "1"
 .\.venv\Scripts\conductor-main.exe
 ```
@@ -42,12 +43,8 @@ Use the explicit venv paths even if PowerShell activation succeeds. On Windows,
 active venv and can create a mixed environment. `PYTHONUTF8=1` also avoids
 Windows console encoding failures in tools that print Unicode status symbols.
 
-The root `app.py` remains a transition launcher:
-
-```powershell
-$env:PYTHONUTF8 = "1"
-.\.venv\Scripts\python.exe .\app.py
-```
+The former suite root `app.py` is only a transition launcher and is not part of
+the standalone project. Use the `conductor-main` entry point above.
 
 ## Provider setup
 
@@ -139,10 +136,11 @@ Click **History** to open the recent-generation sidebar. From there you can:
 - **Refresh** the list after external changes;
 - inspect prompt, model, musical settings, time, and cost summaries.
 
-By default, Core keeps the newest 20 generations under `generations/`:
+By default, the app keeps the newest 20 generations under
+`%USERPROFILE%\.conductor-main\generations\`:
 
 ```text
-generations/
+%USERPROFILE%/.conductor-main/generations/
 └── gen_<id>/
     ├── loop.mid
     ├── loop.mp3        # when audio rendering succeeds
@@ -157,7 +155,10 @@ keeps the saved audio available and identifies the missing selection.
 ## Prompt Editor
 
 The **Prompt Editor** tab displays the current loop-generation system prompt.
-Saving creates or updates the app-owned override at `Prompts/loop gen.txt`.
+Saving creates or updates the app-owned override at
+`%USERPROFILE%\.conductor-main\Prompts\loop gen.txt`. Set
+`CONDUCTOR_MAIN_DATA_DIR` to relocate both this override and the generation
+history.
 Subsequent generations use that override instead of Core's packaged default.
 
 The prompt defines the structured loop contract, timing conventions, and broad
@@ -209,13 +210,13 @@ re-render the saved MIDI.
 Install the development extra and run the client tests independently:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".\apps\conductor-main[dev]"
-.\.venv\Scripts\python.exe -m pytest .\apps\conductor-main\tests -q
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
 The tests cover callback adaptation, model controls, SoundFont behavior,
-history UI behavior, the root compatibility launcher, and the package import
-boundary. They do not make live provider calls or require the external audio
+history UI behavior and the package import boundary. They do not make live
+provider calls or require the external audio
 toolchain.
 
 The package entry point is `conductor_main.app:main`. UI-specific visualization

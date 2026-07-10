@@ -2,7 +2,10 @@
 
 A unified evaluation framework for testing MIDI loop generation across multiple AI models, with an interactive Plotly Dash dashboard for analyzing results.
 
-This framework is not a replacement for the pytest suite in `tests/`. Use pytest for fast local checks of deterministic code paths such as utility functions, MIDI conversion, history persistence, and provider routing. Use the evaluator when you want to measure prompt-to-model behavior, musical validity, latency, cost, or reasoning-mode differences across real models.
+This framework is not a replacement for its local pytest suite. Use pytest for
+fast local checks of deterministic Eval code paths. Use the evaluator when you
+want to measure prompt-to-model behavior, musical validity, latency, cost, or
+reasoning-mode differences across real models.
 
 ## File Reference
 
@@ -50,21 +53,22 @@ name explicitly.
 .\.venv\Scripts\python.exe -m conductor_eval.analysis
 
 # Direct path to a run
-.\.venv\Scripts\python.exe -m conductor_eval.analysis projects/conductor-eval/evaluations/20260210_224954_arpeggiator_local_pt
+.\.venv\Scripts\python.exe -m conductor_eval.analysis evaluations/20260210_224954_arpeggiator_local_pt
 ```
 
 The dashboard opens at `http://127.0.0.1:8050/`.
 
 ## Installation
 
-From the repository root, create a virtual environment and install Core with
-provider support, followed by Eval with its dashboard and development extras:
+From the `conductor-eval` project directory, create a virtual environment,
+install a compatible published Core release with provider support, then install
+Eval with its dashboard and development extras:
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e ".\packages\conductor-core[providers]"
-.\.venv\Scripts\python.exe -m pip install -e ".\projects\conductor-eval[dashboard,dev]"
+.\.venv\Scripts\python.exe -m pip install "conductor-core[providers]"
+.\.venv\Scripts\python.exe -m pip install -e ".[dashboard,dev]"
 ```
 
 The explicit interpreter paths prevent `py -3.12 -m pip` from accidentally
@@ -171,7 +175,7 @@ The `scale` test always runs since root and scale are always applied to prompts.
 Each evaluation run creates a timestamped directory:
 
 ```
-projects/conductor-eval/evaluations/
+evaluations/
 └── 20260210_224954_my_first_eval/
     ├── config.json                    # Full evaluation configuration
     ├── summary.json                   # Aggregated results + statistics
@@ -356,10 +360,10 @@ All charts update in real time when filters change.
 
 ### Exporting
 
-Click the **Export Dashboard** button to save all charts as individual HTML files plus a combined `dashboard.html` to `projects/conductor-eval/evaluations/<run>/analysis/`. The number of exported charts depends on the run's features (16 base charts, plus 3 for reasoning when applicable):
+Click the **Export Dashboard** button to save all charts as individual HTML files plus a combined `dashboard.html` to `evaluations/<run>/analysis/`. The number of exported charts depends on the run's features (16 base charts, plus 3 for reasoning when applicable):
 
 ```
-projects/conductor-eval/evaluations/20260210_224954_arpeggiator_local_pt/
+evaluations/20260210_224954_arpeggiator_local_pt/
 └── analysis/
     ├── dashboard.html              # Combined single-page dashboard
     ├── pass_rate_by_model.html

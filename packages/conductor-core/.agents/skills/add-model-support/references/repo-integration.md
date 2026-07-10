@@ -11,12 +11,14 @@ Use these notes to keep edits aligned with Conductor Core and its current suite 
 - `src/conductor_core/providers/ollama.py`: local-model discovery and request behavior; usually reference-only for announced cloud models.
 - `src/conductor_core/routing.py`: central provider routing; change only when an existing-provider model exposes a real routing assumption.
 - `tests/`: Core registry, provider, routing, and response-parsing coverage.
-- `AGENTS.md`: repository guidance when the package is still inside the suite monorepo.
+- `AGENTS.md`: repository guidance when present.
 
-When sibling projects are available:
+When downstream projects are available, check their own repositories rather
+than assuming they are siblings of Core:
 
-- `../../apps/conductor-main/src/conductor_main/app.py`: model dropdowns and metadata-driven temperature, thinking, and effort controls.
-- `../../projects/conductor-eval/src/conductor_eval/evaluator.py`: evaluation model selection, rate limits, and reasoning variations.
+- Conductor Main's model dropdowns and metadata-driven temperature, thinking,
+  and effort controls.
+- Conductor Eval's model selection, rate limits, and reasoning variations.
 
 ## Model Registry Schema
 
