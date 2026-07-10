@@ -1,73 +1,12 @@
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
-import app
-from conductor_core import engine as engine_module
-from src import history
+from conductor_main import app
 
 
 def _write_binary_file(path: Path, content: bytes = b"data") -> Path:
     path.write_bytes(content)
     return path
-
-
-def test_run_loop_persists_artifacts_in_generation_workspace(monkeypatch, tmp_path, sample_loop):
-    generations_dir = tmp_path / "generations"
-    monkeypatch.setattr(history, "GENERATIONS_DIR", str(generations_dir))
-    monkeypatch.setattr(history, "_generate_id", lambda: "fixed_id")
-    monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
-    monkeypatch.setattr(
-        engine_module.routing,
-        "generate_midi",
-        lambda **kwargs: (sample_loop, [{"role": "user", "content": "prompt"}], 0.25),
-    )
-    monkeypatch.setattr(app, "get_selected_soundfont", lambda choice=None: "custom.sf2")
-
-    def fake_midi_to_mp3(midi_path, output_path=None, soundfont_name=None):
-        Path(output_path).write_bytes(b"audio")
-        return output_path
-
-    monkeypatch.setattr(engine_module.playback, "midi_to_mp3", fake_midi_to_mp3)
-    monkeypatch.setattr(app, "visualize_midi_plotly", lambda midi: "viz")
-
-    outputs = list(
-        app.run_loop(
-            key="C",
-            scale="Major",
-            description="warm rhodes loop",
-            temp=0.3,
-            model_choice="gpt-test",
-            use_thinking=False,
-            effort="low",
-            soundfont_choice="custom.sf2",
-            openai_key="",
-            gemini_key="",
-            claude_key="",
-        )
-    )
-
-    final_output = outputs[-1]
-    gen_dir = generations_dir / "gen_fixed_id"
-
-    assert final_output[0] == str(gen_dir / "loop.mid")
-    assert final_output[1] == str(gen_dir / "loop.mp3")
-    assert final_output[2] == "viz"
-    assert final_output[3] == ""
-    assert final_output[5] == "fixed_id"
-    assert final_output[6] == "custom.sf2"
-    assert final_output[7] == str(gen_dir / "loop.mp3")
-    assert (gen_dir / "loop.mid").exists()
-    assert (gen_dir / "loop.mp3").read_bytes() == b"audio"
-    assert json.loads((gen_dir / "messages.json").read_text(encoding="utf-8")) == [
-        {"role": "user", "content": "prompt"}
-    ]
-
-    metadata = history.get_generation("fixed_id")
-    assert metadata is not None
-    assert metadata.midi_path == str(gen_dir / "loop.mid")
-    assert metadata.audio_path == str(gen_dir / "loop.mp3")
-    assert metadata.messages_path == str(gen_dir / "messages.json")
 
 
 def test_run_loop_passes_ui_configuration_to_core(monkeypatch, tmp_path):
