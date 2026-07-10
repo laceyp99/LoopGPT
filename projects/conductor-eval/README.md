@@ -45,12 +45,12 @@ name explicitly.
 
 ### Launch the Dashboard
 
-```bash
+```powershell
 # Interactive run selection
-py -3.12 -m conductor_eval.analysis
+.\.venv\Scripts\python.exe -m conductor_eval.analysis
 
 # Direct path to a run
-py -3.12 -m conductor_eval.analysis projects/conductor-eval/evaluations/20260210_224954_arpeggiator_local_pt
+.\.venv\Scripts\python.exe -m conductor_eval.analysis projects/conductor-eval/evaluations/20260210_224954_arpeggiator_local_pt
 ```
 
 The dashboard opens at `http://127.0.0.1:8050/`.
@@ -60,12 +60,15 @@ The dashboard opens at `http://127.0.0.1:8050/`.
 From the repository root, create a virtual environment and install Core with
 provider support, followed by Eval with its dashboard and development extras:
 
-```sh
+```powershell
 py -3.12 -m venv .venv
-.venv\Scripts\Activate.ps1
-py -3.12 -m pip install -e ".\packages\conductor-core[providers]"
-py -3.12 -m pip install -e ".\projects\conductor-eval[dashboard,dev]"
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e ".\packages\conductor-core[providers]"
+.\.venv\Scripts\python.exe -m pip install -e ".\projects\conductor-eval[dashboard,dev]"
 ```
+
+The explicit interpreter paths prevent `py -3.12 -m pip` from accidentally
+installing into the registered global Python instead of this environment.
 
 Key packages: `dash`, `dash-bootstrap-components`, `pandas`, `plotly`, `mido`, `rich`.
 

@@ -19,7 +19,7 @@ def test_gradio_client_imports_without_loading_legacy_modules():
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join(
         [
-            str(repository_root / "apps" / "gradio" / "src"),
+            str(repository_root / "apps" / "conductor-main" / "src"),
             str(repository_root / "packages" / "conductor-core" / "src"),
         ]
     )
