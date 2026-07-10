@@ -1,0 +1,7 @@
+interface:
+  display_name: "Add Model Support"
+  short_description: "Add a released model to Conductor Core"
+  default_prompt: "Use $add-model-support to add an officially announced model from an existing provider."
+
+policy:
+  allow_implicit_invocation: false
