@@ -100,9 +100,7 @@ DURATION_MAP = {
 
 # Derived lookups from DURATION_MAP
 DURATION_BEATS = {name: d["beats"] for name, d in DURATION_MAP.items()}
-DURATION_SIXTEENTHS_TO_DISPLAY = {
-    d["sixteenths"]: d["display"] for d in DURATION_MAP.values()
-}
+DURATION_SIXTEENTHS_TO_DISPLAY = {d["sixteenths"]: d["display"] for d in DURATION_MAP.values()}
 DURATION_KEYWORDS = {name: name for name in DURATION_MAP}
 for name, d in DURATION_MAP.items():
     for alias in d["aliases"]:
@@ -268,7 +266,12 @@ def calculate_midi_number(note):
         int: A MIDI number that corresponds to the note.
     """
     cleaned_pitch = (
-        note.pitch.strip().replace("♯", "#").replace("♭", "b").replace("𝄪", "##").replace("x", "##").replace("𝄫", "bb")
+        note.pitch.strip()
+        .replace("♯", "#")
+        .replace("♭", "b")
+        .replace("𝄪", "##")
+        .replace("x", "##")
+        .replace("𝄫", "bb")
     )
     if cleaned_pitch not in base_midi_numbers:
         raise ValueError(f"Unrecognized note name: {note.pitch}")

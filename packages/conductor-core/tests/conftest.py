@@ -4,7 +4,16 @@ import pytest
 from mido import MidiFile
 
 from conductor_core.midi import loop_to_midi
-from conductor_core.models import Bar, Bar_G, Loop, Loop_G, Note, Note_G, TimeInformation, TimeInformation_G
+from conductor_core.models import (
+    Bar,
+    Bar_G,
+    Loop,
+    Loop_G,
+    Note,
+    Note_G,
+    TimeInformation,
+    TimeInformation_G,
+)
 
 
 @pytest.fixture

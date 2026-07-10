@@ -1,11 +1,12 @@
-'''
+"""
 This file holds all the objects that will be used to generate MIDI information.
 
 Note: Gemini structured outputs do not support integer enums. To work around this limitation, _G objects are used instead.
-'''
+"""
+
+from enum import Enum, IntEnum
 
 from pydantic import BaseModel, Field
-from enum import IntEnum, Enum
 
 SIXTEENTH_NOTE_G_TO_INT = {
     "one": 1,
@@ -27,6 +28,7 @@ SIXTEENTH_NOTE_G_TO_INT = {
 }
 SIXTEENTH_NOTE_INT_TO_G = {value: key for key, value in SIXTEENTH_NOTE_G_TO_INT.items()}
 
+
 # Sixteenth Note Objects
 class SixteenthNote(IntEnum):
     ONE = 1
@@ -45,7 +47,8 @@ class SixteenthNote(IntEnum):
     FOURTEEN = 14
     FIFTEEN = 15
     SIXTEEN = 16
-    
+
+
 class SixteenthNote_G(Enum):
     ONE = "one"
     TWO = "two"
@@ -72,46 +75,72 @@ class SixteenthNote_G(Enum):
         except KeyError as exc:
             raise ValueError(f"Invalid sixteenth-note value: {value}") from exc
 
+
 # Time Information Objects
 class TimeInformation(BaseModel):
-    start_beat: SixteenthNote = Field(..., description="Starting beat of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
-    duration: SixteenthNote = Field(..., description="Duration of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
+    start_beat: SixteenthNote = Field(
+        ...,
+        description="Starting beat of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.",
+    )
+    duration: SixteenthNote = Field(
+        ...,
+        description="Duration of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.",
+    )
+
 
 class TimeInformation_G(BaseModel):
-    start_beat: SixteenthNote_G = Field(..., description="Starting beat of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
-    duration: SixteenthNote_G = Field(..., description="Duration of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.")
+    start_beat: SixteenthNote_G = Field(
+        ...,
+        description="Starting beat of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.",
+    )
+    duration: SixteenthNote_G = Field(
+        ...,
+        description="Duration of the note in sixteenth notes (e.g. 1-16). REMEMBER THIS IS BASE 1 NOT 0.",
+    )
+
 
 # Note Objects
 class Note(BaseModel):
-    pitch: str = Field(..., description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B") Please do not include the octave number')
-    octave: int = Field(..., description='Octave of the note (e.g. 1-8)')
-    velocity: int = Field(..., description='Velocity of the note (e.g. 0-127)')
+    pitch: str = Field(
+        ...,
+        description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B") Please do not include the octave number',
+    )
+    octave: int = Field(..., description="Octave of the note (e.g. 1-8)")
+    velocity: int = Field(..., description="Velocity of the note (e.g. 0-127)")
     time: TimeInformation
 
+
 class Note_G(BaseModel):
-    pitch: str = Field(..., description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B") Please do not include the octave number')
-    octave: int = Field(..., description='Octave of the note (e.g. 1-8)')
-    velocity: int = Field(..., description='Velocity of the note (e.g. 0-127)')
-    time: TimeInformation_G = Field(..., description='Time information of the note')
+    pitch: str = Field(
+        ...,
+        description='Pitch of the note (e.g. "C", "D", "E", "F", "G", "A", "B") Please do not include the octave number',
+    )
+    octave: int = Field(..., description="Octave of the note (e.g. 1-8)")
+    velocity: int = Field(..., description="Velocity of the note (e.g. 0-127)")
+    time: TimeInformation_G = Field(..., description="Time information of the note")
+
 
 # Bar Objects
 class Bar(BaseModel):
-    num: int = Field(..., description='Number of the bar (e.g. 1-4)')
-    notes: list[Note] = Field(..., description='List of notes in the bar')
+    num: int = Field(..., description="Number of the bar (e.g. 1-4)")
+    notes: list[Note] = Field(..., description="List of notes in the bar")
+
 
 class Bar_G(BaseModel):
-    num: int = Field(..., description='Number of the bar (e.g. 1-4)')
-    notes: list[Note_G] = Field(..., description='List of notes in the bar')
+    num: int = Field(..., description="Number of the bar (e.g. 1-4)")
+    notes: list[Note_G] = Field(..., description="List of notes in the bar")
+
 
 # Loop Objects
 class Loop(BaseModel):
-    Bar_1: Bar = Field(..., description='The first bar of the four bar loop')
-    Bar_2: Bar = Field(..., description='The second bar of the four bar loop')
-    Bar_3: Bar = Field(..., description='The third bar of the four bar loop')
-    Bar_4: Bar = Field(..., description='The fourth bar of the four bar loop')
+    Bar_1: Bar = Field(..., description="The first bar of the four bar loop")
+    Bar_2: Bar = Field(..., description="The second bar of the four bar loop")
+    Bar_3: Bar = Field(..., description="The third bar of the four bar loop")
+    Bar_4: Bar = Field(..., description="The fourth bar of the four bar loop")
+
 
 class Loop_G(BaseModel):
-    Bar_1: Bar_G = Field(..., description='The first bar of the four bar loop')
-    Bar_2: Bar_G = Field(..., description='The second bar of the four bar loop')
-    Bar_3: Bar_G = Field(..., description='The third bar of the four bar loop')
-    Bar_4: Bar_G = Field(..., description='The fourth bar of the four bar loop')
+    Bar_1: Bar_G = Field(..., description="The first bar of the four bar loop")
+    Bar_2: Bar_G = Field(..., description="The second bar of the four bar loop")
+    Bar_3: Bar_G = Field(..., description="The third bar of the four bar loop")
+    Bar_4: Bar_G = Field(..., description="The fourth bar of the four bar loop")

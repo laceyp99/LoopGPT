@@ -101,9 +101,19 @@ def test_midi_to_loop_round_trips_integer_timing(sample_loop, midi_builder):
 
     loop = midi_to_loop(str(midi_path), times_as_string=False)
 
-    assert [bar.notes[0].pitch for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]] == ["C", "E", "G", "B"]
-    assert all(bar.notes[0].time.start_beat == 1 for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4])
-    assert all(bar.notes[0].time.duration == 16 for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4])
+    assert [bar.notes[0].pitch for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]] == [
+        "C",
+        "E",
+        "G",
+        "B",
+    ]
+    assert all(
+        bar.notes[0].time.start_beat == 1
+        for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]
+    )
+    assert all(
+        bar.notes[0].time.duration == 16 for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]
+    )
 
 
 def test_midi_to_loop_round_trips_string_timing(sample_loop_g, midi_builder):
@@ -111,9 +121,20 @@ def test_midi_to_loop_round_trips_string_timing(sample_loop_g, midi_builder):
 
     loop = midi_to_loop(str(midi_path), times_as_string=True)
 
-    assert [bar.notes[0].pitch for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]] == ["C", "E", "G", "B"]
-    assert all(bar.notes[0].time.start_beat.value == "one" for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4])
-    assert all(bar.notes[0].time.duration.value == "sixteen" for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4])
+    assert [bar.notes[0].pitch for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]] == [
+        "C",
+        "E",
+        "G",
+        "B",
+    ]
+    assert all(
+        bar.notes[0].time.start_beat.value == "one"
+        for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]
+    )
+    assert all(
+        bar.notes[0].time.duration.value == "sixteen"
+        for bar in [loop.Bar_1, loop.Bar_2, loop.Bar_3, loop.Bar_4]
+    )
 
 
 def test_midi_to_loop_skips_notes_beyond_the_first_four_bars(tmp_path):

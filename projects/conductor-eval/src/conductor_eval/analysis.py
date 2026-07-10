@@ -1,16 +1,15 @@
-import dash
-from dash import dcc, html, Input, Output
-import dash_bootstrap_components as dbc
-import plotly.graph_objects as go
-import plotly.express as px
-import pandas as pd
-from pathlib import Path
-from collections import defaultdict
 import json
-import sys
-import os
 import logging
+import os
+import sys
+from collections import defaultdict
+from pathlib import Path
 
+import dash
+import dash_bootstrap_components as dbc
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from conductor_core.music import (
     INTERVAL_NAMES,
     NOTE_NAMES,
@@ -19,6 +18,7 @@ from conductor_core.music import (
     pitch_class_to_interval,
     pitch_class_to_note,
 )
+from dash import Input, Output, dcc, html
 
 PLOTLY_BG = "#1a1a2e"
 PLOTLY_GRID = "#2a2a4a"
@@ -48,7 +48,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 MODEL_COLORS = px.colors.qualitative.Set2
-DEFAULT_EVALUATIONS_DIR = Path("projects/conductor-eval/evaluations")
+DEFAULT_EVALUATIONS_DIR = Path("evaluations")
 
 # Plotly textposition options mapped to angles (degrees, counter-clockwise from +x axis).
 # The label is placed in the direction of the angle relative to the marker.
@@ -175,7 +175,9 @@ def load_run(run_path):
 
         # Determine variation from directory structure
         rel = tr_path.relative_to(results_dir)
-        parts = rel.parts  # e.g. ("Ollama", "model", "prompt_slug", "C_major", "low", "test_results.json")
+        parts = (
+            rel.parts
+        )  # e.g. ("Ollama", "model", "prompt_slug", "C_major", "low", "test_results.json")
         # If there's a subfolder beyond root_scale (5+ parts before the filename), it's a variation
         if len(parts) > 5:
             variation = parts[-2]
@@ -214,9 +216,7 @@ def load_run(run_path):
             "scale_correct": scale_test.get("correct", 0),
             "scale_incorrect": scale_test.get("incorrect", 0),
             "scale_pitches_correct": scale_test.get("pitches", {}).get("correct", []),
-            "scale_pitches_incorrect": scale_test.get("pitches", {}).get(
-                "incorrect", []
-            ),
+            "scale_pitches_incorrect": scale_test.get("pitches", {}).get("incorrect", []),
             # Duration test
             "duration_ran": duration_test.get("ran", False),
             "duration_total": duration_test.get("total", 0),
@@ -232,22 +232,16 @@ def load_run(run_path):
         # Compute derived columns
         df["has_error"] = df["error"].apply(lambda x: isinstance(x, str) and len(x) > 0)
         df["scale_accuracy"] = df.apply(
-            lambda r: (
-                r["scale_correct"] / r["scale_total"] if r["scale_total"] > 0 else None
-            ),
+            lambda r: r["scale_correct"] / r["scale_total"] if r["scale_total"] > 0 else None,
             axis=1,
         )
         df["duration_accuracy"] = df.apply(
             lambda r: (
-                r["duration_correct"] / r["duration_total"]
-                if r["duration_total"] > 0
-                else None
+                r["duration_correct"] / r["duration_total"] if r["duration_total"] > 0 else None
             ),
             axis=1,
         )
-        df["scale_pass"] = df.apply(
-            lambda r: r["scale_incorrect"] == 0 and r["scale_ran"], axis=1
-        )
+        df["scale_pass"] = df.apply(lambda r: r["scale_incorrect"] == 0 and r["scale_ran"], axis=1)
         df["duration_pass"] = df.apply(
             lambda r: r["duration_incorrect"] == 0 and r["duration_ran"], axis=1
         )
@@ -278,9 +272,7 @@ def load_run(run_path):
                 has_standard = not subset["use_thinking"].all()
                 if no_effort and has_thinking and has_standard:
                     std_mask = mask & ~df["use_thinking"]
-                    df.loc[std_mask, "model"] = (
-                        df.loc[std_mask, "base_model"] + " (standard)"
-                    )
+                    df.loc[std_mask, "model"] = df.loc[std_mask, "base_model"] + " (standard)"
 
     logger.info("Loaded %d results from %s", len(df), run_path)
     return df, config, summary
@@ -298,9 +290,7 @@ def list_available_runs(base_dir=DEFAULT_EVALUATIONS_DIR):
     base = Path(base_dir)
     if not base.exists():
         return []
-    runs = [
-        d for d in sorted(base.iterdir()) if d.is_dir() and (d / "config.json").exists()
-    ]
+    runs = [d for d in sorted(base.iterdir()) if d.is_dir() and (d / "config.json").exists()]
     return runs
 
 
@@ -407,9 +397,7 @@ def build_pass_rate_by_model(df):
                 )
             ],
             textposition="auto",
-            marker_color=[
-                MODEL_COLORS[i % len(MODEL_COLORS)] for i in range(len(stats))
-            ],
+            marker_color=[MODEL_COLORS[i % len(MODEL_COLORS)] for i in range(len(stats))],
         )
     )
     fig.update_layout(
@@ -443,19 +431,11 @@ def build_per_test_breakdown(df):
         mdf = df[df["model"] == model]
         # Scale pass rate (only where scale test ran)
         scale_df = mdf[mdf["scale_ran"]]
-        s_rate = (
-            (scale_df["scale_pass"].sum() / len(scale_df) * 100)
-            if len(scale_df) > 0
-            else 0
-        )
+        s_rate = (scale_df["scale_pass"].sum() / len(scale_df) * 100) if len(scale_df) > 0 else 0
         scale_rates.append(round(s_rate, 1))
         # Duration pass rate
         dur_df = mdf[mdf["duration_ran"]]
-        d_rate = (
-            (dur_df["duration_pass"].sum() / len(dur_df) * 100)
-            if len(dur_df) > 0
-            else 0
-        )
+        d_rate = (dur_df["duration_pass"].sum() / len(dur_df) * 100) if len(dur_df) > 0 else 0
         duration_rates.append(round(d_rate, 1))
         # Overall
         o_rate = (mdf["overall_pass"].sum() / len(mdf) * 100) if len(mdf) > 0 else 0
@@ -511,9 +491,7 @@ def build_model_root_heatmap(df):
     if df.empty:
         return apply_plotly_theme(go.Figure().update_layout(title="No data"))
 
-    pivot = df.pivot_table(
-        values="overall_pass", index="model", columns="root", aggfunc="mean"
-    )
+    pivot = df.pivot_table(values="overall_pass", index="model", columns="root", aggfunc="mean")
     pivot = (pivot * 100).round(1)
 
     fig = go.Figure(
@@ -529,9 +507,7 @@ def build_model_root_heatmap(df):
             colorbar=dict(title="Pass %"),
         )
     )
-    fig.update_layout(
-        title="Pass Rate: Model x Root", xaxis_title="Root", yaxis_title="Model"
-    )
+    fig.update_layout(title="Pass Rate: Model x Root", xaxis_title="Root", yaxis_title="Model")
     return apply_plotly_theme(fig)
 
 
@@ -547,9 +523,7 @@ def build_model_scale_heatmap(df):
     if df.empty:
         return apply_plotly_theme(go.Figure().update_layout(title="No data"))
 
-    pivot = df.pivot_table(
-        values="overall_pass", index="model", columns="scale", aggfunc="mean"
-    )
+    pivot = df.pivot_table(values="overall_pass", index="model", columns="scale", aggfunc="mean")
     pivot = (pivot * 100).round(1)
 
     fig = go.Figure(
@@ -591,12 +565,8 @@ def build_major_vs_minor_by_model(df):
         mdf = df[df["model"] == model]
         maj = mdf[mdf["scale"] == "major"]
         mn = mdf[mdf["scale"] == "minor"]
-        major_rates.append(
-            round(maj["overall_pass"].mean() * 100, 1) if len(maj) > 0 else 0
-        )
-        minor_rates.append(
-            round(mn["overall_pass"].mean() * 100, 1) if len(mn) > 0 else 0
-        )
+        major_rates.append(round(maj["overall_pass"].mean() * 100, 1) if len(maj) > 0 else 0)
+        minor_rates.append(round(mn["overall_pass"].mean() * 100, 1) if len(mn) > 0 else 0)
 
     fig = go.Figure()
     fig.add_trace(
@@ -697,12 +667,8 @@ def build_root_scale_grouped(df):
         rdf = df[df["root"] == root]
         maj = rdf[rdf["scale"] == "major"]
         mn = rdf[rdf["scale"] == "minor"]
-        major_rates.append(
-            round(maj["overall_pass"].mean() * 100, 1) if len(maj) > 0 else 0
-        )
-        minor_rates.append(
-            round(mn["overall_pass"].mean() * 100, 1) if len(mn) > 0 else 0
-        )
+        major_rates.append(round(maj["overall_pass"].mean() * 100, 1) if len(maj) > 0 else 0)
+        minor_rates.append(round(mn["overall_pass"].mean() * 100, 1) if len(mn) > 0 else 0)
 
     fig = go.Figure()
     fig.add_trace(
@@ -1124,9 +1090,7 @@ def build_duration_errors_by_model(df):
         fig.update_layout(title="Duration Errors by Model")
         return apply_plotly_theme(fig)
 
-    all_labels = sorted(
-        {label for counts in model_dur_counts.values() for label in counts}
-    )
+    all_labels = sorted({label for counts in model_dur_counts.values() for label in counts})
 
     fig = go.Figure()
     for model in sorted(model_dur_counts.keys()):
@@ -1182,11 +1146,7 @@ def build_effort_impact_delta(df):
 
     def effort_rank(e):
         e_lower = str(e).lower()
-        return (
-            EFFORT_ORDER.index(e_lower)
-            if e_lower in EFFORT_ORDER
-            else len(EFFORT_ORDER)
-        )
+        return EFFORT_ORDER.index(e_lower) if e_lower in EFFORT_ORDER else len(EFFORT_ORDER)
 
     # Per (base_model, effort) pass rate
     stats = (
@@ -1309,16 +1269,10 @@ def build_reasoning_toggle_comparison(df):
         mask = df["base_model"] == base
         std = df.loc[mask & ~df["use_thinking"]]
         reas = df.loc[mask & df["use_thinking"]]
-        std_rates.append(
-            round(std["overall_pass"].mean() * 100, 1) if len(std) > 0 else 0
-        )
-        reas_rates.append(
-            round(reas["overall_pass"].mean() * 100, 1) if len(reas) > 0 else 0
-        )
+        std_rates.append(round(std["overall_pass"].mean() * 100, 1) if len(std) > 0 else 0)
+        reas_rates.append(round(reas["overall_pass"].mean() * 100, 1) if len(reas) > 0 else 0)
         std_latencies.append(round(std["api_latency"].mean(), 1) if len(std) > 0 else 0)
-        reas_latencies.append(
-            round(reas["api_latency"].mean(), 1) if len(reas) > 0 else 0
-        )
+        reas_latencies.append(round(reas["api_latency"].mean(), 1) if len(reas) > 0 else 0)
         std_costs.append(round(std["cost"].mean(), 5) if len(std) > 0 else 0)
         reas_costs.append(round(reas["cost"].mean(), 5) if len(reas) > 0 else 0)
 
@@ -1466,9 +1420,7 @@ def build_reasoning_cost_effectiveness(df):
 
     # Assign colors per base_model
     base_models = sorted(stats["base_model"].unique())
-    color_map = {
-        bm: MODEL_COLORS[i % len(MODEL_COLORS)] for i, bm in enumerate(base_models)
-    }
+    color_map = {bm: MODEL_COLORS[i % len(MODEL_COLORS)] for i, bm in enumerate(base_models)}
 
     fig = go.Figure()
 
@@ -1480,11 +1432,7 @@ def build_reasoning_cost_effectiveness(df):
             def _effort_from_name(name):
                 if "(" in name and ")" in name:
                     e = name.split("(")[-1].rstrip(")")
-                    return (
-                        EFFORT_ORDER.index(e)
-                        if e in EFFORT_ORDER
-                        else len(EFFORT_ORDER)
-                    )
+                    return EFFORT_ORDER.index(e) if e in EFFORT_ORDER else len(EFFORT_ORDER)
                 return -1
 
             bm_stats["_rank"] = bm_stats["model"].apply(_effort_from_name)
@@ -1501,9 +1449,7 @@ def build_reasoning_cost_effectiveness(df):
             )
 
     # Compute text positions across ALL points before splitting into per-model traces
-    all_text_positions = compute_text_positions(
-        stats["cost_per_gen"], stats["pass_rate_pct"]
-    )
+    all_text_positions = compute_text_positions(stats["cost_per_gen"], stats["pass_rate_pct"])
     stats["_text_pos"] = all_text_positions
 
     # Draw scatter points
@@ -1638,9 +1584,7 @@ def build_filter_bar(df):
         [
             dbc.Col(
                 [
-                    html.Label(
-                        "Models", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}
-                    ),
+                    html.Label("Models", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}),
                     dcc.Dropdown(
                         id="filter-models",
                         options=[{"label": m, "value": m} for m in models],
@@ -1653,9 +1597,7 @@ def build_filter_bar(df):
             ),
             dbc.Col(
                 [
-                    html.Label(
-                        "Root Notes", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}
-                    ),
+                    html.Label("Root Notes", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}),
                     dcc.Dropdown(
                         id="filter-roots",
                         options=[{"label": r, "value": r} for r in roots],
@@ -1668,9 +1610,7 @@ def build_filter_bar(df):
             ),
             dbc.Col(
                 [
-                    html.Label(
-                        "Scale Type", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}
-                    ),
+                    html.Label("Scale Type", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}),
                     dcc.Dropdown(
                         id="filter-scales",
                         options=[{"label": s.title(), "value": s} for s in scales],
@@ -1683,14 +1623,11 @@ def build_filter_bar(df):
             ),
             dbc.Col(
                 [
-                    html.Label(
-                        "Variation", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}
-                    ),
+                    html.Label("Variation", style={"color": PLOTLY_TEXT, "fontSize": "0.8rem"}),
                     dcc.Dropdown(
                         id="filter-variations",
                         options=[
-                            {"label": v.replace("_", " ").title(), "value": v}
-                            for v in variations
+                            {"label": v.replace("_", " ").title(), "value": v} for v in variations
                         ],
                         value=variations,
                         multi=True,
@@ -1821,9 +1758,7 @@ def create_app(run_path):
     app.layout = dbc.Container(
         [
             # Hidden store for the full data
-            dcc.Store(
-                id="run-data", data=df.to_json(date_format="iso", orient="split")
-            ),
+            dcc.Store(id="run-data", data=df.to_json(date_format="iso", orient="split")),
             # Header
             dbc.Row(
                 [
@@ -1870,9 +1805,7 @@ def create_app(run_path):
     def update_overview(models, roots, scales, variations):
         filtered = apply_filters(df, models, roots, scales, variations)
         if filtered.empty:
-            return html.P(
-                "No data matches current filters.", style={"color": PLOTLY_TEXT}
-            )
+            return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
         total = len(filtered)
         passed = int(filtered["overall_pass"].sum())
@@ -1882,11 +1815,7 @@ def create_app(run_path):
         avg_latency = filtered["api_latency"].mean()
 
         # Best / worst model
-        model_rates = (
-            filtered.groupby("model")["overall_pass"]
-            .mean()
-            .sort_values(ascending=False)
-        )
+        model_rates = filtered.groupby("model")["overall_pass"].mean().sort_values(ascending=False)
         best_model = (
             f"{model_rates.index[0]} ({model_rates.iloc[0] * 100:.1f}%)"
             if len(model_rates) > 0
@@ -1903,9 +1832,7 @@ def create_app(run_path):
                 # Metric cards row
                 dbc.Row(
                     [
-                        dbc.Col(
-                            make_metric_card("Total Generations", str(total)), md=2
-                        ),
+                        dbc.Col(make_metric_card("Total Generations", str(total)), md=2),
                         dbc.Col(
                             make_metric_card(
                                 "Pass Rate",
@@ -1920,26 +1847,18 @@ def create_app(run_path):
                             md=2,
                         ),
                         dbc.Col(
-                            make_metric_card(
-                                "Worst Model", worst_model, color="#e74c3c"
-                            ),
+                            make_metric_card("Worst Model", worst_model, color="#e74c3c"),
                             md=2,
                         ),
-                        dbc.Col(
-                            make_metric_card("Total Cost", f"${total_cost:.4f}"), md=2
-                        ),
-                        dbc.Col(
-                            make_metric_card("Avg Latency", f"{avg_latency:.1f}s"), md=2
-                        ),
+                        dbc.Col(make_metric_card("Total Cost", f"${total_cost:.4f}"), md=2),
+                        dbc.Col(make_metric_card("Avg Latency", f"{avg_latency:.1f}s"), md=2),
                     ],
                     className="mb-4 g-2",
                 ),
                 # Main chart
                 dbc.Row(
                     [
-                        dbc.Col(
-                            dcc.Graph(figure=build_pass_rate_by_model(filtered)), md=12
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_pass_rate_by_model(filtered)), md=12),
                     ]
                 ),
             ]
@@ -1957,17 +1876,13 @@ def create_app(run_path):
     def update_model(models, roots, scales, variations):
         filtered = apply_filters(df, models, roots, scales, variations)
         if filtered.empty:
-            return html.P(
-                "No data matches current filters.", style={"color": PLOTLY_TEXT}
-            )
+            return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
         return html.Div(
             [
                 dbc.Row(
                     [
-                        dbc.Col(
-                            dcc.Graph(figure=build_per_test_breakdown(filtered)), md=12
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_per_test_breakdown(filtered)), md=12),
                     ],
                     className="mb-3",
                 ),
@@ -1977,17 +1892,13 @@ def create_app(run_path):
                             dcc.Graph(figure=build_major_vs_minor_by_model(filtered)),
                             md=6,
                         ),
-                        dbc.Col(
-                            dcc.Graph(figure=build_model_scale_heatmap(filtered)), md=6
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_model_scale_heatmap(filtered)), md=6),
                     ],
                     className="mb-3",
                 ),
                 dbc.Row(
                     [
-                        dbc.Col(
-                            dcc.Graph(figure=build_model_root_heatmap(filtered)), md=12
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_model_root_heatmap(filtered)), md=12),
                     ]
                 ),
             ]
@@ -2005,26 +1916,20 @@ def create_app(run_path):
     def update_root_scale(models, roots, scales, variations):
         filtered = apply_filters(df, models, roots, scales, variations)
         if filtered.empty:
-            return html.P(
-                "No data matches current filters.", style={"color": PLOTLY_TEXT}
-            )
+            return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
         return html.Div(
             [
                 dbc.Row(
                     [
                         dbc.Col(dcc.Graph(figure=build_root_pass_rate(filtered)), md=6),
-                        dbc.Col(
-                            dcc.Graph(figure=build_root_scale_grouped(filtered)), md=6
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_root_scale_grouped(filtered)), md=6),
                     ],
                     className="mb-3",
                 ),
                 dbc.Row(
                     [
-                        dbc.Col(
-                            dcc.Graph(figure=build_root_scale_heatmap(filtered)), md=12
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_root_scale_heatmap(filtered)), md=12),
                     ]
                 ),
             ]
@@ -2042,9 +1947,7 @@ def create_app(run_path):
     def update_latency(models, roots, scales, variations):
         filtered = apply_filters(df, models, roots, scales, variations)
         if filtered.empty:
-            return html.P(
-                "No data matches current filters.", style={"color": PLOTLY_TEXT}
-            )
+            return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
         return html.Div(
             [
@@ -2056,9 +1959,7 @@ def create_app(run_path):
                 ),
                 dbc.Row(
                     [
-                        dbc.Col(
-                            dcc.Graph(figure=build_latency_vs_pass(filtered)), md=12
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_latency_vs_pass(filtered)), md=12),
                     ]
                 ),
             ]
@@ -2076,9 +1977,7 @@ def create_app(run_path):
     def update_cost(models, roots, scales, variations):
         filtered = apply_filters(df, models, roots, scales, variations)
         if filtered.empty:
-            return html.P(
-                "No data matches current filters.", style={"color": PLOTLY_TEXT}
-            )
+            return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
         return html.Div(
             [
@@ -2106,9 +2005,7 @@ def create_app(run_path):
         def update_reasoning(models, roots, scales, variations):
             filtered = apply_filters(df, models, roots, scales, variations)
             if filtered.empty:
-                return html.P(
-                    "No data matches current filters.", style={"color": PLOTLY_TEXT}
-                )
+                return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
             # Summary cards for reasoning impact
             effort_rows = filtered[filtered["effort"].notna()]
@@ -2118,24 +2015,14 @@ def create_app(run_path):
                     [
                         bm
                         for bm in filtered["base_model"].unique()
-                        if not filtered.loc[
-                            filtered["base_model"] == bm, "use_thinking"
-                        ].all()
-                        and filtered.loc[
-                            filtered["base_model"] == bm, "use_thinking"
-                        ].any()
-                        and filtered.loc[filtered["base_model"] == bm, "effort"]
-                        .isna()
-                        .all()
+                        if not filtered.loc[filtered["base_model"] == bm, "use_thinking"].all()
+                        and filtered.loc[filtered["base_model"] == bm, "use_thinking"].any()
+                        and filtered.loc[filtered["base_model"] == bm, "effort"].isna().all()
                     ]
                 )
             ]
-            n_effort_models = (
-                effort_rows["base_model"].nunique() if not effort_rows.empty else 0
-            )
-            n_toggle_models = (
-                toggle_rows["base_model"].nunique() if not toggle_rows.empty else 0
-            )
+            n_effort_models = effort_rows["base_model"].nunique() if not effort_rows.empty else 0
+            n_toggle_models = toggle_rows["base_model"].nunique() if not toggle_rows.empty else 0
 
             cards = dbc.Row(
                 [
@@ -2180,9 +2067,7 @@ def create_app(run_path):
             rows.append(
                 dbc.Row(
                     [
-                        dbc.Col(
-                            dcc.Graph(figure=build_effort_impact_delta(filtered)), md=12
-                        ),
+                        dbc.Col(dcc.Graph(figure=build_effort_impact_delta(filtered)), md=12),
                     ],
                     className="mb-3",
                 )
@@ -2193,9 +2078,7 @@ def create_app(run_path):
                 dbc.Row(
                     [
                         dbc.Col(
-                            dcc.Graph(
-                                figure=build_reasoning_toggle_comparison(filtered)
-                            ),
+                            dcc.Graph(figure=build_reasoning_toggle_comparison(filtered)),
                             md=12,
                         ),
                     ],
@@ -2208,9 +2091,7 @@ def create_app(run_path):
                 dbc.Row(
                     [
                         dbc.Col(
-                            dcc.Graph(
-                                figure=build_reasoning_cost_effectiveness(filtered)
-                            ),
+                            dcc.Graph(figure=build_reasoning_cost_effectiveness(filtered)),
                             md=12,
                         ),
                     ]
@@ -2231,9 +2112,7 @@ def create_app(run_path):
     def update_errors(models, roots, scales, variations):
         filtered = apply_filters(df, models, roots, scales, variations)
         if filtered.empty:
-            return html.P(
-                "No data matches current filters.", style={"color": PLOTLY_TEXT}
-            )
+            return html.P("No data matches current filters.", style={"color": PLOTLY_TEXT})
 
         return html.Div(
             [
@@ -2249,15 +2128,11 @@ def create_app(run_path):
                 dbc.Row(
                     [
                         dbc.Col(
-                            dcc.Graph(
-                                figure=build_incorrect_pitches_by_model(filtered)
-                            ),
+                            dcc.Graph(figure=build_incorrect_pitches_by_model(filtered)),
                             md=6,
                         ),
                         dbc.Col(
-                            dcc.Graph(
-                                figure=build_incorrect_intervals_by_model(filtered)
-                            ),
+                            dcc.Graph(figure=build_incorrect_intervals_by_model(filtered)),
                             md=6,
                         ),
                     ],
@@ -2309,9 +2184,7 @@ def create_app(run_path):
         if has_reasoning:
             figures["effort_impact_delta"] = build_effort_impact_delta(df)
             figures["reasoning_toggle"] = build_reasoning_toggle_comparison(df)
-            figures["reasoning_cost_effectiveness"] = (
-                build_reasoning_cost_effectiveness(df)
-            )
+            figures["reasoning_cost_effectiveness"] = build_reasoning_cost_effectiveness(df)
 
         # Save individual charts
         for name, fig in figures.items():
@@ -2353,12 +2226,8 @@ def _build_combined_html(figures, run_name, timestamp, totals, df):
     chart_divs = []
     for name, fig in figures.items():
         title = name.replace("_", " ").title()
-        div_html = fig.to_html(
-            include_plotlyjs=False, full_html=False, div_id=f"chart-{name}"
-        )
-        chart_divs.append(
-            f'<div class="chart-section"><h3>{title}</h3>{div_html}</div>'
-        )
+        div_html = fig.to_html(include_plotlyjs=False, full_html=False, div_id=f"chart-{name}")
+        chart_divs.append(f'<div class="chart-section"><h3>{title}</h3>{div_html}</div>')
 
     return f"""<!DOCTYPE html>
 <html>

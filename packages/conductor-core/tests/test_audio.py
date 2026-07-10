@@ -63,7 +63,9 @@ def test_is_playback_available_reports_missing_requested_soundfont(monkeypatch, 
 
 
 def test_get_playback_status_message_prioritizes_missing_dependencies(monkeypatch):
-    monkeypatch.setattr(audio, "is_playback_available", lambda soundfont_name=None: (False, "dependency error"))
+    monkeypatch.setattr(
+        audio, "is_playback_available", lambda soundfont_name=None: (False, "dependency error")
+    )
     monkeypatch.setattr(audio, "is_fluidsynth_available", lambda: False)
     monkeypatch.setattr(audio, "is_ffmpeg_available", lambda: False)
     monkeypatch.setattr(audio, "find_soundfont", lambda soundfont_name=None: None)

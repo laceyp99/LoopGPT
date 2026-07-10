@@ -1,10 +1,10 @@
 import json
 from types import SimpleNamespace
 
+from conductor_core import GenerationRequest
 from mido import MidiFile
 
 from conductor_eval import EvalEngineAdapter, Evaluator
-from conductor_core import GenerationRequest
 
 
 class RecordingEngine:
@@ -83,7 +83,4 @@ def test_save_results_uses_per_result_loop_filename(tmp_path):
     assert (result_dir / "loop.mid").exists()
     legacy_filename = "output" + ".mid"
     assert not (result_dir / legacy_filename).exists()
-    assert (
-        json.loads((result_dir / "messages.json").read_text(encoding="utf-8"))
-        == messages
-    )
+    assert json.loads((result_dir / "messages.json").read_text(encoding="utf-8")) == messages

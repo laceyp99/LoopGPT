@@ -8,22 +8,23 @@ This module provides a flexible evaluation framework that can:
 - Save structured results including MIDI files, chat history, and test results
 """
 
-from rich.live import Live
-from rich.table import Table
-from rich.console import Console
-from mido import MidiFile
-from pathlib import Path
-from datetime import datetime
-from typing import Union
-import logging
 import asyncio
 import json
+import logging
 import time
+from datetime import datetime
+from pathlib import Path
+from typing import Union
 
 from conductor_core import EngineConfig, GenerationRequest, LoopGenerationEngine
 from conductor_core.music import DURATION_KEYWORDS, get_model_info
 from conductor_core.providers import ollama as ollama_api
-from conductor_eval.checks import scale_test, duration_test
+from mido import MidiFile
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+
+from conductor_eval.checks import duration_test, scale_test
 
 DIRECT_EVALUATION_CONFIRMATION = "RUN CLOUD EVALUATION"
 
@@ -128,7 +129,7 @@ class Evaluator:
 
     def __init__(
         self,
-        output_dir: str = "projects/conductor-eval/evaluations",
+        output_dir: str | Path = "evaluations",
         temperature: float = 0.0,
     ):
         """
@@ -238,9 +239,7 @@ class Evaluator:
         # Run async tasks (cloud providers)
         if async_tasks:
             logger.info(f"Running {len(async_tasks)} async tasks (cloud providers)")
-            async_results = asyncio.run(
-                self._run_async_batch(async_tasks, run_path, tests)
-            )
+            async_results = asyncio.run(self._run_async_batch(async_tasks, run_path, tests))
             all_results.extend(async_results)
 
         # Run sync tasks (Ollama)
@@ -534,9 +533,7 @@ class Evaluator:
 
         return tasks
 
-    def _generate_variations(
-        self, model: str, provider: str, test_reasoning: bool
-    ) -> list[dict]:
+    def _generate_variations(self, model: str, provider: str, test_reasoning: bool) -> list[dict]:
         """
         Generate all config variations to test for a model.
 
@@ -647,9 +644,7 @@ class Evaluator:
             if provider in self.model_info["models"]:
                 rpms = []
                 for model in self.model_info["models"][provider].keys():
-                    rate_info = self.model_info["models"][provider][model].get(
-                        "rate_limits", {}
-                    )
+                    rate_info = self.model_info["models"][provider][model].get("rate_limits", {})
                     rpm = rate_info.get("RPM", 60)
                     rpms.append(rpm)
                 max_concurrent = max(1, min(rpms) // 60) if rpms else 1
@@ -688,9 +683,7 @@ class Evaluator:
                 results.append(result)
 
                 # Update table
-                new_table = Table(
-                    title=f"Evaluation Progress ({len(results)}/{total_tasks})"
-                )
+                new_table = Table(title=f"Evaluation Progress ({len(results)}/{total_tasks})")
                 new_table.add_column("Provider")
                 new_table.add_column("Model")
                 new_table.add_column("Tested")
@@ -766,9 +759,7 @@ class Evaluator:
                 results.append(result)
 
                 # Update table
-                new_table = Table(
-                    title=f"Evaluation Progress ({len(results)}/{total_tasks})"
-                )
+                new_table = Table(title=f"Evaluation Progress ({len(results)}/{total_tasks})")
                 new_table.add_column("Model")
                 new_table.add_column("Tested")
                 new_table.add_column("Pass Rate")
@@ -985,9 +976,7 @@ class Evaluator:
                 summary["totals"]["overall_pass_count"] += 1
 
             summary["totals"]["total_cost"] += r.get("metrics", {}).get("cost", 0.0)
-            summary["totals"]["total_time"] += r.get("metrics", {}).get(
-                "api_latency", 0.0
-            )
+            summary["totals"]["total_time"] += r.get("metrics", {}).get("api_latency", 0.0)
 
             # By model
             model = r["model"]
@@ -1030,9 +1019,7 @@ class Evaluator:
         # Calculate rates
         total = summary["totals"]["total_generations"]
         if total > 0:
-            summary["totals"]["overall_pass_rate"] = (
-                summary["totals"]["overall_pass_count"] / total
-            )
+            summary["totals"]["overall_pass_rate"] = summary["totals"]["overall_pass_count"] / total
 
         for model, m in summary["by_model"].items():
             if m["tested"] > 0:

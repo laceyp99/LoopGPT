@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 
 def test_core_import_does_not_load_ui_dashboard_or_eval_modules():

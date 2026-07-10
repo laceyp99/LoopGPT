@@ -22,7 +22,12 @@ def _loop_payload():
             }
         ],
     }
-    return {"Bar_1": bar, "Bar_2": {**bar, "num": 2}, "Bar_3": {**bar, "num": 3}, "Bar_4": {**bar, "num": 4}}
+    return {
+        "Bar_1": bar,
+        "Bar_2": {**bar, "num": 2},
+        "Bar_3": {**bar, "num": 3},
+        "Bar_4": {**bar, "num": 4},
+    }
 
 
 def _loop_g_payload():
@@ -37,7 +42,12 @@ def _loop_g_payload():
             }
         ],
     }
-    return {"Bar_1": bar, "Bar_2": {**bar, "num": 2}, "Bar_3": {**bar, "num": 3}, "Bar_4": {**bar, "num": 4}}
+    return {
+        "Bar_1": bar,
+        "Bar_2": {**bar, "num": 2},
+        "Bar_3": {**bar, "num": 3},
+        "Bar_4": {**bar, "num": 4},
+    }
 
 
 def _fail_save_messages(*args, **kwargs):
@@ -195,9 +205,7 @@ def test_openai_loop_gen_does_not_write_message_log(monkeypatch):
             input_tokens_details=SimpleNamespace(cached_tokens=0),
         ),
     )
-    fake_client = SimpleNamespace(
-        responses=SimpleNamespace(parse=lambda **kwargs: response)
-    )
+    fake_client = SimpleNamespace(responses=SimpleNamespace(parse=lambda **kwargs: response))
 
     monkeypatch.setattr(openai_api, "initialize_openai_client", lambda: fake_client)
     monkeypatch.setattr(openai_api.utils, "get_loop_prompt", lambda: "system prompt")

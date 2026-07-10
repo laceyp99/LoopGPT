@@ -9,12 +9,12 @@ Requires:
     - At least one SoundFont file in the soundfonts directory
 """
 
-from importlib import resources
-import tempfile
 import logging
+import os
 import shutil
 import sys
-import os
+import tempfile
+from importlib import resources
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,9 +63,7 @@ def list_soundfonts() -> list[str]:
     for soundfont_dir in _soundfont_search_dirs():
         if not os.path.exists(soundfont_dir):
             continue
-        names.update(
-            file for file in os.listdir(soundfont_dir) if file.lower().endswith(".sf2")
-        )
+        names.update(file for file in os.listdir(soundfont_dir) if file.lower().endswith(".sf2"))
     return sorted(names, key=str.lower)
 
 
@@ -283,15 +281,15 @@ def get_playback_status_message(soundfont_name: str | None = None) -> str:
         )
 
     if not is_ffmpeg_available():
-        dependency_instructions.append(
-            "  - Install FFmpeg: https://ffmpeg.org/download.html"
-        )
+        dependency_instructions.append("  - Install FFmpeg: https://ffmpeg.org/download.html")
 
     if dependency_instructions:
-        return "\n".join([
-            "Audio playback is not available. Setup required:",
-            *dependency_instructions,
-        ])
+        return "\n".join(
+            [
+                "Audio playback is not available. Setup required:",
+                *dependency_instructions,
+            ]
+        )
 
     instructions = ["Audio playback is not available. Setup required:"]
 

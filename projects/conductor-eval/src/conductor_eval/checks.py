@@ -1,10 +1,9 @@
-from mido import MidiFile
-
 from conductor_core.music import (
     DURATION_BEATS,
     SCALE_INTERVALS,
     note_name_to_pitch_class,
 )
+from mido import MidiFile
 
 
 def scale_test(midi, root, scale):
@@ -32,9 +31,7 @@ def scale_test(midi, root, scale):
         raise ValueError(f"Invalid scale mode: {scale.lower()}")
 
     # Determine the acceptable pitch classes for the given scale.
-    acceptable_pcs = [
-        (root_pc + interval) % 12 for interval in SCALE_INTERVALS[scale.lower()]
-    ]
+    acceptable_pcs = [(root_pc + interval) % 12 for interval in SCALE_INTERVALS[scale.lower()]]
     # print(f"Root Note: {root}, Scale Mode: {scale}, Acceptable Pitch Classes: {acceptable_pcs}")
 
     correct = 0
@@ -98,9 +95,7 @@ def duration_test(midi, duration):
             current_time_ticks += msg.time
             if msg.type == "note_on" and msg.velocity > 0:
                 active_notes[msg.note] = current_time_ticks
-            elif msg.type == "note_off" or (
-                msg.type == "note_on" and msg.velocity == 0
-            ):
+            elif msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
                 if msg.note in active_notes:
                     total += 1
                     start_time = active_notes.pop(msg.note)
@@ -147,9 +142,7 @@ def is_monophonic(midi):
                 active_notes[msg.note] = active_notes.get(msg.note, 0) + 1
                 current_polyphony = sum(active_notes.values())
                 max_polyphony = max(max_polyphony, current_polyphony)
-            elif msg.type == "note_off" or (
-                msg.type == "note_on" and msg.velocity == 0
-            ):
+            elif msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
                 if msg.note in active_notes:
                     active_notes[msg.note] -= 1
                     if active_notes[msg.note] <= 0:
@@ -193,9 +186,7 @@ def polyphonic_profile(midi):
                 active_notes[msg.note] = active_notes.get(msg.note, 0) + 1
                 current_polyphony = sum(active_notes.values())
                 max_polyphony = max(max_polyphony, current_polyphony)
-            elif msg.type == "note_off" or (
-                msg.type == "note_on" and msg.velocity == 0
-            ):
+            elif msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
                 if msg.note in active_notes:
                     active_notes[msg.note] -= 1
                     if active_notes[msg.note] <= 0:
@@ -210,9 +201,7 @@ def polyphonic_profile(midi):
     for level, ticks in polyphony_distribution_ticks.items():
         polyphony_distribution[level] = round(ticks / ticks_per_beat, 4)
         if total_duration_ticks > 0:
-            polyphony_percentages[level] = round(
-                (ticks / total_duration_ticks) * 100, 2
-            )
+            polyphony_percentages[level] = round((ticks / total_duration_ticks) * 100, 2)
 
     return {
         "polyphony_distribution": polyphony_distribution,

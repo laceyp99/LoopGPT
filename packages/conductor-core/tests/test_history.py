@@ -219,7 +219,9 @@ def test_load_history_allows_older_entries_without_soundfont(isolated_history_di
 
 def test_load_history_sorts_newest_first(isolated_history_dir):
     now = datetime.now()
-    _write_generation_metadata(isolated_history_dir, gen_id="older", timestamp=now - timedelta(days=1))
+    _write_generation_metadata(
+        isolated_history_dir, gen_id="older", timestamp=now - timedelta(days=1)
+    )
     _write_generation_metadata(isolated_history_dir, gen_id="newer", timestamp=now)
 
     loaded = history.load_history()
@@ -271,8 +273,12 @@ def test_delete_generation_removes_directory_and_handles_missing_id(isolated_his
 def test_enforce_limit_removes_oldest_generations(isolated_history_dir, monkeypatch):
     monkeypatch.setattr(history, "MAX_GENERATIONS", 2)
     now = datetime.now()
-    _write_generation_metadata(isolated_history_dir, gen_id="oldest", timestamp=now - timedelta(days=2))
-    _write_generation_metadata(isolated_history_dir, gen_id="middle", timestamp=now - timedelta(days=1))
+    _write_generation_metadata(
+        isolated_history_dir, gen_id="oldest", timestamp=now - timedelta(days=2)
+    )
+    _write_generation_metadata(
+        isolated_history_dir, gen_id="middle", timestamp=now - timedelta(days=1)
+    )
     _write_generation_metadata(isolated_history_dir, gen_id="newest", timestamp=now)
 
     history._enforce_limit()
@@ -283,7 +289,9 @@ def test_enforce_limit_removes_oldest_generations(isolated_history_dir, monkeypa
 
 
 def test_history_count_and_clear_history_reflect_saved_generations(isolated_history_dir):
-    _write_generation_metadata(isolated_history_dir, gen_id="one", timestamp=datetime.now() - timedelta(minutes=1))
+    _write_generation_metadata(
+        isolated_history_dir, gen_id="one", timestamp=datetime.now() - timedelta(minutes=1)
+    )
     _write_generation_metadata(isolated_history_dir, gen_id="two", timestamp=datetime.now())
 
     assert history.get_history_count() == 2
@@ -291,7 +299,9 @@ def test_history_count_and_clear_history_reflect_saved_generations(isolated_hist
     assert history.get_history_count() == 0
 
 
-def test_filesystem_artifact_store_uses_instance_root_without_global_mutation(tmp_path, monkeypatch):
+def test_filesystem_artifact_store_uses_instance_root_without_global_mutation(
+    tmp_path, monkeypatch
+):
     first_root = tmp_path / "first"
     second_root = tmp_path / "second"
     first_store = history.FilesystemArtifactStore(first_root)

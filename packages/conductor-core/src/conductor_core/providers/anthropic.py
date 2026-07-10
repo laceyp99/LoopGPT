@@ -43,13 +43,8 @@ def calc_price(model, output):
 
     input_cost = model_info["models"]["Anthropic"][model]["cost"]["input"] / 1000000
     output_cost = model_info["models"]["Anthropic"][model]["cost"]["output"] / 1000000
-    cached_5min = (
-        model_info["models"]["Anthropic"][model]["cost"]["5m cache input"] / 1000000
-    )
-    cache_hits = (
-        model_info["models"]["Anthropic"][model]["cost"]["cache hits/refreshes"]
-        / 1000000
-    )
+    cached_5min = model_info["models"]["Anthropic"][model]["cost"]["5m cache input"] / 1000000
+    cache_hits = model_info["models"]["Anthropic"][model]["cost"]["cache hits/refreshes"] / 1000000
 
     return (
         output["input_tokens"] * input_cost

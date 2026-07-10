@@ -15,15 +15,12 @@ def test_direct_evaluator_run_aborts_before_creating_outputs(monkeypatch, tmp_pa
         evaluator_module.main()
 
     assert exc_info.value.code == 1
-    assert not (tmp_path / "projects" / "conductor-eval" / "evaluations").exists()
+    assert not (tmp_path / "evaluations").exists()
 
 
 def test_direct_evaluation_confirmation_requires_exact_phrase():
     assert confirm_direct_evaluation(lambda _prompt: "y") is False
-    assert (
-        confirm_direct_evaluation(lambda _prompt: DIRECT_EVALUATION_CONFIRMATION)
-        is True
-    )
+    assert confirm_direct_evaluation(lambda _prompt: DIRECT_EVALUATION_CONFIRMATION) is True
 
 
 def test_direct_evaluation_confirmation_handles_closed_stdin():

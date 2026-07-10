@@ -141,7 +141,7 @@ def loop_gen(
                 )
             }
         )
-    elif model_with_thinking and use_thinking == False:
+    elif model_with_thinking and not use_thinking:
         config.update(
             {
                 "thinking_config": types.ThinkingConfig(

@@ -1,14 +1,12 @@
 """Synchronous prompt-to-loop generation engine."""
 
-from collections.abc import Callable
 import json
 import os
+from collections.abc import Callable
 
 from mido import MidiFile
 
-from conductor_core import music
-from conductor_core import playback
-from conductor_core import routing
+from conductor_core import music, playback, routing
 from conductor_core.config import (
     EngineConfig,
     GenerationRequest,
@@ -53,9 +51,7 @@ class LoopGenerationEngine:
         warnings = []
         prompt = f"{request.key} {request.scale} {request.description}."
         system_prompt = (
-            request.prompt_override
-            or self.config.prompt_override
-            or music.get_loop_prompt()
+            request.prompt_override or self.config.prompt_override or music.get_loop_prompt()
         )
 
         try:

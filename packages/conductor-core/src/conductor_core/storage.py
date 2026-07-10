@@ -13,15 +13,16 @@ Storage structure:
             metadata.json   # Generation parameters and info
 """
 
-from pydantic import BaseModel
+import json
+import logging
+import os
+import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-import logging
-import shutil
-import json
-import sys
-import os
+
+from pydantic import BaseModel
 
 logging.basicConfig(
     level=logging.INFO,
