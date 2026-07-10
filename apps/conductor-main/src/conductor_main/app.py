@@ -8,6 +8,13 @@ Features:
 - Toggleable history sidebar panel
 """
 
+import os
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
+from queue import Empty, Queue
+
+import gradio as gr
 from conductor_core import (
     EngineConfig,
     GenerationRequest,
@@ -16,32 +23,42 @@ from conductor_core import (
 )
 from conductor_core.music import get_loop_prompt, get_model_info
 from conductor_core.playback import (
-    midi_to_mp3,
-    is_playback_available,
-    get_playback_status_message,
-    list_soundfonts,
     get_default_soundfont,
-)
-from conductor_core import storage as history_storage
-from conductor_core.storage import (
-    load_history,
-    get_generation,
-    delete_generation,
-    update_generation_audio,
+    get_playback_status_message,
+    is_playback_available,
+    list_soundfonts,
+    midi_to_mp3,
 )
 from conductor_core.providers import ollama as ollama_api
-from conductor_main.visualization import visualize_midi_plotly
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from conductor_core.storage import FilesystemArtifactStore
 from mido import MidiFile
-from queue import Empty, Queue
-import gradio as gr
-import os
 
+from conductor_main.visualization import visualize_midi_plotly
 
 DEFAULT_PROVIDER = "Google"
 DEFAULT_MODEL = "gemini-3.1-flash-lite"
-PROMPT_OVERRIDE_PATH = os.path.join("Prompts", "loop gen.txt")
+APP_DATA_DIR = Path(
+    os.environ.get("CONDUCTOR_MAIN_DATA_DIR", Path.home() / ".conductor-main")
+).expanduser()
+PROMPT_OVERRIDE_PATH = APP_DATA_DIR / "Prompts" / "loop gen.txt"
+
+HISTORY_STORE = FilesystemArtifactStore(APP_DATA_DIR / "generations")
+
+
+def load_history():
+    return HISTORY_STORE.load_history()
+
+
+def get_generation(gen_id):
+    return HISTORY_STORE.get_generation(gen_id)
+
+
+def delete_generation(gen_id):
+    return HISTORY_STORE.delete_generation(gen_id)
+
+
+def update_generation_audio(gen_id, audio_path, soundfont=None):
+    return HISTORY_STORE.update_generation_audio(gen_id, audio_path, soundfont=soundfont)
 
 
 def format_price_summary(price_value):
@@ -50,7 +67,9 @@ def format_price_summary(price_value):
         return f"${price_value:.2f}"
 
     if isinstance(price_value, dict):
-        numeric_values = [value for value in price_value.values() if isinstance(value, (int, float))]
+        numeric_values = [
+            value for value in price_value.values() if isinstance(value, (int, float))
+        ]
         if not numeric_values:
             return None
 
@@ -158,7 +177,9 @@ def get_model_settings(provider, model_choice, use_thinking=False):
     if provider == "OpenAI" and model_config.get("extended_thinking", False):
         show_temperature = False
         temperature_value = 1.0
-    elif provider in {"Anthropic", "Google"} and (effort_options or (supports_toggle_reasoning and use_thinking)):
+    elif provider in {"Anthropic", "Google"} and (
+        effort_options or (supports_toggle_reasoning and use_thinking)
+    ):
         show_temperature = False
         temperature_value = 1.0
 
@@ -298,14 +319,29 @@ def rerender_current_audio(
 ):
     """Re-render the current MIDI file with the selected SoundFont on demand."""
     if not midi_path:
-        return current_audio_path, "No MIDI file available to re-render.", saved_soundfont, current_audio_path
+        return (
+            current_audio_path,
+            "No MIDI file available to re-render.",
+            saved_soundfont,
+            current_audio_path,
+        )
 
     if not os.path.exists(midi_path):
-        return current_audio_path, f"MIDI file not found: {midi_path}", saved_soundfont, current_audio_path
+        return (
+            current_audio_path,
+            f"MIDI file not found: {midi_path}",
+            saved_soundfont,
+            current_audio_path,
+        )
 
     selected_soundfont = get_selected_soundfont(soundfont_choice)
     if not selected_soundfont:
-        return current_audio_path, get_playback_status_message(soundfont_choice), saved_soundfont, current_audio_path
+        return (
+            current_audio_path,
+            get_playback_status_message(soundfont_choice),
+            saved_soundfont,
+            current_audio_path,
+        )
 
     if (
         saved_soundfont == selected_soundfont
@@ -326,7 +362,12 @@ def rerender_current_audio(
         soundfont_name=selected_soundfont,
     )
     if rendered_audio_path is None:
-        return current_audio_path, get_playback_status_message(selected_soundfont), saved_soundfont, current_audio_path
+        return (
+            current_audio_path,
+            get_playback_status_message(selected_soundfont),
+            saved_soundfont,
+            current_audio_path,
+        )
 
     persisted_audio_path = rendered_audio_path
     if generation_id:
@@ -348,10 +389,10 @@ def rerender_current_audio(
 
 def load_app_prompt_override():
     """Load the app-owned prompt override if the user has saved one."""
-    if not os.path.exists(PROMPT_OVERRIDE_PATH):
+    if not PROMPT_OVERRIDE_PATH.exists():
         return None
 
-    with open(PROMPT_OVERRIDE_PATH, "r", encoding="utf-8") as prompt_file:
+    with PROMPT_OVERRIDE_PATH.open("r", encoding="utf-8") as prompt_file:
         return prompt_file.read()
 
 
@@ -369,13 +410,11 @@ def save_prompts(loop_gen_text):
     Returns:
         str: A message indicating the status of the save operation.
     """
-    os.makedirs(os.path.dirname(PROMPT_OVERRIDE_PATH), exist_ok=True)
-    with open(PROMPT_OVERRIDE_PATH, "w", encoding="utf-8") as f:
+    PROMPT_OVERRIDE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with PROMPT_OVERRIDE_PATH.open("w", encoding="utf-8") as f:
         f.write(loop_gen_text)
     return (
-        "Prompts saved successfully at "
-        + datetime.now().strftime("%I:%M:%S %p on %B %d, %Y")
-        + "."
+        "Prompts saved successfully at " + datetime.now().strftime("%I:%M:%S %p on %B %d, %Y") + "."
     )
 
 
@@ -426,7 +465,7 @@ def run_loop(
         )
         engine = LoopGenerationEngine(
             EngineConfig.from_defaults(
-                artifact_root=history_storage.GENERATIONS_DIR,
+                artifact_root=HISTORY_STORE.artifact_root,
                 provider_credentials=credentials,
                 prompt_override=load_app_prompt_override(),
                 default_soundfont_path=selected_soundfont,
@@ -470,7 +509,16 @@ def run_loop(
 
             while not progress_events.empty():
                 progress_event = progress_events.get()
-                yield None, None, None, progress_event.message, gr.update(visible=True), None, None, None
+                yield (
+                    None,
+                    None,
+                    None,
+                    progress_event.message,
+                    gr.update(visible=True),
+                    None,
+                    None,
+                    None,
+                )
 
             # Get the result (will raise exception if the API call failed)
             result = future.result()
@@ -649,9 +697,7 @@ def load_history_item(gen_id):
         visualization = None
 
     # Get audio path if it exists
-    audio_path = (
-        gen.audio_path if gen.audio_path and os.path.exists(gen.audio_path) else None
-    )
+    audio_path = gen.audio_path if gen.audio_path and os.path.exists(gen.audio_path) else None
 
     return (
         gen.midi_path,
@@ -871,14 +917,18 @@ def create_demo(playback_status=None):
                             )
                     with gr.Row():
                         prog_button = gr.Button("Generate Loop", variant="primary")
-                        stop_waiting_button = gr.Button("Stop Waiting", variant="stop", visible=False)
+                        stop_waiting_button = gr.Button(
+                            "Stop Waiting", variant="stop", visible=False
+                        )
 
                     # Output section
                     with gr.Row():
                         with gr.Column():
                             prog_output = gr.File(label="Download Generated MIDI")
                             # Audio playback component
-                            audio_output = gr.Audio(label="Playback", type="filepath", interactive=False)
+                            audio_output = gr.Audio(
+                                label="Playback", type="filepath", interactive=False
+                            )
                             # Show playback status if not available
                             if not playback_available:
                                 gr.Markdown(

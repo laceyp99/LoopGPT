@@ -1,7 +1,7 @@
-from pathlib import Path
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 
 def test_gradio_client_does_not_import_legacy_application_modules():
@@ -15,14 +15,8 @@ def test_gradio_client_does_not_import_legacy_application_modules():
 
 
 def test_gradio_client_imports_without_loading_legacy_modules():
-    repository_root = Path(__file__).parents[3]
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = os.pathsep.join(
-        [
-            str(repository_root / "apps" / "conductor-main" / "src"),
-            str(repository_root / "packages" / "conductor-core" / "src"),
-        ]
-    )
+    environment.pop("PYTHONPATH", None)
     completed = subprocess.run(
         [
             sys.executable,
@@ -33,7 +27,7 @@ def test_gradio_client_imports_without_loading_legacy_modules():
                 "'evaluation': 'evaluation' in sys.modules})"
             ),
         ],
-        cwd=repository_root,
+        cwd=Path(__file__).parents[1],
         env=environment,
         capture_output=True,
         text=True,

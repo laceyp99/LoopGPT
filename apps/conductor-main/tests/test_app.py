@@ -26,7 +26,9 @@ def test_run_loop_passes_ui_configuration_to_core(monkeypatch, tmp_path):
         def generate(self, request, progress_callback=None):
             captured["request"] = request
             if progress_callback:
-                progress_callback(SimpleNamespace(stage="provider_call", message="Generating MIDI..."))
+                progress_callback(
+                    SimpleNamespace(stage="provider_call", message="Generating MIDI...")
+                )
             return SimpleNamespace(
                 midi_path=str(midi_path),
                 audio_path=None,
@@ -122,6 +124,16 @@ def test_default_model_exists_in_model_metadata():
 
     assert app.DEFAULT_PROVIDER in model_info["models"]
     assert app.DEFAULT_MODEL in model_info["models"][app.DEFAULT_PROVIDER]
+
+
+def test_prompt_override_uses_the_app_data_directory(monkeypatch, tmp_path):
+    override_path = tmp_path / "Prompts" / "loop gen.txt"
+    monkeypatch.setattr(app, "PROMPT_OVERRIDE_PATH", override_path)
+
+    assert app.load_app_prompt_override() is None
+    assert app.save_prompts("standalone override").startswith("Prompts saved successfully")
+    assert override_path.read_text(encoding="utf-8") == "standalone override"
+    assert app.load_app_prompt_override() == "standalone override"
 
 
 def test_rerender_current_audio_skips_existing_matching_soundfont(monkeypatch, tmp_path):
@@ -263,11 +275,15 @@ def test_refresh_soundfont_controls_prefers_dependency_status_message(monkeypatc
     monkeypatch.setattr(
         app,
         "get_playback_status_message",
-        lambda soundfont_name=None: "Audio playback is not available. Setup required:\n  - Install FluidSynth: https://github.com/FluidSynth/fluidsynth/releases",
+        lambda soundfont_name=None: (
+            "Audio playback is not available. Setup required:\n  - Install FluidSynth: https://github.com/FluidSynth/fluidsynth/releases"
+        ),
     )
     monkeypatch.setattr(app.gr, "update", lambda **kwargs: kwargs)
 
-    dropdown_update, rerender_update, status_message = app.refresh_soundfont_controls("new.sf2", None)
+    dropdown_update, rerender_update, status_message = app.refresh_soundfont_controls(
+        "new.sf2", None
+    )
 
     assert dropdown_update["choices"] == ["FM-Piano1 20190916.sf2", "new.sf2"]
     assert dropdown_update["value"] == "new.sf2"
