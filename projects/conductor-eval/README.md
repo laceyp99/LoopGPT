@@ -172,6 +172,7 @@ projects/conductor-eval/evaluations/
 └── 20260210_224954_my_first_eval/
     ├── config.json                    # Full evaluation configuration
     ├── summary.json                   # Aggregated results + statistics
+    ├── core_artifacts/                # Core-owned MIDI, messages, and metadata
     ├── analysis/                      # Created by dashboard export
     │   └── dashboard.html
     └── results/
@@ -185,6 +186,13 @@ projects/conductor-eval/evaluations/
                     └── C_minor/
                         └── ...
 ```
+
+The evaluator intentionally retains `core_artifacts/` after copying MIDI and
+messages into the report-oriented `results/` tree. Core owns generation
+persistence, and retaining its canonical artifacts preserves provenance and
+provider metadata for debugging. Eval does not selectively delete those files;
+remove an entire completed run externally when its artifacts are no longer
+needed.
 
 When using `test_reasoning`, variation subfolders are created:
 
@@ -368,7 +376,7 @@ The evaluator continues on failures, logging errors and saving partial results:
 
 - API errors are captured in `test_results.json` with an `"error"` field
 - Failed generations are counted in `summary.json` under `failed_generations`
-- MIDI conversion errors are logged but don't halt the evaluation
+- Core generation or MIDI conversion errors are logged but don't halt the evaluation
 - All logs are written to `<output_dir>/run.log`
 
 ## Performance Notes

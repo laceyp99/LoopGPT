@@ -129,7 +129,20 @@ Normal LoopGPT generations should not be expected to benefit much from prompt ca
 
 ## Evaluation Framework
 
-The evaluation framework lives in the `evaluation/` directory and is documented separately in [`evaluation/README.md`](evaluation/README.md).
+The installable evaluation project lives under
+[`projects/conductor-eval/`](projects/conductor-eval/README.md) and generates
+loops through `conductor_core.LoopGenerationEngine`. Install it from the
+repository root with:
+
+```powershell
+py -3.12 -m pip install -e ".\packages\conductor-core[providers]"
+py -3.12 -m pip install -e ".\projects\conductor-eval[dashboard,dev]"
+```
+
+Use `from conductor_eval import Evaluator` for new code and
+`py -3.12 -m conductor_eval.analysis` for the dashboard. The root
+[`evaluation/`](evaluation/README.md) directory contains compatibility wrappers
+for legacy imports and script paths.
 
 Use pytest for fast local regression tests, and use the evaluation framework for slower prompt-to-model quality checks across providers. The two workflows are complementary rather than interchangeable.
 
@@ -138,7 +151,6 @@ Use pytest for fast local regression tests, and use the evaluation framework for
 ```
 LoopGPT/
 ├── app.py                      # Gradio UI entry point
-├── model_list.json             # Model pricing, rate limits, and capabilities
 ├── pyproject.toml              # Python project metadata 
 ├── UI.png                      # Screenshot of the Gradio interface
 │
@@ -167,11 +179,9 @@ LoopGPT/
 │   ├── test_runs.py            # Provider routing coverage
 │   └── test_utils.py           # Utility helper coverage
 │
-├── evaluation/                 # Standalone evaluation framework (see evaluation/README.md)
-│   ├── evaluator.py            # Evaluator class -- orchestrates model testing
-│   ├── tests.py                # MIDI validation tests (scale, duration)
-│   ├── analysis.py             # Interactive Plotly Dash dashboard
-│   └── README.md               # Full evaluation documentation
+├── packages/conductor-core/   # Shared generation engine and music/MIDI logic
+├── projects/conductor-eval/   # Installable evaluator, checks, dashboard, and tests
+├── evaluation/                # Compatibility wrappers for legacy evaluation.* imports
 │
 ├── generations/                # Session history storage (auto-managed, up to 20)
 │   └── gen_<timestamp>/
@@ -180,7 +190,7 @@ LoopGPT/
 │       ├── messages.json       # Provider message history
 │       └── metadata.json       # Generation parameters, artifact paths, and saved SoundFont info
 │
-├── runs/                       # Evaluation run outputs (created by evaluator)
+├── projects/conductor-eval/evaluations/  # Evaluation run outputs
 │   ├── run.log                 # Evaluation log file
 │   └── <timestamp_run_name>/
 │       ├── config.json         # Full evaluation configuration

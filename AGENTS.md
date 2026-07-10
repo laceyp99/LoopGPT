@@ -5,7 +5,7 @@ This document provides the essential context an AI coding agent needs to work sa
 ## Start Here
 
 - **Read**: [README.md](README.md) for product-level usage and quick setup.
-- **Evaluation notes**: See [evaluation/README.md](evaluation/README.md) before changing anything under `evaluation/`.
+- **Evaluation notes**: See [projects/conductor-eval/README.md](projects/conductor-eval/README.md). Root `evaluation/` files are compatibility wrappers only.
 - **Don't run broad evaluation jobs** unless the user explicitly requests them — they consume many model calls.
 
 ## Quick Start (safe commands)
@@ -26,9 +26,9 @@ pip install -e ".[dev]"
 Useful evaluation/debug commands:
 
 ```bash
-python evaluation/analysis.py
-python evaluation/analysis.py <path-to-run-directory>
-python -c "from evaluation.tests import scale_test, duration_test; from mido import MidiFile; midi = MidiFile('generations/gen_<id>/loop.mid'); print(scale_test(midi, 'C', 'major')); print(duration_test(midi, 'quarter'))"
+py -3.12 -m conductor_eval.analysis
+py -3.12 -m conductor_eval.analysis <path-to-run-directory>
+py -3.12 -c "from conductor_eval.checks import scale_test, duration_test; from mido import MidiFile; midi = MidiFile('generations/gen_<id>/loop.mid'); print(scale_test(midi, 'C', 'major')); print(duration_test(midi, 'quarter'))"
 ```
 
 Avoid launching large automated evaluation runs or broad multi-model fan-outs without approval.
@@ -38,21 +38,24 @@ Avoid launching large automated evaluation runs or broad multi-model fan-outs wi
 LoopGPT generates 4-bar MIDI loops from natural-language prompts via a Gradio UI.
 
 - **App entry**: [app.py](app.py) — Gradio UI and callback wiring (starts the app at import time).
-- **Generation router**: [src/runs.py](src/runs.py) — core routing and orchestration across providers.
+- **Generation router**: [packages/conductor-core/src/conductor_core/routing.py](packages/conductor-core/src/conductor_core/routing.py) — Core routing across providers.
 - **Provider modules**: [src/openai_api.py](src/openai_api.py), [src/claude_api.py](src/claude_api.py), [src/gemini_api.py](src/gemini_api.py), [src/ollama_api.py](src/ollama_api.py) — provider-specific prompt translation and API calls.
 - **Loop data & MIDI**: [src/objects.py](src/objects.py) (Pydantic loop models), [src/midi_processing.py](src/midi_processing.py) (loop→MIDI conversion).
 - **Audio (optional)**: [src/audio.py](src/audio.py) — MIDI→audio rendering (requires FluidSynth/FFmpeg and a soundfont in [soundfonts/](soundfonts/)).
 - **History & UI data**: [src/history.py](src/history.py) and `generations/` — recent outputs and metadata.
-- **Utilities**: [src/utils.py](src/utils.py) — shared helpers (duration keywords, visualization, logging helpers).
-- **Evaluation**: [evaluation/evaluator.py](evaluation/evaluator.py), [evaluation/tests.py](evaluation/tests.py), [evaluation/analysis.py](evaluation/analysis.py).
+- **Utilities**: [src/utils.py](src/utils.py) retains app-facing visualization helpers; shared musical constants and duration keywords live in `conductor_core.music`.
+- **Core engine**: [packages/conductor-core/src/conductor_core/engine.py](packages/conductor-core/src/conductor_core/engine.py) owns provider-backed loop generation and MIDI persistence.
+- **Evaluation**: [projects/conductor-eval/src/conductor_eval/evaluator.py](projects/conductor-eval/src/conductor_eval/evaluator.py), [projects/conductor-eval/src/conductor_eval/checks.py](projects/conductor-eval/src/conductor_eval/checks.py), and [projects/conductor-eval/src/conductor_eval/analysis.py](projects/conductor-eval/src/conductor_eval/analysis.py).
+- **Legacy evaluation paths**: Root [evaluation/](evaluation/) modules only delegate to `conductor_eval`.
 - **Tests**: See the test suite under [tests/](tests/).
 
 ## Evaluation Conventions
 
-- **Evaluator**: [evaluation/evaluator.py](evaluation/evaluator.py) orchestrates generation, tests, result saving, and provider routing.
+- **Evaluator**: [projects/conductor-eval/src/conductor_eval/evaluator.py](projects/conductor-eval/src/conductor_eval/evaluator.py) orchestrates evaluation tasks and delegates generation to `LoopGenerationEngine.generate(...)`.
 - **Tests selection**: Tests are selected by name and executed via `Evaluator.run_tests(...)`.
-- **Auto-detection**: Duration expectations are auto-detected using keywords from [src/utils.py](src/utils.py).
-- **Default outputs**: The `Evaluator` defaults `output_dir` to `evaluations`. Documentation examples may use `runs` — check callers.
+- **Auto-detection**: Duration expectations use `DURATION_KEYWORDS` from `conductor_core.music`.
+- **Default outputs**: The `Evaluator` defaults to `projects/conductor-eval/evaluations`.
+- **Generation boundary**: Eval must not route providers or convert loop objects to MIDI itself; those are Core responsibilities.
 
 ## Project Conventions
 
@@ -63,7 +66,7 @@ LoopGPT generates 4-bar MIDI loops from natural-language prompts via a Gradio UI
 
 ## Data and Outputs
 
-- **Model list**: [model_list.json](model_list.json) is the source of truth for provider metadata.
+- **Model list**: [packages/conductor-core/src/conductor_core/resources/model_list.json](packages/conductor-core/src/conductor_core/resources/model_list.json) is the source of truth for provider metadata.
 - **Generations**: `generations/` contains recent UI outputs with `loop.mid`, optional `loop.mp3`, `messages.json`, and `metadata.json`.
 
 Evaluation runs produce a structured directory with `config.json`, `summary.json`, generated MIDI files, message logs, and per-run test results.
@@ -78,9 +81,9 @@ Evaluation runs produce a structured directory with `config.json`, `summary.json
 ## Common Change Paths (how to make common edits)
 
 - **Add or change a model/provider**:
-	1. Update [model_list.json](model_list.json).
-	2. Implement or update the provider module under `src/`.
-	3. Adjust routing in [src/runs.py](src/runs.py) if the provider contract changed.
+	1. Update [packages/conductor-core/src/conductor_core/resources/model_list.json](packages/conductor-core/src/conductor_core/resources/model_list.json).
+	2. Implement or update the provider module under `packages/conductor-core/src/conductor_core/providers/`.
+	3. Adjust [packages/conductor-core/src/conductor_core/routing.py](packages/conductor-core/src/conductor_core/routing.py) if the provider contract changed.
 	4. Update UI controls in [app.py](app.py) only if the change affects user-facing options.
 
 - **Change loop structure or MIDI semantics**:
@@ -90,9 +93,10 @@ Evaluation runs produce a structured directory with `config.json`, `summary.json
 	4. Re-run evaluation tests and re-check prompt files in [Prompts/](Prompts/).
 
 - **Change evaluation behavior**:
-	1. Update [evaluation/evaluator.py](evaluation/evaluator.py).
-	2. Add or update checks in [evaluation/tests.py](evaluation/tests.py).
-	3. Update [evaluation/README.md](evaluation/README.md) and ensure [evaluation/analysis.py](evaluation/analysis.py) expectations match.
+	1. Update [projects/conductor-eval/src/conductor_eval/evaluator.py](projects/conductor-eval/src/conductor_eval/evaluator.py).
+	2. Add or update checks in [projects/conductor-eval/src/conductor_eval/checks.py](projects/conductor-eval/src/conductor_eval/checks.py).
+	3. Add focused tests under [projects/conductor-eval/tests](projects/conductor-eval/tests).
+	4. Update [projects/conductor-eval/README.md](projects/conductor-eval/README.md) and ensure dashboard expectations match.
 
 ## How agents should work (brief guidelines)
 
