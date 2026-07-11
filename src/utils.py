@@ -7,6 +7,7 @@ import json
 import mido
 import os
 import src.objects as objects
+from conductor_core import music as core_music
 
 # Flat list of chromatic note names (pitch class 0-11, sharps only)
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -142,20 +143,13 @@ _model_info_cache = None
 
 
 def get_model_info():
-    """Load model metadata from disk once and reuse it."""
-    global _model_info_cache
-
-    if _model_info_cache is None:
-        with open("model_list.json", "r") as model_file:
-            _model_info_cache = json.load(model_file)
-
-    return _model_info_cache
+    """Load packaged model metadata once and reuse it."""
+    return core_music.get_model_info()
 
 
 def get_loop_prompt():
-    """Load the current loop generation prompt from disk."""
-    with open(os.path.join("Prompts", "loop gen.txt"), "r") as prompt_file:
-        return prompt_file.read()
+    """Load the packaged default loop generation prompt."""
+    return core_music.get_loop_prompt()
 
 
 def split_reported_cache_tokens(total_tokens, cached_tokens):
