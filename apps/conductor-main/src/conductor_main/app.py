@@ -23,6 +23,7 @@ from conductor_core import (
 )
 from conductor_core.music import get_loop_prompt, get_model_info
 from conductor_core.playback import (
+    add_soundfont_search_dir,
     get_default_soundfont,
     get_playback_status_message,
     is_playback_available,
@@ -40,8 +41,15 @@ DEFAULT_MODEL = "gemini-3.1-flash-lite"
 APP_DATA_DIR = Path(
     os.environ.get("CONDUCTOR_MAIN_DATA_DIR", Path.home() / ".conductor-main")
 ).expanduser()
+APP_SOUNDFONT_DIR = Path(
+    os.environ.get(
+        "CONDUCTOR_MAIN_SOUNDFONT_DIR",
+        Path(__file__).resolve().parents[2] / "soundfonts",
+    )
+).expanduser()
 PROMPT_OVERRIDE_PATH = APP_DATA_DIR / "Prompts" / "loop gen.txt"
 
+add_soundfont_search_dir(APP_SOUNDFONT_DIR)
 HISTORY_STORE = FilesystemArtifactStore(APP_DATA_DIR / "generations")
 
 

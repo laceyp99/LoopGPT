@@ -1,6 +1,13 @@
 from pathlib import Path
 
+import pytest
+
 from conductor_core import playback as audio
+
+
+@pytest.fixture(autouse=True)
+def reset_extra_soundfont_dirs(monkeypatch):
+    monkeypatch.setattr(audio, "_EXTRA_SOUNDFONT_DIRS", [])
 
 
 def _write_file(path: Path, content: bytes = b"data") -> Path:
@@ -49,6 +56,21 @@ def test_resolve_soundfont_ignores_cwd_soundfonts(monkeypatch, tmp_path):
     monkeypatch.chdir(cwd)
 
     assert audio.resolve_soundfont("cwd-only.sf2") is None
+
+
+def test_application_soundfont_directory_is_searchable(monkeypatch, tmp_path):
+    packaged_soundfonts = tmp_path / "packaged"
+    app_soundfonts = tmp_path / "app"
+    packaged_soundfonts.mkdir()
+    app_soundfonts.mkdir()
+    expected = _write_file(app_soundfonts / "personal.sf2")
+
+    monkeypatch.setattr(audio, "SOUNDFONT_DIR", str(packaged_soundfonts))
+    monkeypatch.setattr(audio, "_EXTRA_SOUNDFONT_DIRS", [])
+    audio.add_soundfont_search_dir(app_soundfonts)
+
+    assert audio.list_soundfonts() == ["personal.sf2"]
+    assert audio.resolve_soundfont("personal.sf2") == str(expected)
 
 
 def test_is_playback_available_reports_missing_requested_soundfont(monkeypatch, tmp_path):
