@@ -1204,7 +1204,7 @@ def main():
         print(f"Warning: {get_playback_status_message(default_soundfont)}")
 
     demo = create_demo(playback_status=playback_status)
-    demo.launch()
+    demo.launch(allowed_paths=[str(Path(HISTORY_STORE.artifact_root).resolve())])
 
 
 if __name__ == "__main__":

@@ -401,3 +401,21 @@ def test_refresh_soundfont_controls_stays_disabled_after_active_delete(monkeypat
     _, rerender_update, _ = app.refresh_soundfont_controls("new.sf2", None)
 
     assert rerender_update["interactive"] is False
+
+
+def test_main_allows_gradio_to_serve_generation_history(monkeypatch, tmp_path):
+    artifact_root = tmp_path / "app-data" / "generations"
+    launched_with = {}
+
+    class FakeDemo:
+        def launch(self, **kwargs):
+            launched_with.update(kwargs)
+
+    monkeypatch.setattr(app, "HISTORY_STORE", SimpleNamespace(artifact_root=str(artifact_root)))
+    monkeypatch.setattr(app, "get_selected_soundfont", lambda: None)
+    monkeypatch.setattr(app, "is_playback_available", lambda soundfont=None: (True, None))
+    monkeypatch.setattr(app, "create_demo", lambda playback_status=None: FakeDemo())
+
+    app.main()
+
+    assert launched_with == {"allowed_paths": [str(artifact_root.resolve())]}
