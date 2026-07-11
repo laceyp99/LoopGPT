@@ -56,7 +56,6 @@ class GenerationRequest:
     prompt_override: str | None = None
     render_audio: bool = False
     soundfont_path: str | Path | None = None
-    extra_options: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
