@@ -12,7 +12,6 @@ Prompts/
 *.mid
 *.mp3
 soundfonts/*.sf2
-!soundfonts/FM-Piano1 20190916.sf2
 [.]env
 .venv/
 venv/

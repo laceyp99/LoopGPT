@@ -113,7 +113,10 @@ local Ollama generations normally have zero API cost.
 ## SoundFonts and audio playback
 
 The app discovers packaged and user-available `.sf2` SoundFonts through Core.
-Audio rendering requires all of the following:
+Core ships the default SoundFont; drop additional `.sf2` files into the
+project-local `soundfonts\` directory (or the directory set by
+`CONDUCTOR_MAIN_SOUNDFONT_DIR`) to make them selectable. Audio rendering
+requires all of the following:
 
 1. the `conductor-core[playback]` dependencies;
 2. FluidSynth installed and available on `PATH`;
