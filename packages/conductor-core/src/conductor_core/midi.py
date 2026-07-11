@@ -5,16 +5,12 @@ It supports converting a loop into MIDI (with proper absolute and delta timing) 
 
 import logging
 import math
-import sys
 
 from mido import Message, MetaMessage, MidiFile, MidiTrack, merge_tracks
 
 from conductor_core import models as objects
 from conductor_core import music as utils
 
-logging.basicConfig(
-    level=logging.INFO, stream=sys.stderr, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 

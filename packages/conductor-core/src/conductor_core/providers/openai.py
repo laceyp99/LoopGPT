@@ -2,7 +2,6 @@
 
 import logging
 import os
-import sys
 
 from conductor_core import models as objects
 from conductor_core import music as utils
@@ -19,11 +18,6 @@ except ImportError:  # pragma: no cover - exercised only in minimal installs
     APIConnectionError = APIError = AuthenticationError = RateLimitError = ()
     OpenAI = None
 
-logging.basicConfig(
-    level=logging.INFO,
-    stream=sys.stderr,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 

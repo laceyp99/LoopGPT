@@ -12,15 +12,9 @@ Requires:
 import logging
 import os
 import shutil
-import sys
 import tempfile
 from importlib import resources
 
-logging.basicConfig(
-    level=logging.INFO,
-    stream=sys.stderr,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 FluidSynth = None

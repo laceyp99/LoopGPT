@@ -2,7 +2,6 @@
 
 import logging
 import os
-import sys
 
 from conductor_core import models as objects
 from conductor_core import music as utils
@@ -12,11 +11,6 @@ try:
 except ImportError:  # pragma: no cover - exercised only in minimal installs
     Anthropic = None
 
-logging.basicConfig(
-    level=logging.INFO,
-    stream=sys.stderr,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 ALWAYS_ON_ADAPTIVE_THINKING_MODELS = {"claude-fable-5", "claude-mythos-5"}

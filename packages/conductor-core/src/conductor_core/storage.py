@@ -17,18 +17,12 @@ import json
 import logging
 import os
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel
 
-logging.basicConfig(
-    level=logging.INFO,
-    stream=sys.stderr,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 # Directory for storing generations when using module-level compatibility helpers.

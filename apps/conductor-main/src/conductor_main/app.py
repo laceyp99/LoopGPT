@@ -8,6 +8,7 @@ Features:
 - Toggleable history sidebar panel
 """
 
+import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -1203,6 +1204,13 @@ def create_demo(playback_status=None):
 
 def main():
     """Run the Gradio app."""
+    # Surface conductor_core (and app) log records on the console. Core only
+    # emits records; configuring handlers is the application's responsibility.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
     default_soundfont = get_selected_soundfont()
     playback_status = is_playback_available(default_soundfont)
     playback_available, _ = playback_status

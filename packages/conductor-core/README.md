@@ -295,6 +295,21 @@ error occurs after a workspace is allocated, Core removes the unfinished
 workspace. Callers should catch exceptions at their application boundary and
 decide how to display, retry, or log them.
 
+## Logging
+
+Core emits log records under the `conductor_core` logger namespace and never
+configures handlers or global logging itself (a `NullHandler` is attached so
+unconfigured consumers see no warnings). To surface Core logs, configure
+logging in the application:
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO)          # everything to the console
+# or route only Core records somewhere specific:
+logging.getLogger("conductor_core").addHandler(my_handler)
+```
+
 ## Validate Core independently
 
 ```powershell
