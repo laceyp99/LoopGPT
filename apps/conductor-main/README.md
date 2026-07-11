@@ -136,11 +136,11 @@ Click **History** to open the recent-generation sidebar. From there you can:
 - **Refresh** the list after external changes;
 - inspect prompt, model, musical settings, time, and cost summaries.
 
-By default, the app keeps the newest 20 generations under
-`%USERPROFILE%\.conductor-main\generations\`:
+By default, the app keeps the newest 20 generations under the project-local
+`generations\` directory:
 
 ```text
-%USERPROFILE%/.conductor-main/generations/
+<conductor-main>/generations/
 └── gen_<id>/
     ├── loop.mid
     ├── loop.mp3        # when audio rendering succeeds
@@ -155,10 +155,9 @@ keeps the saved audio available and identifies the missing selection.
 ## Prompt Editor
 
 The **Prompt Editor** tab displays the current loop-generation system prompt.
-Saving creates or updates the app-owned override at
-`%USERPROFILE%\.conductor-main\Prompts\loop gen.txt`. Set
-`CONDUCTOR_MAIN_DATA_DIR` to relocate both this override and the generation
-history.
+Saving creates or updates the app-owned override at the project-local
+`Prompts\loop gen.txt`. Set `CONDUCTOR_MAIN_DATA_DIR` to relocate both this
+override and the generation history.
 Subsequent generations use that override instead of Core's packaged default.
 
 The prompt defines the structured loop contract, timing conventions, and broad

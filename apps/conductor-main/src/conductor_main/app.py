@@ -38,13 +38,19 @@ from conductor_main.visualization import visualize_midi_plotly
 
 DEFAULT_PROVIDER = "Google"
 DEFAULT_MODEL = "gemini-3.1-flash-lite"
-APP_DATA_DIR = Path(
-    os.environ.get("CONDUCTOR_MAIN_DATA_DIR", Path.home() / ".conductor-main")
-).expanduser()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_app_data_dir() -> Path:
+    """Resolve the app data directory (project-local by default)."""
+    return Path(os.environ.get("CONDUCTOR_MAIN_DATA_DIR", PROJECT_ROOT)).expanduser()
+
+
+APP_DATA_DIR = _resolve_app_data_dir()
 APP_SOUNDFONT_DIR = Path(
     os.environ.get(
         "CONDUCTOR_MAIN_SOUNDFONT_DIR",
-        Path(__file__).resolve().parents[2] / "soundfonts",
+        PROJECT_ROOT / "soundfonts",
     )
 ).expanduser()
 PROMPT_OVERRIDE_PATH = APP_DATA_DIR / "Prompts" / "loop gen.txt"

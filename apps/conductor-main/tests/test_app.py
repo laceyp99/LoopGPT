@@ -419,3 +419,15 @@ def test_main_allows_gradio_to_serve_generation_history(monkeypatch, tmp_path):
     app.main()
 
     assert launched_with == {"allowed_paths": [str(artifact_root.resolve())]}
+
+
+def test_app_data_dir_defaults_to_the_project_directory(monkeypatch):
+    monkeypatch.delenv("CONDUCTOR_MAIN_DATA_DIR", raising=False)
+
+    assert app._resolve_app_data_dir() == Path(app.__file__).resolve().parents[2]
+
+
+def test_app_data_dir_honors_environment_override(monkeypatch, tmp_path):
+    monkeypatch.setenv("CONDUCTOR_MAIN_DATA_DIR", str(tmp_path))
+
+    assert app._resolve_app_data_dir() == tmp_path
