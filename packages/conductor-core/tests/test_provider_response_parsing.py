@@ -184,7 +184,9 @@ def test_ollama_loop_gen_accepts_missing_thinking(monkeypatch):
     completion = SimpleNamespace(message=SimpleNamespace(content=payload))
     fake_client = SimpleNamespace(chat=lambda **kwargs: completion)
 
-    monkeypatch.setattr(ollama_api, "initialize_ollama_client", lambda host_address=None: fake_client)
+    monkeypatch.setattr(
+        ollama_api, "initialize_ollama_client", lambda host_address=None: fake_client
+    )
     monkeypatch.setattr(ollama_api.utils, "get_loop_prompt", lambda: "system prompt")
     monkeypatch.setattr(ollama_api.utils, "save_messages_to_json", _fail_save_messages)
 
@@ -256,7 +258,9 @@ def test_ollama_loop_gen_rejects_missing_content(monkeypatch):
     completion = SimpleNamespace(message=SimpleNamespace())
     fake_client = SimpleNamespace(chat=lambda **kwargs: completion)
 
-    monkeypatch.setattr(ollama_api, "initialize_ollama_client", lambda host_address=None: fake_client)
+    monkeypatch.setattr(
+        ollama_api, "initialize_ollama_client", lambda host_address=None: fake_client
+    )
     monkeypatch.setattr(ollama_api.utils, "get_loop_prompt", lambda: "system prompt")
 
     with pytest.raises(ValueError, match="Ollama response did not include generated content"):
