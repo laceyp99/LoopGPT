@@ -1,5 +1,14 @@
 # AGENTS.md - LoopGPT Agent Guide
 
+> [!IMPORTANT]
+> **This repository is retired and archived.** Do not make changes here. Active
+> development has moved to the Conductor project suite:
+> [conductor-core](https://github.com/laceyp99/conductor-core) (generation engine),
+> [conductor-main](https://github.com/laceyp99/conductor-main) (Gradio client), and
+> [conductor-eval](https://github.com/laceyp99/conductor-eval) (evaluation framework).
+> The guidance below is preserved only as historical context for the final
+> monorepo state (see the `pre-split` tag).
+
 This document provides the essential context an AI coding agent needs to work safely and productively in this repository.
 
 ## Start Here
