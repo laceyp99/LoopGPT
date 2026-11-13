@@ -13,6 +13,7 @@ projects, each with its own repository, documentation, tests, and CI:
 |---|---|---|
 | **Conductor Core** | [laceyp99/conductor-core](https://github.com/laceyp99/conductor-core) | Reusable prompt-to-MIDI generation engine: provider routing (OpenAI, Anthropic, Google, Ollama), loop models, MIDI conversion, playback helpers, and artifact persistence |
 | **Conductor Main** | [laceyp99/conductor-main](https://github.com/laceyp99/conductor-main) | Interactive Gradio client: generation UI, piano-roll visualization, SoundFont playback, and generation history |
+| **Conductor Studio** | [laceyp99/conductor-studio](https://github.com/laceyp99/conductor-studio) | Local-first Gradio app: one prompt generates four loop variations in a single Conductor Core batch request for side-by-side comparison |
 | **Conductor Eval** | [laceyp99/conductor-eval](https://github.com/laceyp99/conductor-eval) | Evaluation framework: model/prompt quality runs, deterministic MIDI checks, reports, and the analysis dashboard |
 
 ## Where to go
